@@ -1,6 +1,16 @@
 
 <!-- README.md is generated from README.Rmd. -->
 
+[![Build
+Status](https://travis-ci.org/rfhb/ctrdata.png?branch=master)](https://travis-ci.org/rfhb/ctrdata)
+[![AppVeyor Build
+Status](https://ci.appveyor.com/api/projects/status/github/rfhb/ctrdata?branch=master&svg=true)](https://ci.appveyor.com/project/rfhb/ctrdata)
+[![codecov](https://codecov.io/gh/rfhb/ctrdata/branch/master/graph/badge.svg)](https://codecov.io/gh/rfhb/ctrdata)
+\[Note codecov does not check MS Windows-only code\]
+
+[![Slack](https://img.shields.io/badge/Slack-Join-green.svg)](https://rfhb.slack.com/messages/C6N1Y75B6)
+Join Slack channel and discuss
+
 # ctrdata for aggregating and analysing clinical trials
 
 The package `ctrdata` provides functions for retrieving (downloading)
@@ -13,16 +23,18 @@ started mid 2015 and was motivated by the wish to understand trends in
 designs and conduct of trials and their availability for patients. The
 package is to be used within the [R](https://www.r-project.org/) system.
 
-Last edit 2019-03-06 for version 0.14.1, with bug fixes and new
+Last edit 2019-03-27 for version 0.17.0, with bug fixes and new
 features:
 
   - dates are now returned as Date types, and some Yes / No fields are
-    returned as logical, by function `dbGetFieldsIntoDf()`,  
+    returned as logical, by function `dbGetFieldsIntoDf()`,
   - personal annotations can be added when records are retrieved from a
     register (new options `annotate.text` and `annotate.mode` for
     function `ctrLoadQueryIntoDb()`), for later use in analysis, and
   - synonyms of active substances to better find trials can be retrieved
-    with function `ctrFindActiveSubstanceSynonyms()`.
+    with function `ctrFindActiveSubstanceSynonyms()`,
+  - improved functioning with remote Mongo databases, and removed need
+    for local installation of MongoDB.
 
 Main features:
 
@@ -57,20 +69,23 @@ Registers. R package version 0.14. https://github.com/rfhb/ctrdata`
 
 ```r
 citation("ctrdata")
+#> Warning in citation("ctrdata"): no date field in DESCRIPTION file of
+#> package 'ctrdata'
+#> Warning in citation("ctrdata"): could not determine year for 'ctrdata' from
+#> package DESCRIPTION file
 #> 
 #> To cite package 'ctrdata' in publications use:
 #> 
-#>   Ralf Herold (2019). ctrdata: Retrieve and Analyze Information on
-#>   Clinical Trials from Public Registers. R package version 0.14.1.
-#>   https://github.com/rfhb/ctrdata
+#>   Ralf Herold (NA). ctrdata: Retrieve and Analyze Information on
+#>   Clinical Trials from Public Registers. R package version
+#>   0.16.9002. https://github.com/rfhb/ctrdata
 #> 
 #> A BibTeX entry for LaTeX users is
 #> 
 #>   @Manual{,
 #>     title = {ctrdata: Retrieve and Analyze Information on Clinical Trials from Public Registers},
 #>     author = {Ralf Herold},
-#>     year = {2019},
-#>     note = {R package version 0.14.1},
+#>     note = {R package version 0.16.9002},
 #>     url = {https://github.com/rfhb/ctrdata},
 #>   }
 ```
@@ -87,22 +102,11 @@ Package `ctrdata` has been used for example for:
 
 Overview of functions used in sequence:
 
-![Overview
-workflow](inst/image/README-ctrdata_sequence_diagram.jpeg)
+![Overview workflow](inst/image/README-ctrdata_sequence_diagram.jpeg)
 
 # Installation
 
-## 1\. Local [mongodb](https://www.mongodb.org/) (version 3) installation
-
-Follow instructions for various operating systems
-[here](https://docs.mongodb.com/manual/administration/install-community/).
-For macOS alternatively use [homebrew](http://brew.sh/): `brew install
-mongodb`. From this installation, binaries `mongoimport{.exe}` and
-`mongo{.exe}` are needed. If the binaries are not on the system path
-under Unix, specify their folder as
-`ctrdata:::installMongoFindBinaries(mongoDirUnix = "<folder>")`.
-
-## 2\. Command line tools `perl`, `sed`, `cat` and `php` (5.2 or higher)
+## 1\. Command line tools `perl`, `sed`, `cat` and `php` (5.2 or higher)
 
 In Linux and macOS, these are usually already installed. For MS Windows,
 install [cygwin](https://cygwin.com/install.html): In `R`, run
@@ -111,7 +115,7 @@ into `c:\cygwin`; alternatively manually install cygwin with packages
 `perl`, `php-jsonc` and `php-simplexml` (administrator credentials not
 needed).
 
-## 3\. Within R
+## 2\. Within R
 
 Within [R](https://www.r-project.org/), use the following commands to
 get and install the current development version of package `ctrdata`
@@ -119,19 +123,12 @@ from github.com:
 
 ``` r
 install.packages("devtools")
-#
-devtools::install_github("rfhb/ctrdata")
-#
-# - In case of a problem with the SSL CA cert:
-install.packages("httr")
-httr::set_config(httr::config(ssl_verifypeer = 0L))
-devtools::install_github("rfhb/ctrdata")
-# 
-# - If not connecting, a proxy may need to be set:
-install.packages("httr")
-httr::set_config(httr::use_proxy("proxy.server.domain", 8080))
 devtools::install_github("rfhb/ctrdata")
 ```
+
+In case of problems, a release version of package `ctrdata` can be
+downloaded [here](https://github.com/rfhb/ctrdata/releases) and
+installed from the downloaded archive.
 
 # Overview of functions in `ctrdata`
 
@@ -208,7 +205,7 @@ q
 ``` r
 # Retrieve trials from public register
 ctrLoadQueryIntoDb(paste0("https://www.clinicaltrialsregister.eu/ctr-search/search?", 
-                          "query=cancer&age=under-18&phase=phase-one")
+                          "query=cancer&age=under-18&phase=phase-one"))
 #
 # Alternative: ctrLoadQueryIntoDb(q)
 #
@@ -248,6 +245,9 @@ with (result, table (p_end_of_trial_status, b1_sponsor.b31_and_b32_status_of_the
 
 # Features in the works
 
+  - Explore using the Windows Subsystem for Linux (WSL) instead of
+    cygwin
+
   - Merge results-related information retrieved from different registers
     (e.g. corresponding endpoints) and prepare for analysis across
     trials.
@@ -264,12 +264,13 @@ with (result, table (p_end_of_trial_status, b1_sponsor.b31_and_b32_status_of_the
     (`ctrOpenSearchPagesInBrowser(copyright = TRUE)`).
 
   - This package `ctrdata` has been made possible based on the work done
-    for [Variety](https://github.com/variety/variety),
-    [RCurl](http://www.omegahat.org/RCurl/),
-    [curl](https://github.com/jeroenooms/curl),
+    for [curl](https://github.com/jeroenooms/curl),
     [clipr](https://github.com/mdlincoln/clipr),
-    [mongolite](https://cran.r-project.org/web/packages/mongolite/) and
-    for [R](http://www.r-project.org/).
+    [mongolite](https://cran.r-project.org/package=mongolite) and
+    [R](http://www.r-project.org/),
+    [httr](https://cran.r-project.org/package=httr),
+    [xml2](https://cran.r-project.org/package=xml2) and
+    [rvest](https://cran.r-project.org/package=rvest).
 
 # Issues and notes
 

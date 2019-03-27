@@ -66,6 +66,7 @@ LC_CTYPE=C && LANG=C && < "$1/allfiles.txt" perl -ne '
   s/^(EudraCT Number.*)$/X.1 $1/;
   s/^(Sponsor) ([0-9]+)$/B.1 $1: $2/;
   s/^(Clinical Trial.*)$/X.4 $1/;
+  s/^(Trial Status.*)$/X.5 $1/;
   s/^(Date on.*)$/X.6 $1/;
   s/^(Link.*)$/X.7 $1/;
 
@@ -140,7 +141,7 @@ sed \
   | \
 perl -pe 'BEGIN{undef $/;}
   # delete comma from last line in record
-  s/,\n\}\{/\}\n\n\{/g ;
+  s/,\n\}\{/\}\nNEWRECORDIDENTIFIER\n\{/g ;
 
   # create array with imp(s)
   s/("d[0-9]+_.*"),\n"dimp": "([2-9])",/$1\}, \n\{ "_dimp": "$2",/g ;
@@ -151,26 +152,14 @@ perl -pe 'BEGIN{undef $/;}
   s/("b[0-9]+_.*"),\n"b1_sponsor": "([2-9])",/$1\}, \n\{ "_b1_sponsor": "$2",/g ;
   s/("b[0-9]+_.*"),\n"x9_endsponsor.*/$1\}\n],/g ;
 
-  ' \
+  ' | \
+perl -pe '
+  # write NDJSON
+  s/\n//g ;
+  s/NEWRECORDIDENTIFIER/\n/g ;
+
+  # add a final EOL
+  ' | \
+sed \
+  -e '$a\' \
 > "$1/allfiles.json"
-
-
-
-# file to hold the eudract numbers
-LC_CTYPE=C && LANG=C && < "$1/allfiles.json" perl -ne '
-
-  while (<>) {
-
-    # {\n"a2_eudract_number": "2006-001238-41",
-    # print $_ if /"a2_eudract_number"/;
-
-    #if (/"a2_eudract_number"/)
-    if (/^"_id"/)
-    {
-    s/^.*([0-9]{4}-[0-9]{6}-[0-9]{2}-?[A-Z3]{0,3}).*$/$1/g;
-    print $_;
-
-    }
-
-  } ' \
-> "$1/alleudract.txt"

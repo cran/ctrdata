@@ -276,7 +276,7 @@ age_ctgov <- function(x) {
 #  #
 #  library(mongolite)
 #  #
-#  m <- mongo(db = "users", collection = "resultsTest")
+#  m <- mongo(url = "mongodb://localhost/users", collection = "resultsTest")
 #  #
 #  # Check if there are any duplicates:
 #  ids_of_unique_trials <- dbFindIdsUniqueTrials(collection = "resultsTest")
@@ -520,7 +520,7 @@ age_ctgov <- function(x) {
 #  library(mongolite)
 #  #
 #  # Link R object m to the specified database collection:
-#  m <- mongo(db = "users", collection = "ctrdata")
+#  m <- mongo(url = "mongodb://localhost/users", collection = "ctrdata")
 #  #
 #  # Number of all records:
 #  m$count()
@@ -591,7 +591,7 @@ age_ctgov <- function(x) {
 #  #
 #  library(mongolite)
 #  #
-#  m <- mongo(db = "users", collection = "ctrdata")
+#  m <- mongo(url = "mongodb://localhost/users", collection = "ctrdata")
 #  #
 #  # Count number of trials (trial records) with number of study participants
 #  # in bins of hundreds of participants:
@@ -616,8 +616,8 @@ age_ctgov <- function(x) {
 #  # note: _id is the bin of hundreds of study participants,
 #  # value is the number of studies in respective bin
 #  #
-#  plot (hist, type = "h", las = 1, xlim = c(0, 2000), ylim = c(0, 500),
-#        xlab = "Number stubjects", y = "Number of trials")
+#  plot(hist, type = "h", las = 1, xlim = c(0, 2000), ylim = c(0, 500),
+#       xlab = "Number stubjects", y = "Number of trials")
 #  #
 
 ## ----analyse_inclusion_criteria------------------------------------------
@@ -645,12 +645,12 @@ age_ctgov <- function(x) {
 #  table(grepl_multi(terms, result))
 #  #
 #  # utility function to generate a regular expression for a given number of words
-#  words <- function (x) paste0(paste0(rep("\\s+\\w+", x), collapse = ""), "\\s+")
+#  words <- function(x) paste0(paste0(rep("\\s+\\w+", x), collapse = ""), "\\s+")
 #  #
 #  terms <- paste0(".*(", words(2), terms, "\\w*", words(3), ").*")
 #  #
 #  # find and print found matches for review
-#  for(i in 1:length(terms))
+#  for (i in 1:length(terms))
 #    print(gsub(terms[i], "\\1", result, ignore.case = TRUE)[grepl(terms[i], result)])
 #  #
 
@@ -681,10 +681,10 @@ age_ctgov <- function(x) {
 
 ## ----annotations---------------------------------------------------------
 #  
-#  if(FALSE) ctrLoadQueryIntoDb(queryterm = paste0("https://clinicaltrials.gov/ct2/results?age=0&intr=dasatinib&phase=1"),
-#                               annotation.text = paste0("|AS:", "dasatinib", "|"),
-#                               annotation.mode = "prepend",
-#                               collection = "annotationTest")
+#  if (FALSE) ctrLoadQueryIntoDb(queryterm = paste0("https://clinicaltrials.gov/ct2/results?age=0&intr=dasatinib&phase=1"),
+#                                annotation.text = paste0("|AS:", "dasatinib", "|"),
+#                                annotation.mode = "prepend",
+#                                collection = "annotationTest")
 #  
 #  # helper function
 #  getannotationelement <- function(x, element = "AS") {
@@ -711,9 +711,9 @@ age_ctgov <- function(x) {
 ## ----analyse_results_1---------------------------------------------------
 #  
 #  # get trials into database
-#  if(FALSE) ctrLoadQueryIntoDb(queryterm = paste0("https://clinicaltrials.gov/ct2/results?rslt=With&age=0&intr=Drug&",
-#                                                  "phase=1&phase=2&strd_s=01%2F01%2F2010&strd_e=12%2F31%2F2012"),
-#                               collection = "resultsTest")
+#  if (FALSE) ctrLoadQueryIntoDb(queryterm = paste0("https://clinicaltrials.gov/ct2/results?rslt=With&age=0&intr=Drug&",
+#                                                   "phase=1&phase=2&strd_s=01%2F01%2F2010&strd_e=12%2F31%2F2012"),
+#                                collection = "resultsTest")
 #  
 #  # get result set
 #  # dbFindFields(namepart = "age", allmatches = TRUE, collection = "resultsTest")
@@ -737,7 +737,6 @@ age_ctgov <- function(x) {
 #  result$totalparticipants <- tmp
 #  
 #  # value of reported p value for primary endpoint analysis
-#  # prespecified significance level not in ctgov (TODO)
 #  tmp <- lapply(result$clinical_results.outcome_list.outcome.analysis_list.analysis.p_value,
 #               FUN = function(x) strsplit(x, " / ")[[1]][1])
 #  tmp <- normalise_number(tmp)
@@ -752,100 +751,6 @@ age_ctgov <- function(x) {
 #  
 #  # based on allocation arms, keep trials that are likely to investigate safety and efficacy
 #  result$control <- grepl("(Placebo|No Intervention)", result$arm_group.arm_group_type, ignore.case = TRUE)
-#  result <- subset(result, control == TRUE &
-#                     (result$eligibility.maximum_age == "" |
-#                      age_ctgov(result$eligibility.maximum_age) < 21))
-#  
-#  # inspection for relevance
-#  summary(result)
-#  restitle <- subset(result, select = c("_id", "eligibility.maximum_age", "official_title"))
-#  
-#  # http://varianceexplained.org/statistics/interpreting-pvalue-histogram/
-#  # http://www.pnas.org/content/100/16/9440.full
-#  # plot p values
-#  library(ggplot2)
-#  ggplot(result, aes(pvalueprimaryanalysis)) +
-#    geom_vline(aes(xintercept = 0.05, colour = "0.05")) +
-#    geom_hline(aes(yintercept = 0.70, colour = "About 70% of trials\nreported p < 0.05")) +
-#    stat_ecdf(geom = "step") +
-#    labs(title = "Paediatric phase 2 or 3 interventional trials\nwith randomisation to placebo or to no intervention",
-#         x = "Range of p values",
-#         y = "Empirical cumulative density of p values\nof primary endpoint results") +
-#    scale_colour_manual(name="Lines", values = c('About two-thirds of trials\nreported p < 0.05' = "red",
-#                                                 '0.05' = "green"))
-#  
-#  # plot sample size v p value
-#  library(scales)
-#  ggplot(result, aes(x = totalparticipants, y = pvalueprimaryanalysis)) +
-#    geom_point() +
-#    ylim(0, 1) +
-#    xlim(0, 1000) +
-#    scale_x_continuous(trans = log10_trans())
-#  
-#  # statistical method used for primary endpoint analysis
-#  tmp <- result$methodprimaryanalysis
-#  tmp <- gsub(" for ", " ", tmp)
-#  tmp <- table(tmp)
-#  tmp <- tmp[rev(order(tmp))]
-#  tmp <- data.frame(tmp)
-#  knitr::kable(tmp[1:10,])
-#  
-
-## ----imatinib------------------------------------------------------------
-#  
-#  # imatinib example: heterogeneity of treatment effect in BCRABL fusion malignancies
-#  # alk example: heterogeneity over diseases
-#  # BCRABL fusion cancers
-#  
-#  
-#  
-#  # download phase 2 and 3 trials into database
-#  imat <- "https://clinicaltrials.gov/ct2/results?&intr=imatinib&phase=1&phase=2"
-#  ctrdata::ctrLoadQueryIntoDb(imat, collection = "imatinib_phase23")
-#  
-#  # load from database
-#  # dbFindFields(namepart = "interv", allmatches = TRUE, collection = "imatinib_phase23")
-#  # dbFindFields(namepart = "condit", allmatches = TRUE, collection = "imatinib_phase23")
-#  result <- dbGetFieldsIntoDf(c("start_date", "condition",
-#                                "study_design_info.allocation",
-#                                "arm_group.arm_group_type", "intervention.arm_group_label",
-#                                "primary_outcome.measure",
-#                                "clinical_results.outcome_list.outcome.analysis_list.analysis.method",
-#                                "clinical_results.outcome_list.outcome.analysis_list.analysis.p_value",
-#                                "clinical_results.outcome_list.outcome.analysis_list.analysis.param_type",
-#                                "clinical_results.outcome_list.outcome.analysis_list.analysis.non_inferiority_type",
-#                                "clinical_results.baseline.analyzed_list.analyzed.units",
-#                                "clinical_results.baseline.analyzed_list.analyzed.count_list.count.@attributes.value",
-#                                "detailed_description.textblock", "official_title"
-#                                ), collection = "imatinib_phase23", stopifnodata = TRUE)
-#  
-#  # table(result$clinical_results.baseline.analyzed_list.analyzed.units)
-#  tmp <- lapply(result$`clinical_results.baseline.analyzed_list.analyzed.count_list.count.@attributes.value`,
-#                function(x) strsplit(x, " / "))
-#  tmp <- lapply(tmp,
-#                function(x) sum(as.numeric(unlist(x)), na.rm = TRUE))
-#  tmp[result$clinical_results.baseline.analyzed_list.analyzed.units != "Participants"] <- NA
-#  tmp <- unlist(tmp)
-#  result$totalparticipants <- tmp
-#  
-#  # value of reported p value for primary endpoint analysis
-#  tmp <- lapply(result$clinical_results.outcome_list.outcome.analysis_list.analysis.p_value,
-#               FUN = function(x) strsplit(x, " / ")[[1]][1])
-#  tmp <- unlist(tmp)
-#  tmp <- normalise_number(tmp)
-#  result$pvalueprimaryanalysis <- tmp
-#  
-#  # statistical method used for primary endpoint analysis
-#  tmp <- lapply(result$clinical_results.outcome_list.outcome.analysis_list.analysis.method,
-#               FUN = function(x) strsplit(x, " / ")[[1]][1])
-#  tmp <- do.call(rbind, tmp)
-#  tmp <- normalise_string(tmp)
-#  result$methodprimaryanalysis <- tmp
-#  
-#  # based on allocation arms, keep trials that are likely to investigate safety and efficacy
-#  # table(result$arm_group.arm_group_type)
-#  result$control <- grepl("(Placebo)",  result$arm_group.arm_group_type,     ignore.case = TRUE) &
-#                    grepl("(imatinib)", result$intervention.arm_group_label, ignore.case = TRUE)
 #  result <- subset(result, control == TRUE)
 #  
 #  # http://varianceexplained.org/statistics/interpreting-pvalue-histogram/
@@ -859,8 +764,9 @@ age_ctgov <- function(x) {
 #    labs(title = "Paediatric phase 2 or 3 interventional trials\nwith randomisation to placebo or to no intervention",
 #         x = "Range of p values",
 #         y = "Empirical cumulative density of p values\nof primary endpoint results") +
-#    scale_colour_manual(name="Lines", values = c('About two-thirds of trials\nreported p < 0.05' = "red",
-#                                                 '0.05' = "green"))
+#    scale_colour_manual(name = "Lines",
+#                        values = c('About two-thirds of trials\nreported p < 0.05' = "red",
+#                                   '0.05' = "green"))
 #  
 #  # plot sample size v p value
 #  library(scales)
@@ -870,26 +776,10 @@ age_ctgov <- function(x) {
 #    xlim(0, 1000) +
 #    scale_x_continuous(trans = log10_trans())
 #  
-#  
-#  
-#  
+#  # statistical method used for primary endpoint analysis
+#  tmp <- table(result$methodprimaryanalysis)
+#  tmp <- tmp[rev(order(tmp))]
+#  tmp <- data.frame(tmp)
+#  knitr::kable(tmp[1:10,])
 #  #
-
-## ------------------------------------------------------------------------
-#  
-#  library(roomba)
-#  library(mongolite)
-#  
-#  m <- mongo(db = "users", collection = "resultsTest")
-#  
-#  query <- '{"endPoints.endPoint.title": "Primary"}'
-#  
-#  result <- m$iterate(query  = query)$batch(size = m$count())
-#  
-#  datatib <- roomba(inp = result, cols = c("subjects", "title", "timeFrame", "x1_eudract_number"), keep = any)
-#  
-#  roomba(inp = result, cols = c( "x1_eudract_number", "b1_sponsor"), keep = any)
-#  
-#  
-#  
 

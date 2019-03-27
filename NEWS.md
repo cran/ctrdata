@@ -1,6 +1,46 @@
+# ctrdata 0.17
+ - 2019-03-27
+ - release version
+ 
+# ctrdata 0.16.9002
+ - 2019-03-26
+ - improve dbFindFields() formatting
+ - added parameter to force running a query again
+   
+# ctrdata 0.16.9001
+ - 2019-03-26
+ - added futher typing (some of the numeric fields)
+ - improve cygwin install attempts and information
+   
+# ctrdata 0.16.9000
+ - 2019-03-24
+ - removed dependency on local mongodb installation (major rewrite)
+ - improved support for remote mongodb servers (note changes in host / db / uri parameters)
+   
+# ctrdata 0.15.9007
+ - 2019-03-15
+ - Important: Added no checking of SSL certificates for EUCTR because the EUCTR server is
+   not sneding the required intermediate and root certificates, thus failing curl and httr, see
+   https://www.digicert.com/help/?host=www.clinicaltrialsregister.eu
+
+# ctrdata 0.15.0
+ - 2019-03-13
+ - fixed EUCTR results retrieval (curl return value order not predictable)
+ - removed second time adding metadata in one function
+ - streamlined user information and progress feedback
+
+# ctrdata 0.14.3
+ - 2019-03-12
+ - turned error into message when no new trials are found
+ - prevent failing tests if no new trials found in rss feed
+ 
+# ctrdata 0.14.2
+ - 2019-03-07
+ - harmonise user information
+ 
 # ctrdata 0.14.1
  - 2019-03-07
- - replaced RCurl (which failed for some register servers) by httr
+ - replaced RCurl (which failed for some register servers) by httr and curl
  - create README.md from README.Rmd
 
 # ctrdata 0.14
