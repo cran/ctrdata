@@ -4,106 +4,83 @@ knitr::opts_chunk$set(eval = FALSE)
 #
 
 ## ----install_ctrdata, eval=FALSE-----------------------------------------
-#  #
+#  install.packages("ctrdata")
+
+## ---- eval=FALSE---------------------------------------------------------
+#  library(httr)
+#  set_config(use_proxy("your_proxy.server.domain", port = 8080))
+
+## ---- eval=FALSE---------------------------------------------------------
+#  .libPaths("D:/my/directory/")
+
+## ---- eval=FALSE---------------------------------------------------------
 #  # install preparatory package
 #  install.packages(c("devtools", "httr"))
-#  #
-#  # set proxy, if needed
-#  library(httr)
-#  set_config(use_proxy("proxy.server.domain", 8080))
-#  #
-#  # on windows: change library path to *not* use an
-#  # UNC notation (\\server\directory) for the library
-#  .libPaths("D:/my/directory/")
-#  #
 #  # now install this package and the packages it depends on
-#  # (mongolite, jsonlite, RCurl, curl, clipr)
 #  devtools::install_github("rfhb/ctrdata", dependencies = "Depends")
-#  #
-#  # note: on Windows, cygwin has to be installed
-#  # to provide php, bash, perl, cat and sed programs.
-#  # this can be done like this (remove proxy if not needed):
+
+## ---- eval=FALSE---------------------------------------------------------
+#  ctrdata::installCygwinWindowsDoInstall()
+
+## ---- eval=FALSE---------------------------------------------------------
 #  ctrdata::installCygwinWindowsDoInstall(proxy = "proxy.server.domain:8080")
-#  #
 
 ## ----attach_ctrdata------------------------------------------------------
-#  #
 #  library(ctrdata)
-#  #
 
 ## ----show_brower_search_pages--------------------------------------------
-#  #
 #  ctrOpenSearchPagesInBrowser()
-#  #
+#  
 #  # Please review and respect register copyrights:
-#  #
 #  ctrOpenSearchPagesInBrowser(copyright = TRUE)
-#  #
+#  
 #  # Open browser with example search:
-#  #
-#  ctrOpenSearchPagesInBrowser(register = "EUCTR", queryterm = "cancer&age=under-18")
-#  #
+#  ctrOpenSearchPagesInBrowser(input = "cancer&age=under-18",
+#                              register = "EUCTR")
 
 ## ----get_query_from_browser----------------------------------------------
-#  #
 #  q <- ctrGetQueryUrlFromBrowser()
-#  #
 #  # Found search query from EUCTR.
 #  # [1] "cancer&age=under-18"
-#  #
 
-## ----execute_load_query--------------------------------------------------
-#  #
+## ----execute_load_query, eval=FALSE--------------------------------------
 #  # Use search q that was defined in previous step:
-#  #
-#  ctrLoadQueryIntoDb(q)
-#  #
+#  ctrLoadQueryIntoDb(queryterm = q)
+#  
 #  # Alternatively, use the following to retrieve a couple of trial records:
-#  #
-#  ctrLoadQueryIntoDb(queryterm = "2010-024264-18", register = "EUCTR")
-#  #
+#  ctrLoadQueryIntoDb(queryterm = "2010-024264-18",
+#                     register = "EUCTR")
 #  # If no parameters are given for a database connection: uses mongodb
 #  # on localhost, port 27017, database "users", collection "ctrdata"
-#  # note: when run for first time, may download variety.js
-#  #
+#  
 #  # Show which queries have been downloaded into the database so far
-#  #
 #  dbQueryHistory()
-#  #
-#  # Using Mongo DB (collections "ctrdata" and "ctrdataKeys" in database "users" on "localhost").
-#  # Number of queries in history of "users.tmp": 2
 #  #       query-timestamp query-register query-records                  query-term
 #  # 1 2016-01-13-10-51-56          CTGOV          5233 type=Intr&cond=cancer&age=0
 #  # 2 2016-01-13-10-40-16          EUCTR           910         cancer&age=under-18
-#  #
 
 ## ----analyse_query_database----------------------------------------------
-#  #
 #  # find names of fields of interest in database:
-#  #
-#  dbFindFields("status", allmatches = TRUE)
-#  #
-#  # [1] "overall_status"  "b1_sponsor.XX.b31_and_b32_status_of_the_sponsor" "p_end_of_trial_status"
-#  # [4] "location.status" "location.XX.status"
-#  #
+#  dbFindFields(namepart = "status",
+#               allmatches = TRUE)
+#  # [1] "overall_status"  "b1_sponsor.b31_and_b32_status_of_the_sponsor"
+#  # [3] "p_end_of_trial_status" "location.status"
+#  
 #  # Get all records that have values in all specified fields.
 #  # Note that b31_... is a field within the array b1_...
-#  #
-#  result <- dbGetFieldsIntoDf(c("b1_sponsor.b31_and_b32_status_of_the_sponsor",
-#                                "p_end_of_trial_status"))
-#  #
+#  result <- dbGetFieldsIntoDf(fields = c("b1_sponsor.b31_and_b32_status_of_the_sponsor",
+#                                         "p_end_of_trial_status"))
+#  
 #  # Tabulate the status of the clinical trial on the date of information retrieval
-#  #
-#  with (result, table ("Status"       = p_end_of_trial_status,
-#                       "Sponsor type" = b1_sponsor.b31_and_b32_status_of_the_sponsor))
-#  #
-#  #                     b31_and_b32_status_of_the_sponsor
-#  # p_end_of_trial_status   Commercial Non-Commercial
+#  with (result,
+#        table("Status"       = p_end_of_trial_status,
+#              "Sponsor type" = b1_sponsor.b31_and_b32_status_of_the_sponsor))
+#  #                 Sponsor type
+#  # Status                  Commercial Non-Commercial
 #  #   Completed                    138             30
 #  #   Not Authorised                 3              0
 #  #   Ongoing                      339            290
 #  #   Prematurely Ended             35              4
 #  #   Restarted                      8              0
 #  #   Temporarily Halted            14              4
-#  #
 

@@ -147,13 +147,21 @@ ctrOpenSearchPagesInBrowser <- function(input = "", register = "", copyright = F
     if (all(register == "", na.rm = TRUE)) register <- c("EUCTR", "CTGOV")
     #
     # open empty search pages
-    if ("EUCTR" %in% register) utils::browseURL("https://www.clinicaltrialsregister.eu/ctr-search/search", ...)
-    if ("CTGOV" %in% register) utils::browseURL("https://clinicaltrials.gov/ct2/search/advanced", ...)
+    if ("EUCTR" %in% register)
+      try({utils::browseURL("https://www.clinicaltrialsregister.eu/ctr-search/search", ...)}, silent = TRUE)
+    #
+    if ("CTGOV" %in% register)
+      try({utils::browseURL("https://clinicaltrials.gov/ct2/search/advanced", ...)}, silent = TRUE)
     #
     # if requested also show copyright pages
     if (copyright) {
-      if ("EUCTR" %in% register) utils::browseURL("https://www.clinicaltrialsregister.eu/disclaimer.html", ...)
-      if ("CTGOV" %in% register) utils::browseURL("https://clinicaltrials.gov/ct2/about-site/terms-conditions#Use", ...)
+      #
+      if ("EUCTR" %in% register)
+        try({utils::browseURL("https://www.clinicaltrialsregister.eu/disclaimer.html", ...)}, silent = TRUE)
+      #
+      if ("CTGOV" %in% register)
+        try({utils::browseURL("https://clinicaltrials.gov/ct2/about-site/terms-conditions#Use", ...)}, silent = TRUE)
+      #
     }
   } else {
     #
@@ -163,7 +171,7 @@ ctrOpenSearchPagesInBrowser <- function(input = "", register = "", copyright = F
     if (class(input) == "character" &&
         is.atomic(input) &&
         length(input) == 1 &&
-        grepl ("^https.+clinicaltrials.+", input)) {
+        grepl("^https.+clinicaltrials.+", input)) {
       #
       input <- ctrGetQueryUrlFromBrowser(content = input)
       #
@@ -176,8 +184,8 @@ ctrOpenSearchPagesInBrowser <- function(input = "", register = "", copyright = F
       #
       if (nr > 1) warning("Using last row of input.", call. = FALSE, immediate. = TRUE)
       #
-      register  <- input [nr, "query-register"]
-      queryterm <- input [nr, "query-term"]
+      register  <- input[nr, "query-register"]
+      queryterm <- input[nr, "query-term"]
       #
     }
     #
@@ -195,13 +203,17 @@ ctrOpenSearchPagesInBrowser <- function(input = "", register = "", copyright = F
       #
       message("Opening browser for search: \n\n", queryterm, "\n\nin register: ", register)
       #
-      utils::browseURL(paste0(switch(as.character(register),
-                                     "CTGOV" = ifelse(grepl("^xprt=", queryterm),
-                                                      "https://clinicaltrials.gov/ct2/results/refine?show_xprt=Y&",
-                                                      "https://clinicaltrials.gov/ct2/results?"),
-                                     "EUCTR" = "https://www.clinicaltrialsregister.eu/ctr-search/search?"),
-                              queryterm), encodeIfNeeded = TRUE, ...)
-      #
+      # protect against os where this does not work
+      try({utils::browseURL(url = paste0(
+        #
+        switch(as.character(register)[1],
+               "CTGOV" = ifelse(grepl("^xprt=", queryterm),
+                                "https://clinicaltrials.gov/ct2/results/refine?show_xprt=Y&",
+                                "https://clinicaltrials.gov/ct2/results?"),
+               "EUCTR" = "https://www.clinicaltrialsregister.eu/ctr-search/search?"),
+        queryterm[1]),
+        encodeIfNeeded = TRUE, ...)
+      }, silent = TRUE)
     }
   }
   #
@@ -1161,7 +1173,7 @@ typeField <- function(dfi){
     # dates
     #
     # - intern
-    "record_last_import" = strptime(dfi[, 2], format = "%Y-%m-%d %H:%M:%s"),
+    "record_last_import" = strptime(dfi[, 2], format = "%Y-%m-%d %H:%M:%S"),
     # - EUCTR
     "n_date_of_ethics_committee_opinion"                                     = as.Date(dfi[, 2], format = "%Y-%m-%d"),
     "n_date_of_competent_authority_decision"                                 = as.Date(dfi[, 2], format = "%Y-%m-%d"),
@@ -1169,13 +1181,13 @@ typeField <- function(dfi){
     "x6_date_on_which_this_record_was_first_entered_in_the_eudract_database" = as.Date(dfi[, 2], format = "%Y-%m-%d"),
     "firstreceived_results_date"                                             = as.Date(dfi[, 2], format = "%Y-%m-%d"),
     # - CTGOV
-    "start_date"                 = as.Date(dfi[, 2], tryFormats = c("%b %Y")),
-    "primary_completion_date"    = as.Date(dfi[, 2], tryFormats = c("%b %Y")),
-    "completion_date"            = as.Date(dfi[, 2], tryFormats = c("%b %Y")),
-    "firstreceived_date"         = as.Date(dfi[, 2], tryFormats = c("%b %d, %Y", "%b %Y")),
-    "resultsfirst_posted"        = as.Date(dfi[, 2], tryFormats = c("%b %d, %Y", "%b %Y")),
-    "lastupdate_posted"          = as.Date(dfi[, 2], tryFormats = c("%b %d, %Y", "%b %Y")),
-    "lastchanged_date"           = as.Date(dfi[, 2], tryFormats = c("%b %d, %Y", "%b %Y")),
+    "start_date"              = as.Date(dfi[, 2], tryFormats = c("%b %Y")),
+    "primary_completion_date" = as.Date(dfi[, 2], tryFormats = c("%b %Y")),
+    "completion_date"         = as.Date(dfi[, 2], tryFormats = c("%b %Y")),
+    "firstreceived_date"      = as.Date(dfi[, 2], tryFormats = c("%b %d, %Y", "%b %Y")),
+    "resultsfirst_posted"     = as.Date(dfi[, 2], tryFormats = c("%b %d, %Y", "%b %Y")),
+    "lastupdate_posted"       = as.Date(dfi[, 2], tryFormats = c("%b %d, %Y", "%b %Y")),
+    "lastchanged_date"        = as.Date(dfi[, 2], tryFormats = c("%b %d, %Y", "%b %Y")),
     #
     #
     # factors
@@ -1285,9 +1297,19 @@ typeField <- function(dfi){
   # reset date time
   Sys.setlocale("LC_TIME", lct)
 
-  # change column of input
-  if (class(tmp) != "try-error" && !is.null(unlist(tmp))) {
-    dfi[, 2] <- tmp
+  # prepare output
+  if (!("try-error" %in% class(tmp)) &&
+      !is.null(unlist(tmp))) {
+
+    # need to construct new data frame,
+    # since replacing columns with
+    # posixct did not work
+    dfn <- names(dfi)
+    dfi <- data.frame(dfi[["_id"]],
+                      tmp,
+                      stringsAsFactors = FALSE)
+    names(dfi) <- dfn
+
   }
 
   # return
@@ -1298,7 +1320,7 @@ typeField <- function(dfi){
 
 #' Annotate ctrdata function return values
 #'
-#' @param  x object to be annotated
+#' @param x object to be annotated
 #'
 #' @inheritParams ctrMongo
 #'

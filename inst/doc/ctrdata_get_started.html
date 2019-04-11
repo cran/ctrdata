@@ -12,7 +12,7 @@
 
 <meta name="author" content="Ralf Herold" />
 
-<meta name="date" content="2019-03-27" />
+<meta name="date" content="2019-04-11" />
 
 <title>ctrdata getting started</title>
 
@@ -303,7 +303,7 @@ code > span.fu { color: #900; font-weight: bold; }  code > span.er { color: #a61
 
 <h1 class="title toc-ignore">ctrdata getting started</h1>
 <h4 class="author">Ralf Herold</h4>
-<h4 class="date">2019-03-27</h4>
+<h4 class="date">2019-04-11</h4>
 
 
 
@@ -314,119 +314,101 @@ code > span.fu { color: #900; font-weight: bold; }  code > span.er { color: #a61
 <p>The R Project website (<a href="https://www.r-project.org/">https://www.r-project.org/</a>) provides installers for the R system.</p>
 <p>Alternatively, the R system can be used from software products such as R Studio (<a href="https://www.rstudio.com/products/RStudio/">https://www.rstudio.com/products/RStudio/</a>), which includes an open source integrated development environment (IDE), or Microsoft R Open (<a href="https://mran.microsoft.com/open/">https://mran.microsoft.com/open/</a>).</p>
 <p>General information on the <code>ctrdata</code> package is available here: <a href="https://github.com/rfhb/ctrdata">https://github.com/rfhb/ctrdata</a>.</p>
-<div class="sourceCode" id="cb1"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb1-1" title="1"><span class="co"># </span></a>
-<a class="sourceLine" id="cb1-2" title="2"><span class="co"># install preparatory package</span></a>
-<a class="sourceLine" id="cb1-3" title="3"><span class="kw">install.packages</span>(<span class="kw">c</span>(<span class="st">&quot;devtools&quot;</span>, <span class="st">&quot;httr&quot;</span>))</a>
-<a class="sourceLine" id="cb1-4" title="4"><span class="co">#</span></a>
-<a class="sourceLine" id="cb1-5" title="5"><span class="co"># set proxy, if needed</span></a>
-<a class="sourceLine" id="cb1-6" title="6"><span class="kw">library</span>(httr)</a>
-<a class="sourceLine" id="cb1-7" title="7"><span class="kw">set_config</span>(<span class="kw">use_proxy</span>(<span class="st">&quot;proxy.server.domain&quot;</span>, <span class="dv">8080</span>))</a>
-<a class="sourceLine" id="cb1-8" title="8"><span class="co">#</span></a>
-<a class="sourceLine" id="cb1-9" title="9"><span class="co"># on windows: change library path to *not* use an </span></a>
-<a class="sourceLine" id="cb1-10" title="10"><span class="co"># UNC notation (\\server\directory) for the library</span></a>
-<a class="sourceLine" id="cb1-11" title="11"><span class="kw">.libPaths</span>(<span class="st">&quot;D:/my/directory/&quot;</span>)</a>
-<a class="sourceLine" id="cb1-12" title="12"><span class="co">#</span></a>
-<a class="sourceLine" id="cb1-13" title="13"><span class="co"># now install this package and the packages it depends on</span></a>
-<a class="sourceLine" id="cb1-14" title="14"><span class="co"># (mongolite, jsonlite, RCurl, curl, clipr)</span></a>
-<a class="sourceLine" id="cb1-15" title="15">devtools<span class="op">::</span><span class="kw">install_github</span>(<span class="st">&quot;rfhb/ctrdata&quot;</span>, <span class="dt">dependencies =</span> <span class="st">&quot;Depends&quot;</span>)</a>
-<a class="sourceLine" id="cb1-16" title="16"><span class="co">#</span></a>
-<a class="sourceLine" id="cb1-17" title="17"><span class="co"># note: on Windows, cygwin has to be installed</span></a>
-<a class="sourceLine" id="cb1-18" title="18"><span class="co"># to provide php, bash, perl, cat and sed programs.</span></a>
-<a class="sourceLine" id="cb1-19" title="19"><span class="co"># this can be done like this (remove proxy if not needed): </span></a>
-<a class="sourceLine" id="cb1-20" title="20">ctrdata<span class="op">::</span><span class="kw">installCygwinWindowsDoInstall</span>(<span class="dt">proxy =</span> <span class="st">&quot;proxy.server.domain:8080&quot;</span>) </a>
-<a class="sourceLine" id="cb1-21" title="21"><span class="co">#</span></a></code></pre></div>
+<div class="sourceCode" id="cb1"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb1-1" title="1"><span class="kw">install.packages</span>(<span class="st">&quot;ctrdata&quot;</span>)</a></code></pre></div>
+<p>The above should install package <code>ctrdata</code> into the user’s library. If this installation does not succeed, the following sections offer potential solutions.</p>
+<p>A proxy server may be need to be specified, such as follows:</p>
+<div class="sourceCode" id="cb2"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb2-1" title="1"><span class="kw">library</span>(httr)</a>
+<a class="sourceLine" id="cb2-2" title="2"><span class="kw">set_config</span>(<span class="kw">use_proxy</span>(<span class="st">&quot;your_proxy.server.domain&quot;</span>, <span class="dt">port =</span> <span class="dv">8080</span>))</a></code></pre></div>
+<p>On MS Windows, it seems recommended to not use UNC notation (such as <code>\\server\directory</code>) for specifying the user’s library location:</p>
+<div class="sourceCode" id="cb3"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb3-1" title="1"><span class="kw">.libPaths</span>(<span class="st">&quot;D:/my/directory/&quot;</span>)</a></code></pre></div>
+<p>For using the development version of package <code>ctrdata</code>, install from GitHub:</p>
+<div class="sourceCode" id="cb4"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb4-1" title="1"><span class="co"># install preparatory package</span></a>
+<a class="sourceLine" id="cb4-2" title="2"><span class="kw">install.packages</span>(<span class="kw">c</span>(<span class="st">&quot;devtools&quot;</span>, <span class="st">&quot;httr&quot;</span>))</a>
+<a class="sourceLine" id="cb4-3" title="3"><span class="co"># now install this package and the packages it depends on</span></a>
+<a class="sourceLine" id="cb4-4" title="4">devtools<span class="op">::</span><span class="kw">install_github</span>(<span class="st">&quot;rfhb/ctrdata&quot;</span>, <span class="dt">dependencies =</span> <span class="st">&quot;Depends&quot;</span>)</a></code></pre></div>
+</div>
+<div id="install-cygwin-on-ms-windows" class="section level2">
+<h2>Install cygwin on MS Windows</h2>
+<p>As noted in the README for package <code>ctrdata</code>, on MS Windows the cygwin environment has to be installed, into the local directory <code>c:\cygwin</code>. The applications php, bash, perl, cat and sed in the cygwin environment are required for function <code>ctrLoadQueryIntoDb()</code> of package <code>ctrdata</code> (other functions in the package do not have this requirement). The installation of a minimal cygwin environment on MS Windows can be effected from package <code>ctrdata</code> as follows:</p>
+<div class="sourceCode" id="cb5"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb5-1" title="1">ctrdata<span class="op">::</span><span class="kw">installCygwinWindowsDoInstall</span>() </a></code></pre></div>
+<p>If need be, a proxy can be specified:</p>
+<div class="sourceCode" id="cb6"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb6-1" title="1">ctrdata<span class="op">::</span><span class="kw">installCygwinWindowsDoInstall</span>(<span class="dt">proxy =</span> <span class="st">&quot;proxy.server.domain:8080&quot;</span>) </a></code></pre></div>
+<p>Users who want or need to install cygwin manually can download the setup executable from <a href="https://cygwin.com/">here</a>. In MS Windows command window or Powershell window, use the following command line. The parameters are explained <a href="https://cygwin.com/faq/faq.html#faq.setup.cli">here</a>.</p>
+<div class="sourceCode" id="cb7"><pre class="sourceCode bash"><code class="sourceCode bash"><a class="sourceLine" id="cb7-1" title="1"><span class="ex">setup-x86_64.exe</span> --no-admin --quiet-mode --verbose --upgrade-also --root c:/cygwin --site http://www.mirrorservice.org/sites/sourceware.org/pub/cygwin/ --packages perl,php-jsonc,php-simplexml</a></code></pre></div>
 </div>
 <div id="attach-package-ctrdata" class="section level2">
 <h2>Attach package <code>ctrdata</code></h2>
-<div class="sourceCode" id="cb2"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb2-1" title="1"><span class="co">#</span></a>
-<a class="sourceLine" id="cb2-2" title="2"><span class="kw">library</span>(ctrdata)</a>
-<a class="sourceLine" id="cb2-3" title="3"><span class="co">#</span></a></code></pre></div>
+<div class="sourceCode" id="cb8"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb8-1" title="1"><span class="kw">library</span>(ctrdata)</a></code></pre></div>
 </div>
 <div id="open-registers-advanced-search-page-in-browser" class="section level2">
 <h2>Open register’s advanced search page in browser</h2>
-<div class="sourceCode" id="cb3"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb3-1" title="1"><span class="co">#</span></a>
-<a class="sourceLine" id="cb3-2" title="2"><span class="kw">ctrOpenSearchPagesInBrowser</span>()</a>
-<a class="sourceLine" id="cb3-3" title="3"><span class="co">#</span></a>
-<a class="sourceLine" id="cb3-4" title="4"><span class="co"># Please review and respect register copyrights:</span></a>
-<a class="sourceLine" id="cb3-5" title="5"><span class="co">#</span></a>
-<a class="sourceLine" id="cb3-6" title="6"><span class="kw">ctrOpenSearchPagesInBrowser</span>(<span class="dt">copyright =</span> <span class="ot">TRUE</span>)</a>
-<a class="sourceLine" id="cb3-7" title="7"><span class="co">#</span></a>
-<a class="sourceLine" id="cb3-8" title="8"><span class="co"># Open browser with example search:</span></a>
-<a class="sourceLine" id="cb3-9" title="9"><span class="co">#</span></a>
-<a class="sourceLine" id="cb3-10" title="10"><span class="kw">ctrOpenSearchPagesInBrowser</span>(<span class="dt">register =</span> <span class="st">&quot;EUCTR&quot;</span>, <span class="dt">queryterm =</span> <span class="st">&quot;cancer&amp;age=under-18&quot;</span>)</a>
-<a class="sourceLine" id="cb3-11" title="11"><span class="co">#</span></a></code></pre></div>
+<p>These functions open the browser, where the user can start searching for trials of interest.</p>
+<div class="sourceCode" id="cb9"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb9-1" title="1"><span class="kw">ctrOpenSearchPagesInBrowser</span>()</a>
+<a class="sourceLine" id="cb9-2" title="2"></a>
+<a class="sourceLine" id="cb9-3" title="3"><span class="co"># Please review and respect register copyrights:</span></a>
+<a class="sourceLine" id="cb9-4" title="4"><span class="kw">ctrOpenSearchPagesInBrowser</span>(<span class="dt">copyright =</span> <span class="ot">TRUE</span>)</a>
+<a class="sourceLine" id="cb9-5" title="5"></a>
+<a class="sourceLine" id="cb9-6" title="6"><span class="co"># Open browser with example search:</span></a>
+<a class="sourceLine" id="cb9-7" title="7"><span class="kw">ctrOpenSearchPagesInBrowser</span>(<span class="dt">input =</span> <span class="st">&quot;cancer&amp;age=under-18&quot;</span>,</a>
+<a class="sourceLine" id="cb9-8" title="8">                            <span class="dt">register =</span> <span class="st">&quot;EUCTR&quot;</span>)</a></code></pre></div>
 </div>
 <div id="click-search-parameters-and-execute-search-in-browser" class="section level2">
 <h2>Click search parameters and execute search in browser</h2>
+<p>Refine the search until the trials of interest are listed in the browser. Currently, the total number of trials that can be retrieved with package <code>ctrdata</code> is intentionally set to 5000 (CTGOV).</p>
 </div>
 <div id="copy-address-from-browser-address-bar-to-clipboard" class="section level2">
 <h2>Copy address from browser address bar to clipboard</h2>
+<p>Using operating system functions.</p>
 </div>
 <div id="get-address-from-clipboard" class="section level2">
 <h2>Get address from clipboard</h2>
-<div class="sourceCode" id="cb4"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb4-1" title="1"><span class="co">#</span></a>
-<a class="sourceLine" id="cb4-2" title="2">q &lt;-<span class="st"> </span><span class="kw">ctrGetQueryUrlFromBrowser</span>()</a>
-<a class="sourceLine" id="cb4-3" title="3"><span class="co">#</span></a>
-<a class="sourceLine" id="cb4-4" title="4"><span class="co"># Found search query from EUCTR.</span></a>
-<a class="sourceLine" id="cb4-5" title="5"><span class="co"># [1] &quot;cancer&amp;age=under-18&quot;</span></a>
-<a class="sourceLine" id="cb4-6" title="6"><span class="co">#</span></a></code></pre></div>
+<p>The next steps are executed in the R environment:</p>
+<div class="sourceCode" id="cb10"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb10-1" title="1">q &lt;-<span class="st"> </span><span class="kw">ctrGetQueryUrlFromBrowser</span>()</a>
+<a class="sourceLine" id="cb10-2" title="2"><span class="co"># Found search query from EUCTR.</span></a>
+<a class="sourceLine" id="cb10-3" title="3"><span class="co"># [1] &quot;cancer&amp;age=under-18&quot;</span></a></code></pre></div>
 </div>
 <div id="retrieve-protocol-related-information-transform-save-to-database-check" class="section level2">
 <h2>Retrieve protocol-related information, transform, save to database, check</h2>
-<div class="sourceCode" id="cb5"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb5-1" title="1"><span class="co">#</span></a>
-<a class="sourceLine" id="cb5-2" title="2"><span class="co"># Use search q that was defined in previous step: </span></a>
-<a class="sourceLine" id="cb5-3" title="3"><span class="co">#</span></a>
-<a class="sourceLine" id="cb5-4" title="4"><span class="kw">ctrLoadQueryIntoDb</span>(q)</a>
-<a class="sourceLine" id="cb5-5" title="5"><span class="co">#</span></a>
-<a class="sourceLine" id="cb5-6" title="6"><span class="co"># Alternatively, use the following to retrieve a couple of trial records: </span></a>
-<a class="sourceLine" id="cb5-7" title="7"><span class="co">#</span></a>
-<a class="sourceLine" id="cb5-8" title="8"><span class="kw">ctrLoadQueryIntoDb</span>(<span class="dt">queryterm =</span> <span class="st">&quot;2010-024264-18&quot;</span>, <span class="dt">register =</span> <span class="st">&quot;EUCTR&quot;</span>)</a>
-<a class="sourceLine" id="cb5-9" title="9"><span class="co">#</span></a>
-<a class="sourceLine" id="cb5-10" title="10"><span class="co"># If no parameters are given for a database connection: uses mongodb</span></a>
-<a class="sourceLine" id="cb5-11" title="11"><span class="co"># on localhost, port 27017, database &quot;users&quot;, collection &quot;ctrdata&quot;</span></a>
-<a class="sourceLine" id="cb5-12" title="12"><span class="co"># note: when run for first time, may download variety.js</span></a>
-<a class="sourceLine" id="cb5-13" title="13"><span class="co">#</span></a>
-<a class="sourceLine" id="cb5-14" title="14"><span class="co"># Show which queries have been downloaded into the database so far</span></a>
-<a class="sourceLine" id="cb5-15" title="15"><span class="co">#</span></a>
-<a class="sourceLine" id="cb5-16" title="16"><span class="kw">dbQueryHistory</span>()</a>
-<a class="sourceLine" id="cb5-17" title="17"><span class="co">#</span></a>
-<a class="sourceLine" id="cb5-18" title="18"><span class="co"># Using Mongo DB (collections &quot;ctrdata&quot; and &quot;ctrdataKeys&quot; in database &quot;users&quot; on &quot;localhost&quot;).</span></a>
-<a class="sourceLine" id="cb5-19" title="19"><span class="co"># Number of queries in history of &quot;users.tmp&quot;: 2</span></a>
-<a class="sourceLine" id="cb5-20" title="20"><span class="co">#       query-timestamp query-register query-records                  query-term</span></a>
-<a class="sourceLine" id="cb5-21" title="21"><span class="co"># 1 2016-01-13-10-51-56          CTGOV          5233 type=Intr&amp;cond=cancer&amp;age=0</span></a>
-<a class="sourceLine" id="cb5-22" title="22"><span class="co"># 2 2016-01-13-10-40-16          EUCTR           910         cancer&amp;age=under-18</span></a>
-<a class="sourceLine" id="cb5-23" title="23"><span class="co">#</span></a></code></pre></div>
+<div class="sourceCode" id="cb11"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb11-1" title="1"><span class="co"># Use search q that was defined in previous step: </span></a>
+<a class="sourceLine" id="cb11-2" title="2"><span class="kw">ctrLoadQueryIntoDb</span>(<span class="dt">queryterm =</span> q)</a>
+<a class="sourceLine" id="cb11-3" title="3"></a>
+<a class="sourceLine" id="cb11-4" title="4"><span class="co"># Alternatively, use the following to retrieve a couple of trial records: </span></a>
+<a class="sourceLine" id="cb11-5" title="5"><span class="kw">ctrLoadQueryIntoDb</span>(<span class="dt">queryterm =</span> <span class="st">&quot;2010-024264-18&quot;</span>, </a>
+<a class="sourceLine" id="cb11-6" title="6">                   <span class="dt">register =</span> <span class="st">&quot;EUCTR&quot;</span>)</a>
+<a class="sourceLine" id="cb11-7" title="7"><span class="co"># If no parameters are given for a database connection: uses mongodb</span></a>
+<a class="sourceLine" id="cb11-8" title="8"><span class="co"># on localhost, port 27017, database &quot;users&quot;, collection &quot;ctrdata&quot;</span></a>
+<a class="sourceLine" id="cb11-9" title="9"></a>
+<a class="sourceLine" id="cb11-10" title="10"><span class="co"># Show which queries have been downloaded into the database so far</span></a>
+<a class="sourceLine" id="cb11-11" title="11"><span class="kw">dbQueryHistory</span>()</a>
+<a class="sourceLine" id="cb11-12" title="12"><span class="co">#       query-timestamp query-register query-records                  query-term</span></a>
+<a class="sourceLine" id="cb11-13" title="13"><span class="co"># 1 2016-01-13-10-51-56          CTGOV          5233 type=Intr&amp;cond=cancer&amp;age=0</span></a>
+<a class="sourceLine" id="cb11-14" title="14"><span class="co"># 2 2016-01-13-10-40-16          EUCTR           910         cancer&amp;age=under-18</span></a></code></pre></div>
 </div>
 <div id="analyse-database-contents" class="section level2">
 <h2>Analyse database contents</h2>
-<div class="sourceCode" id="cb6"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb6-1" title="1"><span class="co">#</span></a>
-<a class="sourceLine" id="cb6-2" title="2"><span class="co"># find names of fields of interest in database:</span></a>
-<a class="sourceLine" id="cb6-3" title="3"><span class="co">#</span></a>
-<a class="sourceLine" id="cb6-4" title="4"><span class="kw">dbFindFields</span>(<span class="st">&quot;status&quot;</span>, <span class="dt">allmatches =</span> <span class="ot">TRUE</span>)</a>
-<a class="sourceLine" id="cb6-5" title="5"><span class="co">#</span></a>
-<a class="sourceLine" id="cb6-6" title="6"><span class="co"># [1] &quot;overall_status&quot;  &quot;b1_sponsor.XX.b31_and_b32_status_of_the_sponsor&quot; &quot;p_end_of_trial_status&quot;                          </span></a>
-<a class="sourceLine" id="cb6-7" title="7"><span class="co"># [4] &quot;location.status&quot; &quot;location.XX.status&quot;</span></a>
-<a class="sourceLine" id="cb6-8" title="8"><span class="co">#</span></a>
-<a class="sourceLine" id="cb6-9" title="9"><span class="co"># Get all records that have values in all specified fields.</span></a>
-<a class="sourceLine" id="cb6-10" title="10"><span class="co"># Note that b31_... is a field within the array b1_...</span></a>
-<a class="sourceLine" id="cb6-11" title="11"><span class="co">#</span></a>
-<a class="sourceLine" id="cb6-12" title="12">result &lt;-<span class="st"> </span><span class="kw">dbGetFieldsIntoDf</span>(<span class="kw">c</span>(<span class="st">&quot;b1_sponsor.b31_and_b32_status_of_the_sponsor&quot;</span>, </a>
-<a class="sourceLine" id="cb6-13" title="13">                              <span class="st">&quot;p_end_of_trial_status&quot;</span>))</a>
-<a class="sourceLine" id="cb6-14" title="14"><span class="co">#</span></a>
-<a class="sourceLine" id="cb6-15" title="15"><span class="co"># Tabulate the status of the clinical trial on the date of information retrieval</span></a>
-<a class="sourceLine" id="cb6-16" title="16"><span class="co">#</span></a>
-<a class="sourceLine" id="cb6-17" title="17"><span class="kw">with</span> (result, <span class="kw">table</span> (<span class="st">&quot;Status&quot;</span>       =<span class="st"> </span>p_end_of_trial_status, </a>
-<a class="sourceLine" id="cb6-18" title="18">                     <span class="st">&quot;Sponsor type&quot;</span> =<span class="st"> </span>b1_sponsor.b31_and_b32_status_of_the_sponsor))</a>
-<a class="sourceLine" id="cb6-19" title="19"><span class="co">#</span></a>
-<a class="sourceLine" id="cb6-20" title="20"><span class="co">#                     b31_and_b32_status_of_the_sponsor</span></a>
-<a class="sourceLine" id="cb6-21" title="21"><span class="co"># p_end_of_trial_status   Commercial Non-Commercial</span></a>
-<a class="sourceLine" id="cb6-22" title="22"><span class="co">#   Completed                    138             30</span></a>
-<a class="sourceLine" id="cb6-23" title="23"><span class="co">#   Not Authorised                 3              0</span></a>
-<a class="sourceLine" id="cb6-24" title="24"><span class="co">#   Ongoing                      339            290</span></a>
-<a class="sourceLine" id="cb6-25" title="25"><span class="co">#   Prematurely Ended             35              4</span></a>
-<a class="sourceLine" id="cb6-26" title="26"><span class="co">#   Restarted                      8              0</span></a>
-<a class="sourceLine" id="cb6-27" title="27"><span class="co">#   Temporarily Halted            14              4</span></a>
-<a class="sourceLine" id="cb6-28" title="28"><span class="co">#</span></a></code></pre></div>
+<div class="sourceCode" id="cb12"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb12-1" title="1"><span class="co"># find names of fields of interest in database:</span></a>
+<a class="sourceLine" id="cb12-2" title="2"><span class="kw">dbFindFields</span>(<span class="dt">namepart =</span> <span class="st">&quot;status&quot;</span>, </a>
+<a class="sourceLine" id="cb12-3" title="3">             <span class="dt">allmatches =</span> <span class="ot">TRUE</span>)</a>
+<a class="sourceLine" id="cb12-4" title="4"><span class="co"># [1] &quot;overall_status&quot;  &quot;b1_sponsor.b31_and_b32_status_of_the_sponsor&quot; </span></a>
+<a class="sourceLine" id="cb12-5" title="5"><span class="co"># [3] &quot;p_end_of_trial_status&quot; &quot;location.status&quot;</span></a>
+<a class="sourceLine" id="cb12-6" title="6"></a>
+<a class="sourceLine" id="cb12-7" title="7"><span class="co"># Get all records that have values in all specified fields.</span></a>
+<a class="sourceLine" id="cb12-8" title="8"><span class="co"># Note that b31_... is a field within the array b1_...</span></a>
+<a class="sourceLine" id="cb12-9" title="9">result &lt;-<span class="st"> </span><span class="kw">dbGetFieldsIntoDf</span>(<span class="dt">fields =</span> <span class="kw">c</span>(<span class="st">&quot;b1_sponsor.b31_and_b32_status_of_the_sponsor&quot;</span>, </a>
+<a class="sourceLine" id="cb12-10" title="10">                                       <span class="st">&quot;p_end_of_trial_status&quot;</span>))</a>
+<a class="sourceLine" id="cb12-11" title="11"></a>
+<a class="sourceLine" id="cb12-12" title="12"><span class="co"># Tabulate the status of the clinical trial on the date of information retrieval</span></a>
+<a class="sourceLine" id="cb12-13" title="13"><span class="kw">with</span> (result, </a>
+<a class="sourceLine" id="cb12-14" title="14">      <span class="kw">table</span>(<span class="st">&quot;Status&quot;</span>       =<span class="st"> </span>p_end_of_trial_status, </a>
+<a class="sourceLine" id="cb12-15" title="15">            <span class="st">&quot;Sponsor type&quot;</span> =<span class="st"> </span>b1_sponsor.b31_and_b32_status_of_the_sponsor))</a>
+<a class="sourceLine" id="cb12-16" title="16"><span class="co">#                 Sponsor type</span></a>
+<a class="sourceLine" id="cb12-17" title="17"><span class="co"># Status                  Commercial Non-Commercial</span></a>
+<a class="sourceLine" id="cb12-18" title="18"><span class="co">#   Completed                    138             30</span></a>
+<a class="sourceLine" id="cb12-19" title="19"><span class="co">#   Not Authorised                 3              0</span></a>
+<a class="sourceLine" id="cb12-20" title="20"><span class="co">#   Ongoing                      339            290</span></a>
+<a class="sourceLine" id="cb12-21" title="21"><span class="co">#   Prematurely Ended             35              4</span></a>
+<a class="sourceLine" id="cb12-22" title="22"><span class="co">#   Restarted                      8              0</span></a>
+<a class="sourceLine" id="cb12-23" title="23"><span class="co">#   Temporarily Halted            14              4</span></a></code></pre></div>
 </div>
 </div>
 

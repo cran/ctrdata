@@ -17,7 +17,7 @@ context("ctrdata functions")
 
 # ensure warnings are not turned into errors
 # getOption("warn")
-options(warn = 0)
+# options(warn = 0)
 
 # helper function to check if there
 # is a useful internect connection
@@ -78,8 +78,27 @@ has_toolchain <- function(){
   }
 }
 
-#### mongodb local password free access ####
-test_that("access to mongo db from R package", {
+
+# helper function to check mongodb
+has_mongo_remote <- function(mdburi = "", ...) {
+
+  # for maintainer's local testing uncomment
+  #Sys.unsetenv("ctrdatamongopassword")
+
+  mongo_ok <- try(ctrdata:::ctrMongo(
+    uri = mdburi,
+    collection = "", ...),
+    silent = TRUE)
+  #
+  # use test result
+  if ("try-error" %in% class(mongo_ok)) {
+    skip("Remote mongodb not accessible.")
+  }
+}
+
+
+#### local mongodb ####
+test_that("local mongodb", {
 
   has_mongo()
 
@@ -87,7 +106,9 @@ test_that("access to mongo db from R package", {
   coll <- "ThisNameSpaceShouldNotExistAnywhereInAMongoDB"
 
   # initialise = drop collections from mongodb
-  try(mongolite::mongo(collection = coll, url = "mongodb://localhost/users")$drop(), silent = TRUE)
+  try(mongolite::mongo(collection = coll,
+                       url = "mongodb://localhost/users")$drop(),
+      silent = TRUE)
 
   # test 1
   expect_message(dbQueryHistory(collection = coll),
@@ -96,26 +117,83 @@ test_that("access to mongo db from R package", {
 })
 
 
-#### remote mongodb ####
-test_that("remote mongo access", {
+#### remote mongodb read only ####
+test_that("remote mongodb read only", {
 
-  has_internet()
+  ## brief testing of main functions
+
   has_toolchain()
+  has_internet()
+
+  # specify base uri for remote mongodb server, trailing slash
+  mdburi <- "mongodb+srv://DWbJ7Wh@cluster0-b9wpw.mongodb.net/"
+
+  # permissions are restricted to "find" in "dbperm" in "dbperm"
+  # no other functions can be executed, no login possible
+
+  # skip if no access despite internet
+  has_mongo_remote(mdburi = mdburi, "bdTHh5cS")
+
+  ## read-only tests
+
+  # initialise - this collection has been filled with
+  # documents from test "remote mongodb read write"
+  coll <- "dbperm"
+
+  # field get test
+  expect_warning(tmp <- dbFindFields(namepart = "date",
+                                     uri = paste0(mdburi, "dbperm"),
+                                     password = "bdTHh5cS",
+                                     collection = coll),
+                 "Using alternative method")
+
+  # read test
+  expect_silent(
+    tmp <- dbGetFieldsIntoDf(fields = c("a2_eudract_number",
+                                        "overall_status",
+                                        "record_last_import",
+                                        "primary_completion_date",
+                                        "x6_date_on_which_this_record_was_first_entered_in_the_eudract_database",
+                                        "study_design_info",
+                                        "e71_human_pharmacology_phase_i"),
+                             uri = paste0(mdburi, "dbperm"),
+                             password = "bdTHh5cS",
+                             collection = coll)
+  )
+
+  # output tests
+  expect_equal(dim(tmp)[2], 8)
+  expect_true("POSIXct"   %in% class(tmp[["record_last_import"]]))
+  expect_true("character" %in% class(tmp[["primary_completion_date"]]))
+
+})
+
+
+#### remote mongodb read write ####
+test_that("remote mongodb read write", {
+
+  ## brief testing of main functions
+  # expected to work only on CI Travis
+  # password is set as environment variable,
+  # which is read by ctrdata main functions
+
+  has_toolchain()
+  has_internet()
+
+  # specify base uri for remote mongodb server, trailing slash
+  mdburi <- "mongodb+srv://7RBnH3BF@cluster0-b9wpw.mongodb.net/"
+
+  has_mongo_remote(mdburi = mdburi)
 
   # initialise
-  uri <- "mongodb+srv://7RBnH3BF@cluster0-b9wpw.mongodb.net/dbtemp"
   coll <- "ThisNameSpaceShouldNotExistAnywhereInAMongoDB"
 
-  # brief testing of main functions
-
-  # note password is set as environment variable
-  # which is read by ctrdata main functions
 
   # test 2a
   expect_equivalent(ctrLoadQueryIntoDb(
     queryterm = "2010-024264-18",
     register = "CTGOV",
-    uri = uri,
+    uri = paste0(mdburi, "dbtemp"),
     collection = coll)$n,
     1L)
 
@@ -123,7 +201,7 @@ test_that("remote mongo access", {
   expect_equivalent(ctrLoadQueryIntoDb(
     queryterm = "2010-024264-18",
     register = "EUCTR",
-    uri = uri,
+    uri = paste0(mdburi, "dbtemp"),
     collection = coll)$n,
     6L)
 
@@ -132,11 +210,12 @@ test_that("remote mongo access", {
     length(
       suppressWarnings(
         dbFindFields(namepart = "date",
-                     uri = uri,
+                     uri = paste0(mdburi, "dbtemp"),
                      collection = coll))) > 5)
 
   # clean up
-  ctrdata:::ctrMongo(uri = uri, collection = coll)$drop()
+  ctrdata:::ctrMongo(uri = paste0(mdburi, "dbtemp"),
+                     collection = coll)$drop()
 
 })
 
