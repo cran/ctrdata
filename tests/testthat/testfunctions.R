@@ -164,7 +164,7 @@ test_that("remote mongodb read only", {
   # output tests
   expect_equal(dim(tmp)[2], 8)
   expect_true("POSIXct"   %in% class(tmp[["record_last_import"]]))
-  expect_true("character" %in% class(tmp[["primary_completion_date"]]))
+  expect_true("character" %in% class(tmp[["study_design_info"]]))
 
 })
 
@@ -532,9 +532,10 @@ test_that("operations on database after download from register", {
     collection = coll)$n,
     1L)
 
-  expect_silent(dbFindFields(
+  expect_message(dbFindFields(
     namepart = "ThisNameShouldNotExistAnywhere",
-    collection = coll))
+    collection = coll),
+    "Finding fields on server")
 
   # dbFindIdsUniqueTrials
 

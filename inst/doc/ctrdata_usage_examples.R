@@ -59,6 +59,10 @@ age_ctgov <- function(x) {
   return(tmp.age)
 }
 
+## ---- eval=FALSE---------------------------------------------------------
+#  Sys.setenv(https_proxy = "your_proxy.server.domain:8080")
+#  Sys.setenv(https_proxy_user = "userid:password")
+
 ## ----execute_load_query--------------------------------------------------
 #  # Load library which has previously been installed:
 #  library(ctrdata)
@@ -69,7 +73,6 @@ age_ctgov <- function(x) {
 #  
 #  # Load details on all clinical trials into local data base:
 #  ctrLoadQueryIntoDb(q)
-#  
 
 ## ----execute_browser_query-----------------------------------------------
 #  # Example 1: a search is done in the browser and a list of trials found is shown.
@@ -122,9 +125,6 @@ age_ctgov <- function(x) {
 #  # 1 2016-12-14-12-15-51          EUCTR          1056                                               cancer&age=under-18
 #  # 2 2016-12-23-20-33-13          EUCTR             6                                                    2010-024264-18
 #  # 3 2016-12-24-14-39-42          CTGOV           145 recr=Open&type=Intr&cond=breast+carcinoma&intr=Drug&age=1&phase=2
-#  
-#  attr(dbQueryHistory(), "ctrdata-created-timestamp")
-#  # [1] "2016-12-28 13:31:25 CET"
 
 ## ----execute_update_query------------------------------------------------
 #  # List queries:
@@ -187,7 +187,8 @@ age_ctgov <- function(x) {
 
 ## ----execute_ctgov_query-------------------------------------------------
 #  # Ongoing phase 3 interventional trials in breast carcinoma
-#  q <- "https://clinicaltrials.gov/ct2/results?term=&recr=Open&type=Intr&cond=breast+carcinoma&intr=Drug&state1=&age=1&phase=2"
+#  q <- paste0("https://clinicaltrials.gov/ct2/results?term=&recr=Open&",
+#              "type=Intr&cond=breast+carcinoma&intr=Drug&state1=&age=1&phase=2")
 #  
 #  # Show and check search in browser:
 #  ctrOpenSearchPagesInBrowser(q)
@@ -233,7 +234,8 @@ age_ctgov <- function(x) {
 #                                     "Enrolling by invitation", "Restarted"),
 #                      "completed" = c("Completed", "Prematurely Ended", "Terminated"),
 #                      "other"     = c("Withdrawn", "Suspended", "No longer available",
-#                                      "Not yet recruiting", "Temporarily Halted", "Unknown status"))
+#                                      "Not yet recruiting", "Temporarily Halted",
+#                                      "Unknown status"))
 #  #
 #  tmp <- dfMergeTwoVariablesRelevel(result,
 #                                    colnames = c("overall_status",
@@ -248,10 +250,10 @@ age_ctgov <- function(x) {
 
 ## ---- eval=FALSE---------------------------------------------------------
 #  
-#  # Specify base uri for remote mongodb server as part of the encoded connection string
+#  ## Specify base uri for remote mongodb server as part of the encoded connection string
 #  db <- utils::URLencode("mongodb+srv://user_name@cluster0-b9wpw.mongodb.net/database_name")
 #  
-#  # For this mongo database, a password has to be provided.
+#  ## For this mongo database server, a password has to be provided:
 #  
 #  # Execute search with explicit password
 #  ctrdata::ctrLoadQueryIntoDb(
@@ -275,15 +277,16 @@ age_ctgov <- function(x) {
 #  # With the environment variable ctrdatamongopassword set
 #  # to the password needed for accessing the collection,
 #  # the parameter "password" can be omitted as follows:
-#  result <- dbGetFieldsIntoDf(fields = c("a2_eudract_number",
-#                                         "overall_status",
-#                                         "record_last_import",
-#                                         "primary_completion_date",
-#                                         "x6_date_on_which_this_record_was_first_entered_in_the_eudract_database",
-#                                         "study_design_info",
-#                                         "e71_human_pharmacology_phase_i"),
-#                              uri = db,
-#                              collection = "your_collection_name")
+#  result <- dbGetFieldsIntoDf(
+#    fields = c("a2_eudract_number",
+#               "overall_status",
+#               "record_last_import",
+#               "primary_completion_date",
+#               "x6_date_on_which_this_record_was_first_entered_in_the_eudract_database",
+#               "study_design_info",
+#               "e71_human_pharmacology_phase_i"),
+#    uri = db,
+#    collection = "your_collection_name")
 
 ## ----mongolite_count_details---------------------------------------------
 #  library(mongolite)
@@ -344,7 +347,7 @@ age_ctgov <- function(x) {
 ## ----plot_endpoint_frequencies-------------------------------------------
 #  # Search for interesting variables,
 #  # note the spelling in EUCTR:
-#  dbFindFields("end_point", allmatches = TRUE)
+#  dbFindFields("end_point")
 #  
 #  # Get interesting variables from database
 #  # for further analysis within R:
@@ -364,8 +367,7 @@ age_ctgov <- function(x) {
 #  
 #  # Only use phase 3 trials:
 #  table(result$e73_therapeutic_confirmatory_phase_iii, exclude = "")
-#  result <- result[!is.na(result$e73_therapeutic_confirmatory_phase_iii) &
-#                          result$e73_therapeutic_confirmatory_phase_iii == "Yes", ]
+#  result <- result[result$e73_therapeutic_confirmatory_phase_iii, ]
 #  
 #  # Is the a primary endpoint of interest? This uses regular expressions:
 #  
@@ -373,12 +375,11 @@ age_ctgov <- function(x) {
 #  result$pe_is_efs <- grepl("((progression|event|relapse|recurrence|disease)[- ]free)|pfs|dfs|efs)",
 #                            result$e51_primary_end_points, ignore.case = TRUE)
 #  
-#  # Prepare for summarising:
-#  result$trial_start_year <- as.Date(substr(result$n_date_of_competent_authority_decision, 1, 4), format = "%Y")
-#  
 #  # Plot:
 #  library(ggplot2)
-#  ggplot(data = result, aes(x = trial_start_year, fill = pe_is_efs)) +
+#  ggplot(data = result,
+#         aes(x = n_date_of_competent_authority_decision,
+#             fill = pe_is_efs)) +
 #    geom_histogram(binwidth = 365.25)  +
 #    labs(title = "Breast cancer phase 3 clinical trials",
 #         x = "Year of clinical trial authorisation in EU",
@@ -624,7 +625,7 @@ age_ctgov <- function(x) {
 #  result <- result[ result[["_id"]] %in% dbFindIdsUniqueTrials(), ]
 #  
 #  result <- dfMergeTwoVariablesRelevel(df = result,
-#                                       varnames = c("e3_principal_inclusion_criteria",
+#                                       colnames = c("e3_principal_inclusion_criteria",
 #                                                    "eligibility.criteria.textblock"))
 #  
 #  # search for interesting terms
@@ -649,11 +650,8 @@ age_ctgov <- function(x) {
 #  result <- dbGetFieldsIntoDf(c("a2_eudract_number",
 #                                "n_date_of_competent_authority_decision"))
 #  
-#  # Prepare for summarising
-#  result$trial_start_date <- strptime(result$n_date_of_competent_authority_decision, format = "%Y-%m-%d")
-#  
 #  # Calculate first date of trial start
-#  first_trial_start <- aggregate(x = result$trial_start_date,
+#  first_trial_start <- aggregate(x = result$n_date_of_competent_authority_decision,
 #                                 by = list(result$a2_eudract_number),
 #                                 FUN = function(x) min(x, na.rm = TRUE),
 #                                 simplify = TRUE, drop = TRUE)
@@ -746,7 +744,8 @@ age_ctgov <- function(x) {
 #  library(ggplot2)
 #  ggplot(result, aes(pvalueprimaryanalysis)) +
 #    stat_ecdf(geom = "step") +
-#    labs(title = "Paediatric phase 2 or 3 interventional trials\nwith randomisation to placebo or to no intervention",
+#    labs(title = paste0("Paediatric phase 2 or 3 interventional trials\n",
+#                        "with randomisation to placebo or to no intervention"),
 #         x = "Range of p values",
 #         y = "Empirical cumulative density of p values\nof primary endpoint results")
 #  

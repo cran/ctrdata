@@ -23,7 +23,8 @@ started mid 2015 and was motivated by the wish to understand trends in
 designs and conduct of trials and their availability for patients. The
 package is to be used within the [R](https://www.r-project.org/) system.
 
-Last edit 2019-04-11 for version 0.18, with bug fixes and new features:
+Last edit 2019-04-29 for version 0.18.2, with bug fixes and new
+features:
 
   - dates are now returned as Date types, and some Yes / No fields are
     returned as logical, by function `dbGetFieldsIntoDf()`,
@@ -32,8 +33,8 @@ Last edit 2019-04-11 for version 0.18, with bug fixes and new features:
     function `ctrLoadQueryIntoDb()`), for later use in analysis, and
   - synonyms of active substances to better find trials can be retrieved
     with function `ctrFindActiveSubstanceSynonyms()`,
-  - improved functioning with remote Mongo databases, and removed need
-    for local installation of MongoDB.
+  - works with remote Mongo databases; removed need for local
+    installation of MongoDB.
 
 Main features:
 
@@ -62,21 +63,17 @@ Remember to respect the registers’ copyrights and terms and conditions
 (see `ctrOpenSearchPagesInBrowser(copyright = TRUE)`). Please cite this
 package in any publication as follows: `Ralf Herold (2019). ctrdata:
 Retrieve and Analyze Information on Clinical Trials from Public
-Registers. R package version 0.17. https://github.com/rfhb/ctrdata`
+Registers. R package version 0.18.1, https://github.com/rfhb/ctrdata`
 
 <!--
 
 ```r
 citation("ctrdata")
-#> Warning in citation("ctrdata"): no date field in DESCRIPTION file of
-#> package 'ctrdata'
-#> Warning in citation("ctrdata"): could not determine year for 'ctrdata' from
-#> package DESCRIPTION file
 #> 
 #> To cite package 'ctrdata' in publications use:
 #> 
-#>   Ralf Herold (NA). ctrdata: Retrieve and Analyze Information on
-#>   Clinical Trials from Public Registers. R package version 0.18.
+#>   Ralf Herold (2019). ctrdata: Retrieve and Analyze Information on
+#>   Clinical Trials from Public Registers. R package version 0.18.2.
 #>   https://github.com/rfhb/ctrdata
 #> 
 #> A BibTeX entry for LaTeX users is
@@ -84,7 +81,8 @@ citation("ctrdata")
 #>   @Manual{,
 #>     title = {ctrdata: Retrieve and Analyze Information on Clinical Trials from Public Registers},
 #>     author = {Ralf Herold},
-#>     note = {R package version 0.18},
+#>     year = {2019},
+#>     note = {R package version 0.18.2},
 #>     url = {https://github.com/rfhb/ctrdata},
 #>   }
 ```
@@ -97,7 +95,7 @@ Package `ctrdata` has been used for example for:
 
   - Report on [The impact of collaboration: The value of UK medical
     research to EU science and
-    health](http://www.cancerresearchuk.org/about-us/we-develop-policy/we-work-with-government/exiting-the-eu/uk-and-eu-research#downloads)
+    health](https://www.cancerresearchuk.org/about-us/we-develop-policy/we-work-with-government/exiting-the-eu/uk-and-eu-research#downloads)
 
 Overview of functions used in sequence:
 
@@ -105,16 +103,7 @@ Overview of functions used in sequence:
 
 # Installation
 
-## 1\. Command line tools `perl`, `sed`, `cat` and `php` (5.2 or higher)
-
-In Linux and macOS, these are usually already installed. For MS Windows,
-install [cygwin](https://cygwin.com/install.html): In `R`, run
-`ctrdata::installCygwinWindowsDoInstall()` for an automated installation
-into `c:\cygwin`; alternatively manually install cygwin with packages
-`perl`, `php-jsonc` and `php-simplexml` (administrator credentials not
-needed).
-
-## 2\. Within R
+## 1\. Install package in R
 
 Within [R](https://www.r-project.org/), use the following commands to
 get and install package `ctrdata`:
@@ -126,17 +115,32 @@ install.packages("ctrdata")
 # Development version from github.com:
 install.packages("devtools")
 devtools::install_github("rfhb/ctrdata")
+# Note build_opts is emptied so that vignettes are built:
+devtools::install_github("rfhb/ctrdata", build_opts = "")
 ```
 
 Package `ctrdata` can be found [here on
 CRAN](https://cran.r-project.org/package=ctrdata).
 
+## 2\. Command line tools `perl`, `sed`, `cat` and `php` (5.2 or higher)
+
+These command line tools are only required for
+`ctrGetQueryUrlFromBrowser()`, a main function of package `ctrdata`. In
+Linux and macOS, these are usually already installed.
+
+For MS Windows, install [cygwin](https://cygwin.org/install.html): In
+`R`, run `ctrdata::installCygwinWindowsDoInstall()` for an automated
+minimal installation into `c:\cygwin` (installations in folders
+corresponding to `c:\cygw*` will also be recognised and used).
+Alternatively, install manually cygwin with packages `perl`, `php-jsonc`
+and `php-simplexml`. This installation will consume about 160 MB disk
+space; administrator credentials not needed.
+
 ## 3\. Mongo database
 
-A remote or a local mongo database server can be used with the package,
-see included tests and examples.
-
-Suggested installation instructions for a local database server are
+A remote or a local mongo database server can be used with the package
+`ctrdata`. Suggested installation instructions for a local database
+server are
 [here](https://docs.mongodb.com/manual/administration/install-community/).
 
 A remote mongo database server such as
@@ -156,7 +160,7 @@ in the examples vignette.
 | dbFindIdsUniqueTrials          | Produce a vector of de-duplicated identifiers of clinical trial records in the database collection                         |
 | dbGetFieldsIntoDf              | Create a data.frame from records in the database collection with the specified fields                                      |
 | dfMergeTwoVariablesRelevel     | Merge two variables into a single variable, optionally map values to a new set of values                                   |
-| installCygwinWindowsDoInstall  | Convenience function to install a cygwin environment under MS Windows                                                      |
+| installCygwinWindowsDoInstall  | Convenience function to install a cygwin environment (MS Windows only)                                                     |
 
 # Example workflow
 
@@ -260,7 +264,7 @@ with (result, table (p_end_of_trial_status, b1_sponsor.b31_and_b32_status_of_the
 
 # Features in the works
 
-  - Explore NoSQL databases other than Mongo
+  - Explore NoSQL databases other than MongoDB
 
   - Explore using the Windows Subsystem for Linux (WSL) instead of
     cygwin
@@ -281,10 +285,10 @@ with (result, table (p_end_of_trial_status, b1_sponsor.b31_and_b32_status_of_the
     (`ctrOpenSearchPagesInBrowser(copyright = TRUE)`).
 
   - This package `ctrdata` has been made possible based on the work done
-    for [curl](https://github.com/jeroenooms/curl),
+    for [R](https://www.r-project.org/),
+    [curl](https://github.com/jeroenooms/curl),
     [clipr](https://github.com/mdlincoln/clipr),
-    [mongolite](https://cran.r-project.org/package=mongolite) and
-    [R](http://www.r-project.org/),
+    [mongolite](https://cran.r-project.org/package=mongolite),
     [httr](https://cran.r-project.org/package=httr),
     [xml2](https://cran.r-project.org/package=xml2) and
     [rvest](https://cran.r-project.org/package=rvest).

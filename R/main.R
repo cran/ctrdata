@@ -81,6 +81,23 @@ ctrLoadQueryIntoDb <- function(queryterm = "", register = "EUCTR", querytoupdate
                                collection = "ctrdata", uri = "mongodb://localhost/users",
                                password = Sys.getenv("ctrdatamongopassword"), verbose = FALSE) {
 
+  ## system check, in analogy to onload.R
+  if (.Platform$OS.type == "windows")
+    if (!installCygwinWindowsTest())
+      stop(call. = FALSE)
+  #
+  if (!suppressWarnings(installFindBinary("php --version")))
+    stop("php not found, ctrLoadQueryIntoDb() will not work.", call. = FALSE)
+  #
+  if (!suppressWarnings(installFindBinary("php -r 'simplexml_load_string(\"\");'")))
+    stop("php xml not found, ctrLoadQueryIntoDb() will not work.", call. = FALSE)
+  #
+  if (!suppressWarnings(installFindBinary("echo x | sed s/x/y/")))
+    stop("sed not found, ctrLoadQueryIntoDb() will not work.", call. = FALSE)
+  #
+  if (!suppressWarnings(installFindBinary("perl -V:osname")))
+    stop("perl not found, ctrLoadQueryIntoDb() will not work.", call. = FALSE)
+
   ## parameter checks
 
   # deduce queryterm and register if a full url is provided
@@ -138,6 +155,8 @@ ctrLoadQueryIntoDb <- function(queryterm = "", register = "EUCTR", querytoupdate
   # initialise variable that is filled only if an update is to be made
   queryupdateterm <- ""
 
+  # check and set proxy if needed to access internet
+  setProxy()
 
   ## check if we need to rerun previous query
 
@@ -323,7 +342,8 @@ ctrRerunQuery <- function(querytoupdate = querytoupdate, forcetoupdate = forceto
         if (debug) message("DEBUG (rss url): ", rssquery)
         #
         resultsRss <- httr::content(httr::GET(url = rssquery,
-                                              config = httr::config(ssl_verifypeer = FALSE)), as = "text")
+                                              config = httr::config(ssl_verifypeer = FALSE)),
+                                    as = "text")
 
         if (debug) message("DEBUG (rss content): ", resultsRss)
         #
@@ -659,15 +679,25 @@ ctrLoadQueryIntoDbCtgov <- function(queryterm, register,
 
   ## compose commands to transform xml into json, into
   # a single allfiles.json in the temporaray directory
-  xml2json <- system.file("exec/xml2json.php", package = "ctrdata", mustWork = TRUE)
-  xml2json <- paste0("php -f ", xml2json, " ", tempDir)
-
   # special command handling on windows
   if (.Platform$OS.type == "windows") {
+    #
+    xml2json <- utils::shortPathName(path = system.file("exec/xml2json.php", package = "ctrdata", mustWork = TRUE))
+    xml2json <- paste0("php -f ", xml2json, " ", utils::shortPathName(path = tempDir))
+    #
     # xml2json requires cygwin's php. transform paths for cygwin use:
     xml2json <- gsub("\\\\", "/", xml2json)
     xml2json <- gsub("([A-Z]):/", "/cygdrive/\\1/", xml2json)
-    xml2json <- paste0('cmd.exe /c c:\\cygwin\\bin\\bash.exe --login -c "', xml2json, '"')
+    #
+    xml2json <- paste0('cmd.exe /c ',
+                       rev(Sys.glob("c:\\cygw*\\bin\\bash.exe"))[1],
+                       ' --login -c "', xml2json, '"')
+    #
+  } else {
+    #
+    xml2json <- system.file("exec/xml2json.php", package = "ctrdata", mustWork = TRUE)
+    xml2json <- paste0("php -f ", xml2json, " ", tempDir)
+    #
   } # if windows
 
   # run conversion of downloaded xml to json
@@ -759,18 +789,22 @@ ctrLoadQueryIntoDbEuctr <- function(queryterm, register,
 
   ## sanity correction for naked terms
   # test cases
-  # queryterm = c("cancer&age=adult",                      # correct
-  #               "cancer",                                # correct
-  #               "cancer&age=adult&phase=0",              # correct
-  #               "cancer&age=adult&phase=1&results=true", # correct
-  #               "&age=adult&phase=1&abc=xyz&cancer&results=true", # correct
-  #               "age=adult&cancer",                      # correct
-  #               "2010-024264-18",                        # correct
-  #               "NCT1234567890",                         # correct
-  #               "teratoid&country=dk"                    # correct
+  # queryterm = c("cancer&age=adult",                      # add query=
+  #               "cancer",                                # add query=
+  #               "cancer+AND breast&age=adult&phase=0",   # add query=
+  #               "cancer&age=adult&phase=0",              # add query=
+  #               "cancer&age=adult&phase=1&results=true", # add query=
+  #               "&age=adult&phase=1&abc=xyz&cancer&results=true", # insert query=
+  #               "age=adult&cancer",                      # insert query=
+  #               "2010-024264-18",                        # add query=
+  #               "NCT1234567890",                         # add query=
+  #               "teratoid&country=dk",                   # add query=
   #               "term=cancer&age=adult",                 # keep
   #               "age=adult&term=cancer")                 # keep
-  queryterm <- sub("(^|&|[&]?\\w+=\\w+&)(\\w+|[ +ORNCT0-9-]+)($|&\\w+=\\w+)", "\\1query=\\2\\3", queryterm)
+
+  queryterm <- sub("(^|&|[&]?\\w+=\\w+&)([ a-zA-Z0-9+-]+)($|&\\w+=\\w+)",
+                   "\\1query=\\2\\3",
+                   queryterm)
 
   # check availability of relevant helper programs
   if (!suppressWarnings(installFindBinary("echo x | sed s/x/y/"))) stop("sed not found.",  call. = FALSE)
@@ -825,7 +859,7 @@ ctrLoadQueryIntoDbEuctr <- function(queryterm, register,
   resultsNumModulo  <- resultsEuNumPages %%  parallelretrievals
   message("(1/3) Downloading trials (max. ", parallelretrievals, " page[s] in parallel):")
 
-  # prepare handle (used several times) and curl progress
+  # progress indicator function
   cb <- function(req){message(". ", appendLF = FALSE)}
 
   # iterate over batches of results pages
@@ -872,19 +906,28 @@ ctrLoadQueryIntoDbEuctr <- function(queryterm, register,
 
   } # for batch
 
-  # compose commands: for external script on all files in temporary directory and for import
-  euctr2json <- system.file("exec/euctr2json.sh", package = "ctrdata", mustWork = TRUE)
-  euctr2json <- paste(euctr2json, tempDir)
-
+  ## compose commands: for external script on
+  # all files in temporary directory and for import
   # special handling in case of windows
   if (.Platform$OS.type == "windows") {
+    #
+    euctr2json <- utils::shortPathName(path = system.file("exec/euctr2json.sh", package = "ctrdata", mustWork = TRUE))
+    euctr2json <- paste(euctr2json, utils::shortPathName(path = tempDir))
     #
     # euctr2json requires cygwin's perl, sed. transform paths for cygwin use
     euctr2json <- gsub("\\\\", "/", euctr2json)
     euctr2json <- gsub("([A-Z]):/", "/cygdrive/\\1/", euctr2json)
-    euctr2json <- paste0('cmd.exe /c c:\\cygwin\\bin\\bash.exe --login -c "', euctr2json, '"')
     #
-  }
+    euctr2json <- paste0('cmd.exe /c ',
+                         rev(Sys.glob("c:\\cygw*\\bin\\bash.exe"))[1],
+                         ' --login -c "', euctr2json, '"')
+    #
+  } else {
+    #
+    euctr2json <- system.file("exec/euctr2json.sh", package = "ctrdata", mustWork = TRUE)
+    euctr2json <- paste(euctr2json, tempDir)
+    #
+  } # if windows
 
   # get a working mongo connection, select trial record collection
   mongo <- ctrMongo(collection = collection, uri = uri,
@@ -1023,15 +1066,25 @@ ctrLoadQueryIntoDbEuctr <- function(queryterm, register,
     ## xml to json and to import json
 
     # compose command
-    xml2json <- system.file("exec/xml2json_euctrresults.php", package = "ctrdata", mustWork = TRUE)
-    xml2json <- paste0("php -f ", shQuote(xml2json), " ", shQuote(tempDir))
 
     # special command handling on windows
     if (.Platform$OS.type == "windows") {
-      # xml2json_euctrresults requires cygwin's php. transform paths for cygwin use:
+      #
+      xml2json <- utils::shortPathName(path = system.file("exec/xml2json_euctrresults.php", package = "ctrdata", mustWork = TRUE))
+      xml2json <- paste0("php -f ", xml2json, " ", utils::shortPathName(path = tempDir))
+      #
+      # xml2json requires cygwin's php. transform paths for cygwin use:
       xml2json <- gsub("\\\\", "/", xml2json)
       xml2json <- gsub("([A-Z]):/", "/cygdrive/\\1/", xml2json)
-      xml2json <- paste0('cmd.exe /c c:\\cygwin\\bin\\bash.exe --login -c "', xml2json, '"')
+      #
+      xml2json <- paste0('cmd.exe /c ',
+                         rev(Sys.glob("c:\\cygw*\\bin\\bash.exe"))[1],
+                         ' --login -c "', xml2json, '"')
+      #
+    } else {
+      #
+      xml2json <- system.file("exec/xml2json_euctrresults.php", package = "ctrdata", mustWork = TRUE)
+      xml2json <- paste0("php -f ", xml2json, " ", tempDir)
       #
     } # if windows
 

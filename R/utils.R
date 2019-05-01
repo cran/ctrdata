@@ -92,6 +92,10 @@ ctrMongo <- function(collection = "ctrdata",
   if ((password != "") && grepl("//.+@", uri))
     uri <- sub("(.+)@(.+)", paste0("\\1", ":", password, "@\\2"), uri)
 
+  # check and set proxy if needed to access internet
+  # TODO
+  # setProxy()
+
   # connect to mongo server
   valueCtrDb <- mongolite::mongo(collection = collection,
                                  url = uri,
@@ -203,15 +207,25 @@ ctrOpenSearchPagesInBrowser <- function(input = "", register = "", copyright = F
       #
       message("Opening browser for search: \n\n", queryterm, "\n\nin register: ", register)
       #
+      # sanity correction for naked terms
+      if (register == "EUCTR") queryterm <-
+          queryterm <- sub("(^|&|[&]?\\w+=\\w+&)([ a-zA-Z0-9+-]+)($|&\\w+=\\w+)",
+                           "\\1query=\\2\\3",
+                           queryterm)
+      if (register == "CTGOV") queryterm <-
+          sub("(^|&|[&]?\\w+=\\w+&)(\\w+|[NCT0-9-]+)($|&\\w+=\\w+)",
+              "\\1term=\\2\\3",
+              queryterm)
+      #
       # protect against os where this does not work
       try({utils::browseURL(url = paste0(
         #
-        switch(as.character(register)[1],
+        switch(as.character(register),
                "CTGOV" = ifelse(grepl("^xprt=", queryterm),
                                 "https://clinicaltrials.gov/ct2/results/refine?show_xprt=Y&",
                                 "https://clinicaltrials.gov/ct2/results?"),
                "EUCTR" = "https://www.clinicaltrialsregister.eu/ctr-search/search?"),
-        queryterm[1]),
+        queryterm),
         encodeIfNeeded = TRUE, ...)
       }, silent = TRUE)
     }
@@ -332,6 +346,9 @@ ctrFindActiveSubstanceSynonyms <- function(activesubstance = ""){
   # initialise output variable
   as <- activesubstance
 
+  # check and set proxy if needed to access internet
+  setProxy()
+
   # getting synonyms
   ctgovdfirstpageurl <- paste0("https://clinicaltrials.gov/ct2/results/details?term=", activesubstance)
   tmp <- xml2::read_html(x = utils::URLencode(ctgovdfirstpageurl))
@@ -426,15 +443,16 @@ dbQueryHistory <- function(collection = "ctrdata", uri = "mongodb://localhost/us
 #' For fields in CTGOV (protocol-related information), see also the register's
 #' definitions: \url{https://prsinfo.clinicaltrials.gov/definitions.html}
 #'
-#' Note that generating a list of fields with variety.js as used in this function
-#' may not work with certain mongo databases, for example when the host or port
-#' is different per database, such as found with a free mongolab plan.
+#' Note that generating a list of fields with this function may take some time,
+#' since a mapreduce function is run on the server. If the user is not
+#' not authorised to run such a function on the (local or remote) server,
+#' random documents are samples to generate a list of fields.
 #'
 #' @param namepart A plain string (not a regular expression) to be searched for
 #'   among all field names (keys) in the database.
 #'
 #' @param allmatches If \code{TRUE} (default), returns all keys if more than one is found,
-#'   returns only fist of \code{FALSE}.
+#'   returns only first if \code{FALSE}.
 #'
 #' @param debug If \code{TRUE}, prints additional information (default \code{FALSE}).
 #'
@@ -483,6 +501,9 @@ dbFindFields <- function(namepart = "", allmatches = TRUE, debug = FALSE,
     # get a working mongo connection
     mongo <- ctrMongo(collection = collection, uri = uri,
                       password = password, verbose = verbose)
+
+    # informing user
+    message("Finding fields on server (this may take some time)")
 
     # try mapreduce to get all keys
     keyslist <- try({mongo$mapreduce(
@@ -1160,6 +1181,8 @@ typeField <- function(dfi){
   if (all(class(dfi[, 2]) == "character")) dfi[ dfi[, 2] == "NA", 2] <- ""
   # - if empty string, change to NA
   # if (all(class(dfi[, 2]) == "character")) dfi[ dfi[, 2] == "", 2] <- NA
+  # - give Month Year also a Day to work with as.Date
+  dfi[, 2] <- sub("^([a-zA-Z]+) ([0-9]{4})$", "\\1 15, \\2", dfi[, 2])
 
   # for date time conversion
   lct <- Sys.getlocale("LC_TIME")
@@ -1179,15 +1202,16 @@ typeField <- function(dfi){
     "n_date_of_competent_authority_decision"                                 = as.Date(dfi[, 2], format = "%Y-%m-%d"),
     "p_date_of_the_global_end_of_the_trial"                                  = as.Date(dfi[, 2], format = "%Y-%m-%d"),
     "x6_date_on_which_this_record_was_first_entered_in_the_eudract_database" = as.Date(dfi[, 2], format = "%Y-%m-%d"),
+    "x7_start_date"                                                          = as.Date(dfi[, 2], format = "%Y-%m-%d"),
     "firstreceived_results_date"                                             = as.Date(dfi[, 2], format = "%Y-%m-%d"),
     # - CTGOV
-    "start_date"              = as.Date(dfi[, 2], tryFormats = c("%b %Y")),
-    "primary_completion_date" = as.Date(dfi[, 2], tryFormats = c("%b %Y")),
-    "completion_date"         = as.Date(dfi[, 2], tryFormats = c("%b %Y")),
-    "firstreceived_date"      = as.Date(dfi[, 2], tryFormats = c("%b %d, %Y", "%b %Y")),
-    "resultsfirst_posted"     = as.Date(dfi[, 2], tryFormats = c("%b %d, %Y", "%b %Y")),
-    "lastupdate_posted"       = as.Date(dfi[, 2], tryFormats = c("%b %d, %Y", "%b %Y")),
-    "lastchanged_date"        = as.Date(dfi[, 2], tryFormats = c("%b %d, %Y", "%b %Y")),
+    "start_date"              = as.Date(dfi[, 2], format = "%b %d, %Y"),
+    "primary_completion_date" = as.Date(dfi[, 2], format = "%b %d, %Y"),
+    "completion_date"         = as.Date(dfi[, 2], format = "%b %d, %Y"),
+    "firstreceived_date"      = as.Date(dfi[, 2], format = "%b %d, %Y"),
+    "resultsfirst_posted"     = as.Date(dfi[, 2], format = "%b %d, %Y"),
+    "lastupdate_posted"       = as.Date(dfi[, 2], format = "%b %d, %Y"),
+    "lastchanged_date"        = as.Date(dfi[, 2], format = "%b %d, %Y"),
     #
     #
     # factors
@@ -1343,8 +1367,32 @@ addMetaData <- function(x, uri, collection, password) {
 
 
 
+#' Function to set proxy
+#'
+#' @keywords internal
+#'
+setProxy <- function() {
+
+  # only act if environment
+  # variable is not already set
+  if (Sys.getenv("https_proxy") == "") {
+
+    # works under windows only
+    p <- curl::ie_proxy_info()$Proxy
+
+    if (!is.null(p)) {
+
+      # used by httr and curl
+      Sys.setenv(https_proxy = p)
+
+    }
+  }
+} # end setproxy
+
+
+
 #' Convenience function to install a cygwin environment under MS Windows,
-#' including perl and php
+#' including perl, sed and php
 #'
 #' Alternatively and in case of difficulties, download and run the cygwin
 #' setup yourself as follows: \code{cygwinsetup.exe --no-admin --quiet-mode
@@ -1374,79 +1422,57 @@ installCygwinWindowsDoInstall <- function(force = FALSE, proxy = ""){
                        "--site http://www.mirrorservice.org/sites/sourceware.org/pub/cygwin/ ",
                        "--packages perl,php-jsonc,php-simplexml")
   #
-  # inform user
-  message("Attempting download of cygwin ...")
-  #
   # create directory within R sessions temporary directory
   tmpfile <- paste0(tempdir(), "/cygwin_inst")
   dir.create(tmpfile)
   dstfile <- paste0(tmpfile, "/cygwinsetup.exe")
   #
-  # download.file uses the proxy configured in the system
-  tmpurl <- switch(utils::sessionInfo()$platform,
-                   "64-bit" = "setup-x86_64.exe",
-                   "32-bit" = "setup-x86.exe")
+  # generate download url
+  tmpurl <- ifelse(grepl("x64", utils::win.version()),
+                   "setup-x86_64.exe",
+                   "setup-x86.exe")
   #
-  tmpdl <- try({utils::download.file(url = paste0("http://cygwin.org/", tmpurl),
+  tmpurl <- paste0("https://cygwin.org/", tmpurl)
+  #
+  # inform user
+  message("Attempting cygwin download using ", tmpurl, " ...")
+  #
+  # check and set proxy if needed to access internet
+  setProxy()
+  #
+  # download.file uses the proxy configured in the system
+  tmpdl <- try({utils::download.file(url = tmpurl,
                                      destfile = dstfile,
-                                     quiet = TRUE,
+                                     quiet = FALSE,
                                      mode = "wb")
     }, silent = TRUE)
   #
   # check
-  if (!file.exists(dstfile) || file.size(dstfile) < (5 * 10 ^ 5))
+  if (!file.exists(dstfile) ||
+      file.size(dstfile) < (5 * 10 ^ 5) ||
+      ("try-error" %in% class(tmpdl)))
     stop("Failed, please download manually and install with this command:\n",
          tmpurl, " ", installcmd,
          call. = FALSE)
   #
   if (proxy != "") {
-    # manual setting overrides all
+    # manual setting overriding
     proxy <- paste0(" --proxy ", proxy)
     message("Setting cygwin proxy install argument to: ", proxy, ", based on provided parameter.")
   } else {
-    # detect proxy to be used, automatically or manually configured?
-    # find and use proxy settings for actually running the cygwin setup
-    # - Windows 7 see https://msdn.microsoft.com/en-us/library/cc980059.aspx
-    # - Windows 10 see
-    tmp <- try(utils::readRegistry("Software\\Microsoft\\Windows\\CurrentVersion\\Internet Settings",
-                                   hive = "HCU"), silent = TRUE)
-    #
-    if (class(tmp) != "try-error" && !is.null(tmp)) {
-      #
-      if (length(tmp$AutoConfigURL) > 0) {
-        # retrieve settings
-        proxypacfile <- paste0(tmpfile, "/pacfile.txt")
-        utils::download.file(tmp$AutoConfigURL, proxypacfile)
-        # for testing: proxypacfile <- "private/proxypacfile"
-        # find out and select last mentioned proxy line
-        proxypac <- readLines(proxypacfile)
-        proxypac <- proxypac[grepl("PROXY", proxypac)]
-        proxypac <- proxypac[length(proxypac)]
-        proxy <- sub(".*PROXY ([0-9]+.[0-9]+.[0-9]+.[0-9]+:[0-9]+).*", "\\1", proxypac)
-        if (proxy == "") stop("A proxy could not be identified using the system\'s automatic configuration script.",
-                              ' Please set manually: installCygwinWindowsDoInstall (proxy = "host_or_ip:port"',
-                              call. = FALSE)
-        proxy <- paste0(" --proxy ", proxy)
-        message("Automatically setting cygwin proxy to: ", proxy, ", based on AutoConfigProxy in registry.")
-        #
-      } else {
-        if (!is.null(tmp$ProxyServer)) {
-          proxy <- paste0(" --proxy ", tmp$ProxyServer)
-          message("Automatically setting cygwin proxy to: ", proxy, ", based on ProxyServer in registry.")
-          #
-        } else {
-          message("Proxy not set, could not use ProxyServer or AutoConfigProxy in registry.")
-          #
-        }
-      }
+    # detect proxy
+    proxy <- curl::ie_proxy_info()$Proxy
+    if (!is.null(proxy)) {
+      message("Setting cygwin proxy install argument to: ", proxy, ", based on system settings.")
+      proxy <- paste0(" --proxy ", proxy)
     }
-  }
+ }
   #
   # execute cygwin setup command
   system(paste0(dstfile, " ", installcmd, " --local-package-dir ", tmpfile, " ", proxy))
   #
   # test cygwin installation
-  installCygwinWindowsTest()
+  installCygwinWindowsTest(verbose = TRUE)
   #
 }
 # end installCygwinWindowsDoInstall
@@ -1470,7 +1496,9 @@ installCygwinWindowsTest <- function(verbose = FALSE) {
   #
   tmpcygwin <- try({
     suppressWarnings(
-      system("cmd.exe /c c:\\cygwin\\bin\\env",
+      system(paste0("cmd.exe /c ",
+                    rev(Sys.glob("c:\\cygw*\\bin\\bash.exe"))[1],
+                    " --version"),
              intern = TRUE,
              ignore.stderr = TRUE
       ))},
@@ -1478,7 +1506,7 @@ installCygwinWindowsTest <- function(verbose = FALSE) {
   #
   if ((class(tmpcygwin) != "try-error") &
       (length(tmpcygwin) > 5)) {
-    if (verbose) message("cygwin base install seems to be working correctly.")
+    if (verbose) message("cygwin seems to work correctly.")
     return(invisible(TRUE))
   } else {
     message("cygwin is not available for this package, ctrLoadQueryIntoDb() will not work.\n",
@@ -1486,7 +1514,7 @@ installCygwinWindowsTest <- function(verbose = FALSE) {
     return(invisible(FALSE))
   }
 }
-# installCygwinWindowsTest
+# end installCygwinWindowsTest
 
 
 #' Check availability of binaries installed locally

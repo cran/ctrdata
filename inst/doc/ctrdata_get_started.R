@@ -7,17 +7,17 @@ knitr::opts_chunk$set(eval = FALSE)
 #  install.packages("ctrdata")
 
 ## ---- eval=FALSE---------------------------------------------------------
-#  library(httr)
-#  set_config(use_proxy("your_proxy.server.domain", port = 8080))
+#  # install preparatory package
+#  install.packages(c("devtools", "httr"))
+#  # note: unset build_opts so that vignettes are built
+#  devtools::install_github("rfhb/ctrdata", build_opts = "")
+
+## ---- eval=FALSE---------------------------------------------------------
+#  Sys.setenv(https_proxy = "your_proxy.server.domain:8080")
+#  Sys.setenv(https_proxy_user = "userid:password")
 
 ## ---- eval=FALSE---------------------------------------------------------
 #  .libPaths("D:/my/directory/")
-
-## ---- eval=FALSE---------------------------------------------------------
-#  # install preparatory package
-#  install.packages(c("devtools", "httr"))
-#  # now install this package and the packages it depends on
-#  devtools::install_github("rfhb/ctrdata", dependencies = "Depends")
 
 ## ---- eval=FALSE---------------------------------------------------------
 #  ctrdata::installCygwinWindowsDoInstall()
@@ -42,13 +42,19 @@ knitr::opts_chunk$set(eval = FALSE)
 #  q <- ctrGetQueryUrlFromBrowser()
 #  # Found search query from EUCTR.
 #  # [1] "cancer&age=under-18"
+#  
+#  # Open browser with this query
+#  # Note the register needs to be specified
+#  # when it cannot be deduced from the query
+#  ctrOpenSearchPagesInBrowser(input = q,
+#                              register = "EUCTR")
 
 ## ----execute_load_query, eval=FALSE--------------------------------------
 #  # Use search q that was defined in previous step:
 #  ctrLoadQueryIntoDb(queryterm = q)
 #  
 #  # Alternatively, use the following to retrieve a couple of trial records:
-#  ctrLoadQueryIntoDb(queryterm = "2010-024264-18",
+#  ctrLoadQueryIntoDb(queryterm = "cancer&age=under-18",
 #                     register = "EUCTR")
 #  # If no parameters are given for a database connection: uses mongodb
 #  # on localhost, port 27017, database "users", collection "ctrdata"
@@ -72,9 +78,9 @@ knitr::opts_chunk$set(eval = FALSE)
 #                                         "p_end_of_trial_status"))
 #  
 #  # Tabulate the status of the clinical trial on the date of information retrieval
-#  with (result,
-#        table("Status"       = p_end_of_trial_status,
-#              "Sponsor type" = b1_sponsor.b31_and_b32_status_of_the_sponsor))
+#  with(result,
+#       table("Status"       = p_end_of_trial_status,
+#             "Sponsor type" = b1_sponsor.b31_and_b32_status_of_the_sponsor))
 #  #                 Sponsor type
 #  # Status                  Commercial Non-Commercial
 #  #   Completed                    138             30

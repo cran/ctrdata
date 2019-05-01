@@ -1,3 +1,27 @@
+# ctrdata 0.18.2
+ - 2019-04-30
+ - new release
+ - extended compatibility with cygwin and Windows
+ 
+# ctrdata 0.18.9004
+ - 2019-04-28
+ - find and use any cygw* under windows
+ - refactored escaping bash command when called under windows
+
+# ctrdata 0.18.9002
+ - 2019-04-21
+ - corrected typing date fields
+
+# ctrdata 0.18.1
+ - 2019-04-14
+ - simplified cygwin install
+ - updated documentation
+ - corrected inconsistent handling of query terms
+
+# ctrdata 0.18.9001
+ - 2019-04-12
+ - added automated proxy handling
+
 # ctrdata 0.18
  - 2019-04-11
  - release version
