@@ -1,9 +1,9 @@
-17538cfcf3a25e70ad9d343d427177a9 *DESCRIPTION
+98cc53320409ba04b3e7d9f3c90a4215 *DESCRIPTION
 91476cae4454a3b842c2558895a4cbf2 *LICENSE
 750e2fd1cddd4aa32dd757d58a30493e *NAMESPACE
-75d3f38bac5efe1abaccb5be76c12e78 *NEWS.md
+aacb3bd68d521a353db5ac33d53db890 *NEWS.md
 54cb655b69abedf5e67e57e56b300f08 *R/ctrdata.R
-a5d99702b85011874238fc7aa6962313 *R/main.R
+5f50d9c95234204c27d23cef371de665 *R/main.R
 11d1f8301cbbe350e7b56ffd4e45c2a2 *R/onload.R
 d38b5f196ff497a5db3522484b44f669 *R/utils.R
 fba0adaefcd07545f1f01eb9df2ab986 *README.md
@@ -21,7 +21,7 @@ ed1db75b4ec0e2aff5f153a5e0c23df9 *inst/doc/ctrdata_usage_examples.pdf
 278499838a1dedfb5aa37bb3134a0e72 *inst/image/README-ctrdata_results_neuroblastoma.png
 1afe139844a7489e3cbae628d5f93b6d *inst/image/README-ctrdata_sequence_diagram.jpeg
 ccbb3d39df04f19968962ff064c318f3 *inst/tinytest/ctrdata_ctgov.R
-91f4b916bcba8f7ee30c55be255734d8 *inst/tinytest/ctrdata_euctr.R
+afe997f5412eee1a43c3d58003d16aca *inst/tinytest/ctrdata_euctr.R
 af7ac67bf6ac19e98b2a2a362c1fe609 *inst/tinytest/setup_ctrdata.R
 7fd2648efbcf4f2a681d9478650abf2c *inst/tinytest/test_ctrdata_ctrfindactivesubstance.R
 9eebca9467bf980a4d85c8ba62be3c27 *inst/tinytest/test_ctrdata_mongo_local_ctgov.R
@@ -58,7 +58,7 @@ e3f67674c87bf17b8966e27156896f55 *man/installCygwinWindowsTest.Rd
 1798e99e6a142dea64e1414eeff4fd55 *man/installFindBinary.Rd
 52adb22e479e9883085f23c39a0259c8 *man/setProxy.Rd
 e44772f06a1d9863b0b101e66b95882e *man/typeField.Rd
-c690f82abe73454f61001cd91819c4fa *tests/tinytest.R
+86d0f361cf89adc18169017fe4b51b37 *tests/tinytest.R
 69f286694c027d7ab33e60b28f3d4968 *vignettes/Rplot01.png
 84531ccfc264cbd374245653f448b6bf *vignettes/Rplot02.png
 1c39e7270456514049b3042bd367fc33 *vignettes/Rplot03.png
