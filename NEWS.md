@@ -1,3 +1,26 @@
+# ctrdata 1.1
+ - 2019-11-12
+ - release after nodbi 0.4 is available
+
+# ctrdata 1.0.1.9005
+ - 2019-11-09
+ - update description for installation from github
+ 
+# ctrdata 1.0.1.9004
+ - 2019-11-04
+ - handled mixed arrays and text values in same key of ctgov trial records
+ - more user information during importing
+ 
+# ctrdata 1.0.1.9003
+ - 2019-11-04
+ - further nesting added for euctr trial records
+ - user verbose information extended for record importing
+ 
+# ctrdata 1.0.1.9002
+ - 2019-11-03
+ - improved parsing of euctr trial records
+ - correct re-opening of sqlite connection
+ 
 # ctrdata 1.0.1
  - 2019-10-22
  - correction of testing

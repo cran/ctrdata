@@ -111,15 +111,6 @@ ctrLoadQueryIntoDb <- function(
     }
   }
 
-
-  ## parameter checks
-
-  # check queryterm
-  if (class(queryterm) != "character") {
-    stop("queryterm has to be a character string.",
-         call. = FALSE)
-  }
-
   # deduce queryterm and register if a full url is provided
   if (class(queryterm) == "character" &&
       is.atomic(queryterm) &&
@@ -149,6 +140,14 @@ ctrLoadQueryIntoDb <- function(
     register  <- queryterm[nr, "query-register"]
     queryterm <- queryterm[nr, "query-term"]
     #
+  }
+
+  ## parameter checks
+
+  # check queryterm
+  if (class(queryterm) != "character") {
+    stop("queryterm has to be a character string.",
+         call. = FALSE)
   }
 
   ## sanity checks
@@ -278,7 +277,7 @@ ctrLoadQueryIntoDb <- function(
             "\n'imported'=", imported$n,
             "\n'register'=", register,
             "\n'collection'=", con$collection,
-            "\nImported trials:", imported$success)
+            "\nImported trials: ", paste0(imported$success, collapse = " "))
   }
 
   # add query parameters to database
@@ -512,13 +511,15 @@ ctrRerunQuery <- function(
 #'
 #' @inheritParams ctrDb
 #'
+#' @inheritParams ctrLoadQueryIntoDb
+#'
 #' @return List with elements n (number of imported trials),
 #' _id's of successfully imported trials and
 #' _id's of trials that failed to import
 #'
 #' @keywords internal
 #'
-dbCTRLoadJSONFiles <- function(dir, con) {
+dbCTRLoadJSONFiles <- function(dir, con, verbose) {
 
   # find files
   tempFiles <- dir(path = dir,
@@ -537,6 +538,10 @@ dbCTRLoadJSONFiles <- function(dir, con) {
     tmplines <- readLines(con = fd, warn = FALSE)
     close(fd)
 
+    # inform user
+    if (verbose) message("DEBUG: read file ", tempFile,
+                         "\nImporting line: ", appendLF = FALSE)
+
     # readLines produces: \"_id\": \"2007-000371-42-FR\"
     ids <- sub(".*_id\":[ ]*\"(.*?)\".*", "\\1", tmplines)
 
@@ -549,10 +554,15 @@ dbCTRLoadJSONFiles <- function(dir, con) {
     # check if in database, create or update
     tmpinsert <- lapply(seq_along(ids), function(i) {
 
+      # inform user
+      if (!(i %% 100)) message(i, " ", appendLF = FALSE)
+      if (verbose)     message(i, " ", appendLF = FALSE)
+
       # check validity
       tmpvalidate <- jsonlite::validate(tmplines[i])
       if (!tmpvalidate) {
         warning("Invalid json for trial ", ids[i], "\n",
+                "Line ", i, " in file ", tempFile, "\n",
                 attr(x = tmpvalidate, which = "err"),
                 noBreaks. = TRUE,
                 call. = FALSE,
@@ -600,6 +610,7 @@ dbCTRLoadJSONFiles <- function(dir, con) {
 
     # clean up
     rm("tmplines")
+    if (verbose) message(" ")
 
   }
 
@@ -864,7 +875,7 @@ ctrLoadQueryIntoDbCtgov <- function(
   }
 
   # inform user
-  message("Retrieved overview, ", tmp, " ",
+  message("Retrieved overview, records of ", tmp, " ",
           "trial(s) are to be downloaded.")
 
   # only count?
@@ -980,10 +991,11 @@ ctrLoadQueryIntoDbCtgov <- function(
   } # if annotation.text
 
   ## run import
-  message("(3/3) Importing JSON into database ...")
+  message("(3/3) Importing JSON records into database ...")
   if (verbose) message("DEBUG: ", tempDir)
   imported <- dbCTRLoadJSONFiles(dir = tempDir,
-                                 con = con)
+                                 con = con,
+                                 verbose = verbose)
 
   ## add annotations
   if ((annotation.text != "") &
@@ -1001,7 +1013,7 @@ ctrLoadQueryIntoDbCtgov <- function(
   }
 
   ## find out number of trials imported into database
-  message("= Imported or updated ", imported$n, " trial(s).")
+  message("\n= Imported or updated ", imported$n, " trial(s).")
 
   # clean up temporary directory
   if (!verbose) unlink(tempDir, recursive = TRUE)
@@ -1107,7 +1119,7 @@ ctrLoadQueryIntoDbEuctr <- function(
   }
 
   # inform user
-  message("Retrieved overview, ",
+  message("Retrieved overview, multiple records of ",
           resultsEuNumTrials, " trial(s) from ",
           resultsEuNumPages, " page(s) to be downloaded.")
 
@@ -1290,10 +1302,11 @@ ctrLoadQueryIntoDbEuctr <- function(
   imported <- system(euctr2json, intern = TRUE)
 
   # run import into mongo from json files
-  message("(3/3) Importing JSON into database ...")
+  message("(3/3) Importing JSON records into database ...")
   if (verbose) message("DEBUG: ", tempDir)
   imported <- dbCTRLoadJSONFiles(dir = tempDir,
-                                 con = con)
+                                 con = con,
+                                 verbose = verbose)
 
   ## read in the eudract numbers of the
   ## trials just retrieved and imported

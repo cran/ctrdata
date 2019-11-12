@@ -44,7 +44,7 @@ ctrDb <- function(
       warning("Database connection was closed, trying to reopen...",
               call. = FALSE, immediate. = TRUE)
       con <- nodbi::src_sqlite(dbname = con$dbname,
-                               key = con$collection)
+                               collection = con$collection)
     }
 
     # add database as element under root
@@ -766,36 +766,42 @@ dbFindIdsUniqueTrials <- function(
       include3rdcountrytrials = include3rdcountrytrials)
   }
 
-  # 3. get ctrgov records
-  listofCTGOVids <- nodbi::docdb_query(
-    src = con,
-    key = con$collection,
-    query =  paste0(
-      '{"_id": { "$regex": "^NCT[0-9][0-9][0-9][0-9][0-9][0-9][0-9][0-9]$"',
-      ifelse(test = "src_mongo" %in% class(con),
-             yes  = ', "$options": ""',
-             no   = ''), # TODO sqlite options handling
-      '}}'),
-    fields = paste0('{"id_info.org_study_id": 1,',
-                    ' "id_info.secondary_id": 1,',
-                    ' "id_info.nct_alias": 1}'))
+  # 3. get ctgov records
+  listofCTGOVids <- try(suppressMessages(suppressWarnings(
+    dbGetFieldsIntoDf(fields = c(
+      "id_info.org_study_id",
+      "id_info.secondary_id",
+      "id_info.nct_alias"),
+      con = con,
+      verbose = FALSE,
+      stopifnodata = FALSE)
+  )),
+  silent = TRUE
+  )
+  # keep only ctgov
+  if (nrow(listofCTGOVids)) {
+    listofCTGOVids <- listofCTGOVids[
+      grepl("^NCT[0-9]{8}", listofCTGOVids[["_id"]]), ]
+  }
+  #
+  if (!nrow(listofCTGOVids)) {
+    listofCTGOVids <- NULL
+    # inform user
+    message("No CTGOV records found.")
+  }
 
-  if (!nrow(listofCTGOVids)) {listofCTGOVids <- NULL}
-
-  # inform user
-  if (is.null(listofCTGOVids)) {message("No CTGOV records found.")}
-
-  # 4. retain unique ctrgov records
+  # 4. retain unique ctgov records
   if (!is.null(listofCTGOVids)) {
     #
     # make id_info sub-fields into one field
     listofCTGOVids[["id_info"]] <- sapply(
       seq_len(nrow(listofCTGOVids)),
       function(i)
-        as.character(
-          na.omit(
-            unlist(
-              listofCTGOVids[i, -match("_id", names(listofCTGOVids))]))),
+        unique(
+          as.character(
+            na.omit(
+              unlist(
+                listofCTGOVids[i, -match("_id", names(listofCTGOVids))])))),
       simplify = FALSE)
     # do not simplify, so that it returns df for any 1-row listofCTGOVids
     #
