@@ -270,7 +270,8 @@ ctrOpenSearchPagesInBrowser <- function(
 #' @examples
 #'
 #' \dontrun{
-#' ctrLoadQueryIntoDb (ctrGetQueryUrlFromBrowser())
+#' db <- nodbi::src_sqlite(collection = "test")
+#' ctrLoadQueryIntoDb(ctrGetQueryUrlFromBrowser(), con = db)
 #' }
 #'
 #' @importFrom clipr read_clip
@@ -525,14 +526,15 @@ dbQueryHistory <- function(con,
 #'
 #' @inheritParams ctrDb
 #'
-#' @return Vector of field(s) found
+#' @return Vector of names of found field(s)
 #'
 #' @export
 #'
 #' @examples
 #'
 #' \dontrun{
-#'  dbFindFields("date")
+#' db <- nodbi::src_sqlite(collection = "test")
+#' dbFindFields("date", con = db)
 #' }
 #'
 dbFindFields <- function(namepart = "",
@@ -701,7 +703,8 @@ dbFindFields <- function(namepart = "",
 #' @examples
 #'
 #' \dontrun{
-#' dbFindIdsUniqueTrials()
+#' db <- nodbi::src_sqlite(collection = "test")
+#' dbFindIdsUniqueTrials(con = db)
 #' }
 #'
 dbFindIdsUniqueTrials <- function(
@@ -1027,8 +1030,8 @@ dbFindIdsUniqueTrials <- function(
 #' @examples
 #'
 #' \dontrun{
-#'
-#' dbGetFieldsIntoDf("b1_sponsor.b31_and_b32_status_of_the_sponsor")[1,]
+#' db <- nodbi::src_sqlite(collection = "test")
+#' dbGetFieldsIntoDf("b1_sponsor.b31_and_b32_status_of_the_sponsor", con = db)[1,]
 #' #                   _id  b1_sponsor.b31_and_b32_status_of_the_sponsor
 #' #  1  2004-000015-25-GB                   Non-commercial / Commercial
 #'
@@ -1222,25 +1225,21 @@ dbGetFieldsIntoDf <- function(fields = "",
 #' @examples
 #'
 #' \dontrun{
-#'
+#' db <- nodbi::src_sqlite(collection = "test")
 #' df <- dbGetFieldsIntoDf(
 #'   fields = c("endPoints.endPoint",
 #'              "subjectDisposition.postAssignmentPeriods"),
-#'   con = con
+#'   con = db
 #' )
-#' dfListExtractKey <- function(
-#'   df,
-#'   list.key =
-#'     list(
+#' dfListExtractKey(
+#'   df = df,
+#'   list.key = list(
 #'       c("endPoints.endPoint",
 #'         "^title"),
 #'       c("subjectDisposition.postAssignmentPeriods",
 #'         "arms.arm.type.value")
-#'     )
-#' )
-#'
+#' ))
 #' }
-#'
 dfListExtractKey <- function(
   df,
   list.key =
