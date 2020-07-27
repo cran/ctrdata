@@ -1,13 +1,5 @@
 ## RH 2019-09-28
 
-# testing in local development directory:
-# tinytest::test_all()
-
-# testing of built and installed package:
-# tinytest::test_package("ctrdata")
-
-# options(tt.pr.passes = TRUE)
-
 # functions for testing
 # to be sourced by test_*.R
 
@@ -88,8 +80,8 @@ check_binaries <- function(){
 check_internet <- function(){
 
   tmp <- try({
-    httr::HEAD("www.clinicaltrials.gov")
-    httr::HEAD("www.clinicaltrialsregister.eu")
+    httr::HEAD("www.clinicaltrials.gov", httr::timeout(5))
+    httr::HEAD("www.clinicaltrialsregister.eu", httr::timeout(5))
   }, silent = TRUE)
 
   out <- !("try-error" %in% class(tmp))
@@ -103,7 +95,7 @@ check_sqlite <- function(){
   tmp <- try(nodbi::src_sqlite(), silent = TRUE)
 
   out <- all(c("src_sqlite", "docdb_src") %in% class(tmp))
-  if (out) on.exit(RSQLite::dbDisconnect(conn = tmp$con))
+  if (out) RSQLite::dbDisconnect(conn = tmp$con)
   out
 
 }
@@ -119,7 +111,7 @@ check_mongo_local <- function(){
     silent = TRUE)
 
   out <- all(c("src_mongo", "docdb_src") %in% class(tmp))
-  if (out) on.exit(tmp$con$disconnect())
+  if (out) tmp$con$disconnect()
   out
 
 }
@@ -135,7 +127,7 @@ check_mongo_remote_ro <- function(){
     silent = TRUE)
 
   out <- all(c("src_mongo", "docdb_src") %in% class(tmp))
-  if (out) on.exit(tmp$con$disconnect())
+  if (out) tmp$con$disconnect()
   out
 
 }
@@ -150,7 +142,7 @@ check_mongo_remote_rw <- function(){
     silent = TRUE)
 
   out <- all(c("src_mongo", "docdb_src") %in% class(tmp))
-  if (out) on.exit(tmp$con$disconnect())
+  if (out) tmp$con$disconnect()
   out
 }
 

@@ -1,3 +1,17 @@
+# ctrdata 1.3.0
+ - 2020-07-27
+ - workaround EUCTR certificate issue
+ - streamline ctrGetQueryUrlFromBrowser()
+ - better handling of complex fields
+ - include further tests for query string handling,
+   checking more parameters and return values
+ - better clean-up after testing
+ - ctrLoadQueryIntoDb(querytorerun = ...) now looks
+   for the date when the querytorerun was last run, 
+   to more often use euctr update options
+ - switching from travis to github action
+ - upped coverage of code tested
+ 
 # ctrdata 1.2.1
  - 2020-05-18
  - tinytest >= 1.2.1 to avoid regression error

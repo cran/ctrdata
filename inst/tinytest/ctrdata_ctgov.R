@@ -1,8 +1,5 @@
 ## RH 2019-09-28
 
-#### SETUP ####
-# this file is called from various files
-
 #### ctrLoadQueryIntoDb ####
 
 # test
@@ -72,18 +69,31 @@ expect_true(length(tmp_test$success) > 2L)
 # test
 expect_true(length(tmp_test$failed) == 0L)
 
+# test
+expect_message(
+  suppressWarnings(
+    ctrLoadQueryIntoDb(
+      queryterm = "someQueryForErrorTriggering",
+      register = "CTGOV",
+      verbose = TRUE,
+      only.count = TRUE,
+      con = dbc)),
+  "term=someQueryForErrorTriggering")
+
+
 #### ctrLoadQueryIntoDb results ####
 
 # get results
-result <- suppressWarnings(
-  dbGetFieldsIntoDf(
-    fields = c(
-      "clinical_results.baseline.analyzed_list.analyzed.count_list.count",
-      "clinical_results.baseline.group_list.group",
-      "clinical_results.baseline.analyzed_list.analyzed.units",
-      "study_design_info.allocation",
-      "location"),
-    con = dbc))
+result <- suppressMessages(
+  suppressWarnings(
+    dbGetFieldsIntoDf(
+      fields = c(
+        "clinical_results.baseline.analyzed_list.analyzed.count_list.count",
+        "clinical_results.baseline.group_list.group",
+        "clinical_results.baseline.analyzed_list.analyzed.units",
+        "study_design_info.allocation",
+        "location"),
+      con = dbc)))
 
 result$number_sites <- sapply(
   result$location,

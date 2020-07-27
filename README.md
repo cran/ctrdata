@@ -1,15 +1,14 @@
 
 <!-- README.md is generated from README.Rmd -->
 
+<!-- badges: start -->
+
 [![](https://cranlogs.r-pkg.org/badges/ctrdata)](https://cran.r-project.org/package=ctrdata)
-[![Build
-Status](https://travis-ci.org/rfhb/ctrdata.png?branch=master)](https://travis-ci.org/rfhb/ctrdata)
-[![AppVeyor build
-status](https://ci.appveyor.com/api/projects/status/github/rfhb/ctrdata?branch=master&svg=true)](https://ci.appveyor.com/project/rfhb/ctrdata)
 [![codecov](https://codecov.io/gh/rfhb/ctrdata/branch/master/graph/badge.svg)](https://codecov.io/gh/rfhb/ctrdata)
-\[Note codecov does not check MS Windows-only code\]
+[![R-CMD-check-win-macos](https://github.com/rfhb/ctrdata/workflows/R-CMD-check-win-macos/badge.svg)](https://github.com/rfhb/ctrdata/actions?query=workflow%3AR-CMD-check-win-macos)
+[![R-CMD-check-linux](https://github.com/rfhb/ctrdata/workflows/R-CMD-check-linux/badge.svg)](https://github.com/rfhb/ctrdata/actions?query=workflow%3AR-CMD-check-linux)
 [![Slack](https://img.shields.io/badge/Slack-Join-green.svg)](https://rfhb.slack.com/messages/C6N1Y75B6)
-Join Slack channel and discuss
+<!-- badges: end -->
 
 # ctrdata for aggregating and analysing clinical trials
 
@@ -23,7 +22,7 @@ started in 2015 and was motivated by the wish to understand trends in
 designs and conduct of trials and their availability for patients. The
 package is to be used within the [R](https://www.r-project.org/) system.
 
-Last reviewed on 2020-05-17 for version 1.2.1.
+Last reviewed on 2020-07-27 for version 1.3.0
 
 Main features:
 
@@ -55,8 +54,8 @@ Main features:
 Remember to respect the registers’ copyrights and terms and conditions
 (see `ctrOpenSearchPagesInBrowser(copyright = TRUE)`). Please cite this
 package in any publication as follows: `Ralf Herold (2020). ctrdata:
-Retrieve and Analyze Clinical Trials from Public Registers. R package
-version 1.2, https://github.com/rfhb/ctrdata`
+Retrieve and Analyze Clinical Trials in Public Registers. R package
+version 1.3, https://github.com/rfhb/ctrdata`
 
 <!--
 
@@ -114,10 +113,18 @@ Alternatively, install manually cygwin with packages `perl`, `php-jsonc`
 and `php-simplexml` into `c:\cygwin`. This installation will consume
 about 160 MB disk space; administrator credentials not needed.
 
+## Testing
+
+Once installed, a comprehensive testing can be executed as follows (note
+this will take several minutes):
+
+``` r
+tinytest::test_package("ctrdata", at_home = TRUE)
+```
+
 # Overview of functions in `ctrdata`
 
-The functions are listed in the approximate order of
-use.
+The functions are listed in the approximate order of use.
 
 | Function name                      | Function purpose                                                                                                                                    |
 | ---------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -202,7 +209,7 @@ ctrLoadQueryIntoDb(
   queryterm = 
     paste0("https://www.clinicaltrialsregister.eu/ctr-search/search?", 
            "query=cancer&age=under-18&phase=phase-one"),
-  con = d)
+  con = db)
 ```
 
   - Analyse
@@ -223,11 +230,11 @@ result <- dbGetFieldsIntoDf(
 # Find unique trial identifiers for trials that have nore than one record, 
 # for example for several EU Member States: 
 uniqueids <- dbFindIdsUniqueTrials(con = db)
-# * Total of 454 records in collection.
+# * Total of 522 records in collection.
 # Searching for duplicates, found 
-#  - 292 EUCTR _id were not preferred EU Member State record of trial
+#  - 340 EUCTR _id were not preferred EU Member State record of trial
 # No CTGOV records found.
-# = Returning keys (_id) of 162 out of total 454 records in collection "some_collection_name".
+# = Returning keys (_id) of 182 out of total 522 records in collection
 
 # Keep only unique / deduplicated records:
 result <- result[ result[["_id"]] %in% uniqueids, ]
@@ -236,15 +243,16 @@ result <- result[ result[["_id"]] %in% uniqueids, ]
 with(result, table(p_end_of_trial_status, 
                    a7_trial_is_part_of_a_paediatric_investigation_plan))
 #
-#                      a7_trial_is_part_of_a_paediatric_investigation_plan
-# p_end_of_trial_status   Information not present in EudraCT No Yes
-#    Completed                                             6 14   8
-#    Ongoing                                               3 62  22
-#    Prematurely Ended                                     1  4   2
-#    Temporarily Halted                                    0  1   1
+#                     a7_trial_is_part_of_a_paediatric_investigation_plan
+# p_end_of_trial_status Information not present in EudraCT No Yes
+#   Completed                                            6 25  14
+#   Ongoing                                              5 60  19
+#   Prematurely Ended                                    1  6   3
+#   Restarted                                            0  1   0
+#   Temporarily Halted                                   0  0   1
 ```
 
-  - Add records from another register into database
+  - Add records from another register into the same database
 
 <!-- end list -->
 
@@ -345,8 +353,7 @@ The database connection object `con` is created by calling
 (e.g., `url`) and with a special parameter `collection` that is used by
 `ctrdata` to identify which table or collection in the database to use.
 Any such connection object can then be used by `ctrdata` and generic
-functions of `nodbi` in a consistent way, as shown in the
-table:
+functions of `nodbi` in a consistent way, as shown in the table:
 
 | Purpose                                  | SQLite                                                                                | MongoDB                                                                                                                  |
 | ---------------------------------------- | ------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------ |

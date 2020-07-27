@@ -1,12 +1,5 @@
 ## RH 2019-09-28
 
-#### SETUP ####
-# this file is called from various files
-
-# add some random delay to avoid
-# too many parallel retrievals
-Sys.sleep(runif(n = 1, min = 1, max = 20))
-
 #### ctrLoadQueryIntoDb ####
 
 q <- paste0("https://www.clinicaltrialsregister.eu/ctr-search/search?query=",
@@ -32,9 +25,38 @@ expect_true(all(
 # test
 expect_true(length(tmp_test$failed) == 0L)
 
+
 #### ctrLoadQueryIntoDb update ####
 
-# only works for last 7 days with rss mechanism
+# manipulate history to test updating
+# and query string handling
+hist <- suppressWarnings(dbQueryHistory(con = dbc))
+#
+hist[nrow(hist), "query-term"] <-
+  sub("query=", "", hist[nrow(hist), "query-term"])
+hist[nrow(hist), "query-timestamp"] <- "2000-01-01 00:00:00"
+  #
+# convert into json object
+json <- jsonlite::toJSON(list("queries" = hist))
+#
+# update database
+nodbi::docdb_update(
+  src = dbc,
+  key = dbc$collection,
+  value = data.frame("_id" = "meta-info",
+                     "content" = as.character(json),
+                     stringsAsFactors = FALSE,
+                     check.names = FALSE))
+# test
+expect_message(
+  suppressWarnings(
+    ctrLoadQueryIntoDb(
+      querytoupdate = "last",
+      con = dbc,
+      verbose = TRUE)),
+  "search\\?query=neuro")
+
+# checking as only works for last 7 days with rss mechanism
 # query based on date is used since this avoids no trials are found
 
 date.today <- Sys.time()
@@ -53,7 +75,6 @@ expect_message(
   "Imported or updated ")
 
 # manipulate history to test updating
-# implemented in dbCTRUpdateQueryHistory
 hist <- suppressWarnings(dbQueryHistory(con = dbc))
 #
 hist[nrow(hist), "query-term"] <-
@@ -88,8 +109,6 @@ expect_true(tmp_test$n > 10L)
 # test
 expect_true(length(tmp_test$success) > 10L)
 
-# test
-expect_true(length(tmp_test$failed) == 0L)
 
 #### ctrLoadQueryIntoDb results ####
 
@@ -105,6 +124,7 @@ expect_message(
     ctrLoadQueryIntoDb(
       queryterm = q,
       euctrresults = TRUE,
+      euctrresultshistory = TRUE,
       verbose = TRUE,
       con = dbc)),
   "Imported or updated results for")
@@ -152,12 +172,12 @@ expect_true(
   sum(nchar(
     dfListExtractKey(
       df = result,
-       list.key = list(
+      list.key = list(
         c("subjectDisposition.postAssignmentPeriods.postAssignmentPeriod.arms.arm",
           "title"),
-      c("subjectDisposition.postAssignmentPeriods.postAssignmentPeriod.arms.arm",
-        "type.value"))
-  )[["value"]]
+        c("subjectDisposition.postAssignmentPeriods.postAssignmentPeriod.arms.arm",
+          "type.value"))
+    )[["value"]]
   ), na.rm = TRUE)
   > 250L)
 
@@ -165,21 +185,22 @@ expect_true(
 expect_true(
   sum(nchar(
     dfListExtractKey(
-    df = result,
-    list.key = list(
-      c("endPoints.endPoint", "title"))
+      df = result,
+      list.key = list(
+        c("endPoints.endPoint", "title"))
     )[["value"]]
   ), na.rm = TRUE)
   > 3000L)
 
-# test
+# prepare
 tmp_test <- dfListExtractKey(
   result,
   list(
-      c("endPoints.endPoint", "^title"),
-      c("endPoints.endPoint", "^type.value")
-    )
+    c("endPoints.endPoint", "^title"),
+    c("endPoints.endPoint", "^type.value")
+  )
 )
+# test
 expect_true(all(
   tmp_test$endPoints.endPoint.type.value %in%
     c("ENDPOINT_TYPE.primary", "ENDPOINT_TYPE.secondary",
@@ -189,11 +210,13 @@ expect_true(all(
 tmp_test <- dfListExtractKey(
   result,
   list(
-      c("endPoints.endPoint", "armReportingGroups.armReportingGroup.subjects[0-9]*$"),
-      c("endPoints.endPoint", "armReportingGroups.armReportingGroup.@attributes.id"),
-      c("endPoints.endPoint", "armReportingGroups.armReportingGroup.@attributes.armId")
-    )
+    c("endPoints.endPoint", "armReportingGroups.armReportingGroup.subjects[0-9]*$"),
+    c("endPoints.endPoint", "armReportingGroups.armReportingGroup.@attributes.id"),
+    c("endPoints.endPoint", "armReportingGroups.armReportingGroup.@attributes.armId")
+  )
 )
+
+# test
 expect_true(
   sum(
     as.numeric(
@@ -207,23 +230,38 @@ expect_true(
 tmp_test <- dfListExtractKey(
   result,
   list(
-      c("endPoints.endPoint", "statisticalAnalyses.statisticalAnalysis.title"),
-      c("endPoints.endPoint", "statisticalAnalyses.statisticalAnalysis.statisticalHypothesisTest.method.value"),
-      c("endPoints.endPoint", "statisticalAnalyses.statisticalAnalysis.statisticalHypothesisTest.value[0-9]*$")
-    )
+    c("endPoints.endPoint", "statisticalAnalyses.statisticalAnalysis.title"),
+    c("endPoints.endPoint", "statisticalAnalyses.statisticalAnalysis.statisticalHypothesisTest.method.value"),
+    c("endPoints.endPoint", "statisticalAnalyses.statisticalAnalysis.statisticalHypothesisTest.value[0-9]*$")
+  )
 )
+
+# test
 expect_true(
   all(na.omit(as.numeric(
     tmp_test[["value"]][
       tmp_test[["name"]] ==
         "endPoints.endPoint.statisticalAnalyses.statisticalAnalysis.statisticalHypothesisTest.value"
-      ])) < 1L))
+    ])) < 1L))
+
+# test
 expect_true(all(
-    c("HYPOTHESIS_METHOD.cochranMantelHaenszel", "HYPOTHESIS_METHOD.ancova",
-      "HYPOTHESIS_METHOD.regressionLogistic") %in%
-      tmp_test[["value"]][
-        tmp_test[["name"]] ==
-          "endPoints.endPoint.statisticalAnalyses.statisticalAnalysis.statisticalHypothesisTest.method.value"]))
+  c("HYPOTHESIS_METHOD.cochranMantelHaenszel", "HYPOTHESIS_METHOD.ancova",
+    "HYPOTHESIS_METHOD.regressionLogistic") %in%
+    tmp_test[["value"]][
+      tmp_test[["name"]] ==
+        "endPoints.endPoint.statisticalAnalyses.statisticalAnalysis.statisticalHypothesisTest.method.value"]))
+
+# test
+expect_error(
+  dfListExtractKey(
+    result[, -1],
+    list(
+      c("endPoints.endPoint", "^type.value")
+    )
+  ),
+  "Data frame 'df' lacks '_id' column")
+
 
 
 #### dbFindFields #####
@@ -233,20 +271,20 @@ expect_error(
   dbFindFields(
     namepart = c("onestring", "twostring"),
     con = dbc),
-  "Name part should have only one element.")
+  "'namepart' should have one element.")
 
 # test
 expect_error(
   dbFindFields(
     namepart = list("onestring", "twostring"),
     con = dbc),
-  "Name part should be atomic.")
+  "'namepart' should be atomic.")
 
 # test
 expect_error(
   dbFindFields(namepart = "",
                con = dbc),
-  "Empty name part string.")
+  "Empty 'namepart' parameter.")
 
 # test
 tmp_test <- suppressMessages(suppressWarnings(
@@ -255,6 +293,7 @@ tmp_test <- suppressMessages(suppressWarnings(
     con = dbc)))
 expect_true("character" %in% class(tmp_test))
 expect_true(length(tmp_test) >= 4L)
+
 
 #### dbFindIdsUniqueTrials #####
 
@@ -272,7 +311,7 @@ expect_message(
     dbFindIdsUniqueTrials(
       con = dbc,
       preferregister = "CTGOV")),
-  "Returning keys")
+  "Returning keys \\(_id\\) of [4-9][0-9]")
 
 # test
 expect_warning(
@@ -294,13 +333,14 @@ expect_true(all(
 
 # test
 expect_message(
-    suppressWarnings(
-      ctrLoadQueryIntoDb(
-        queryterm = "NCT01516567",
-        register = "CTGOV",
-        con = dbc,
-        annotation.text = "ANNO",
-        annotation.mode = "replace")),
+  suppressWarnings(
+    ctrLoadQueryIntoDb(
+      queryterm = "NCT01516567",
+      register = "CTGOV",
+      con = dbc,
+      verbose = TRUE,
+      annotation.text = "ANNO",
+      annotation.mode = "replace")),
   "Imported or updated 1 trial")
 
 # test
@@ -341,6 +381,65 @@ tmp_test <-
 # test
 expect_equal(sort(tmp_test[["annotation"]]),
              sort(c("EU ANNO", "ANNO")))
+
+# test
+expect_message(
+  suppressWarnings(
+    dbFindIdsUniqueTrials(
+      con = dbc,
+      preferregister = "CTGOV")),
+  "Concatenating 1 records from CTGOV and [4-9][0-9] from EUCTR")
+
+
+#### dbGetFieldsIntoDf ####
+
+# test
+expect_error(
+  suppressWarnings(
+    dbGetFieldsIntoDf(
+      fields = c(NA, "willNeverBeFound"),
+      con = dbc)),
+  "For field 'willNeverBeFound' no data could be extracted")
+
+# test
+expect_error(
+  suppressWarnings(
+    dbGetFieldsIntoDf(
+      fields = c(NA, "willNeverBeFound", ""),
+      con = dbc)),
+  "'fields' contains empty elements")
+
+# test as many fields as possible for typing
+
+# get all field names
+tmpf <- suppressMessages(
+  suppressWarnings(
+    dbFindFields(
+      namepart = ".*",
+      con = dbc)))
+# remove empty field names
+tmpf <- tmpf[tmpf != ""]
+# get all data (takes long with sqlite)
+result <- suppressMessages(
+  suppressWarnings(
+    dbGetFieldsIntoDf(
+      fields = tmpf,
+      con = dbc,
+      verbose = TRUE,
+      stopifnodata = FALSE)
+  ))
+# determine all classes
+tmpc <- sapply(result, class,
+               USE.NAMES = FALSE)
+tmpc <- unlist(tmpc)
+tmpc <- table(tmpc)
+
+# tests
+expect_true(tmpc[["character"]] > 60)
+expect_true(tmpc[["Date"]]      >  5)
+expect_true(tmpc[["integer"]]   > 10)
+expect_true(tmpc[["list"]]      > 10)
+expect_true(tmpc[["logical"]]   > 50)
 
 
 #### ctrOpenSearchPagesInBrowser #####

@@ -14,13 +14,17 @@ dbc <- nodbi::src_mongo(
   collection = mongo_local_rw_collection,
   url = "mongodb://localhost")
 
-#### CTGOV ####
-source("ctrdata_euctr.R", local = TRUE)
-
-#### close ####
-try({
-  dbc$con$drop()
-  dbc$con$disconnect()
-},
-silent = TRUE)
-
+#### EUCTR ####
+tf <- function() {
+  # register clean-up
+  on.exit(expr = {
+    try({
+      dbc$con$drop()
+      dbc$con$disconnect()
+    },
+    silent = TRUE)
+  })
+  # do tests
+  source("ctrdata_euctr.R", local = TRUE)
+}
+tf()

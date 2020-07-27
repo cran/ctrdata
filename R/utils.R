@@ -100,8 +100,8 @@ ctrDb <- function(
 #'
 #' @param input Show results of search for \code{queryterm} in
 #'   browser. To open the browser with a previous search, (register or)
-#'   queryterm can be the output of \link{ctrGetQueryUrlFromBrowser} or can be one
-#'   row from \link{dbQueryHistory}.
+#'   queryterm can be the output of \link{ctrGetQueryUrlFromBrowser} or can
+#'   be one row from \link{dbQueryHistory}.
 #'
 #' @param register Register(s) to open. Either "EUCTR" or "CTGOV" or a vector of
 #'   both. Default is to open both registers' advanced search pages. To open the
@@ -126,8 +126,13 @@ ctrDb <- function(
 #' ctrOpenSearchPagesInBrowser(
 #'  ctrGetQueryUrlFromBrowser())
 #'
+#' # open the last query that was
+#' # loaded into the database
+#' db <- nodbi::src_sqlite(
+#'   collection = "previously_created"
+#' )
 #' ctrOpenSearchPagesInBrowser(
-#'  dbQueryHistory())
+#'   dbQueryHistory(con = db))
 #' }
 #'
 ctrOpenSearchPagesInBrowser <- function(
@@ -182,7 +187,7 @@ ctrOpenSearchPagesInBrowser <- function(
         length(input) == 1 &&
         grepl("^https.+clinicaltrials.+", input)) {
       #
-      input <- ctrGetQueryUrlFromBrowser(content = input)
+      input <- ctrGetQueryUrlFromBrowser(url = input)
       #
     }
     #
@@ -255,8 +260,13 @@ ctrOpenSearchPagesInBrowser <- function(
 
 #' Import from clipboard the URL of a search in one of the registers
 #'
-#' @param content URL from browser address bar.
-#' Defaults to clipboard contents.
+#' @param url URL such as from the browser address bar.
+#' If not specified, clipboard contents will be checked for
+#' a suitable URL. Can also contain a query term such as from
+#' \link{dbQueryHistory}()["query-term"]
+#'
+#' @param register Optional name of register (i.e., "EUCTR" or
+#' "CTGOV") in case url is a query term
 #'
 #' @return A string of query parameters that can be used to retrieve data
 #' from the register.
@@ -270,49 +280,96 @@ ctrOpenSearchPagesInBrowser <- function(
 #' @examples
 #'
 #' \dontrun{
-#' db <- nodbi::src_sqlite(collection = "test")
-#' ctrLoadQueryIntoDb(ctrGetQueryUrlFromBrowser(), con = db)
+#' db <- nodbi::src_sqlite(
+#'   collection = "my_collection"
+#' )
+#' ctrLoadQueryIntoDb(
+#'   ctrGetQueryUrlFromBrowser(),
+#'   con = db
+#' )
 #' }
 #'
 #' @importFrom clipr read_clip
 #'
-ctrGetQueryUrlFromBrowser <- function(content = "") {
+ctrGetQueryUrlFromBrowser <- function(
+  url = "",
+  register = "") {
   #
-  # if content parameter not specified, get and check clipboard contents
-  if (length(content) == 1L &&
-      nchar(content) == 0L) {
-    content <- clipr::read_clip()
+  # check parameters expectations
+  if (!is.atomic(url) || !is.atomic(register) ||
+      is.null(url) || is.null(register) ||
+      is.na(url) || is.na(register) ||
+      !inherits(url, "character") || !inherits(register, "character") ||
+      length(url) != 1L || length(register) != 1L) {
+    stop("ctrGetQueryUrlFromBrowser(): 'url' and / or 'register' ",
+         "is not a single character string.",
+         call. = FALSE)
   }
   #
-  if (length(content) != 1L) {
-    warning("ctrGetQueryUrlFromBrowser(): no clinical trial register ",
-            "search URL found in parameter 'content' or in clipboard.",
-            call. = FALSE, immediate. = TRUE)
-    return(NULL)
+  # if no parameter specified,
+  # check clipboard contents
+  if (nchar(url) == 0L) {
+    url <- suppressWarnings(
+      clipr::read_clip(
+        allow_non_interactive = TRUE)
+    )
+    if (is.null(url) || (length(url) != 1L) || (nchar(url) == 0L)) {
+      stop("ctrGetQueryUrlFromBrowser(): no clinical trial register ",
+           "search URL found in parameter 'url' or in clipboard.",
+           call. = FALSE)
+    }
+    message("* Using clipboard content as register query URL: ", url)
   }
   #
   # EUCTR
-  if (grepl("https://www.clinicaltrialsregister.eu/ctr-search/", content)) {
+  if (grepl("https://www.clinicaltrialsregister.eu/ctr-search/", url) ||
+      (!grepl("https://", url) && register == "EUCTR")) {
+    #
+    # check
+    if (grepl("https://", url) &
+        !grepl("www.clinicaltrialsregister.eu/", url)) {
+      warning("ctrGetQueryUrlFromBrowser(): 'url' inconsistent with EUCTR.",
+              call. = FALSE, immediate. = TRUE)
+      return(invisible(NULL))
+    }
     #
     queryterm <-
       sub("https://www.clinicaltrialsregister.eu/ctr-search/search[?](.*)",
-          "\\1", content)
+          "\\1", url)
     #
     queryterm <-
       sub("https://www.clinicaltrialsregister.eu/ctr-search/trial/([-0-9]+)/.*",
           "\\1", queryterm)
     #
+    # remove any intrapage anchor, e.g. #tableTop
+    queryterm <- sub("#.+$", "", queryterm)
+    #
     # sanity correction for naked terms
-    if (!grepl("&\\w+=\\w+|query=\\w", queryterm)) {
-      queryterm <- paste0("query=", queryterm)
-    }
+    # test cases:
+    # queryterm = c(
+    #   "cancer&age=adult",                      # add query=
+    #   "cancer",                                # add query=
+    #   "cancer+AND breast&age=adult&phase=0",   # add query=
+    #   "cancer&age=adult&phase=0",              # add query=
+    #   "cancer&age=adult&phase=1&results=true", # add query=
+    #   "&age=adult&phase=1&abc=xyz&cancer&results=true", # insert query=
+    #   "age=adult&cancer",                      # insert query=
+    #   "2010-024264-18",                        # add query=
+    #   "NCT1234567890",                         # add query=
+    #   "teratoid&country=dk",                   # add query=
+    #   "term=cancer&age=adult",                 # keep
+    #   "age=adult&term=cancer")                 # keep
+    queryterm <- sub(
+      "(^|&|[&]?\\w+=\\w+&)([ a-zA-Z0-9+-]+)($|&\\w+=\\w+)",
+      "\\1query=\\2\\3",
+      queryterm)
     #
     # check if url was for results of single trial
-    if (grepl(".*/results$", content)) {
+    if (grepl(".*/results$", url)) {
       queryterm <- paste0(queryterm, "&resultsstatus=trials-with-results")
     }
     #
-    message("* Found search query from EUCTR.")
+    message("* Found search query from EUCTR: ", queryterm)
     #
     df <- data.frame(cbind(queryterm, "EUCTR"), stringsAsFactors = FALSE)
     names(df) <- c("query-term", "query-register")
@@ -322,11 +379,21 @@ ctrGetQueryUrlFromBrowser <- function(content = "") {
   #
   # CTGOV, e.g.
   # https://clinicaltrials.gov/ct2/results?term=2010-024264-18&Search=Search
-  if (grepl("https://clinicaltrials.gov/ct2/results", content)) {
+  if (grepl("https://clinicaltrials.gov/ct2/results", url) ||
+      (!grepl("https://", url) && register == "CTGOV")) {
+    #
+    # check
+    if (grepl("https://", url) &
+        !grepl("clinicaltrials.gov/", url)) {
+      warning("ctrGetQueryUrlFromBrowser(): 'url' inconsistent with CTGOV.",
+              call. = FALSE, immediate. = TRUE)
+      return(invisible(NULL))
+
+    }
     #
     queryterm <-
       sub("https://clinicaltrials.gov/ct2/results[?](.*)",
-          "\\1", content)
+          "\\1", url)
     #
     queryterm <-
       sub("(.*)&Search[a-zA-Z]*=(Search|Find)[a-zA-Z+]*",
@@ -335,7 +402,7 @@ ctrGetQueryUrlFromBrowser <- function(content = "") {
     queryterm <- gsub("[a-z_0-9]+=&", "", queryterm)
     queryterm <- sub("&[a-z_0-9]+=$", "", queryterm)
     #
-    message("* Found search query from CTGOV.")
+    message("* Found search query from CTGOV: ", queryterm)
     #
     df <- data.frame(cbind(queryterm, "CTGOV"),
                      stringsAsFactors = FALSE)
@@ -345,7 +412,7 @@ ctrGetQueryUrlFromBrowser <- function(content = "") {
   }
   #
   warning("ctrGetQueryUrlFromBrowser(): no clinical trial register ",
-          "search URL found in parameter 'content' or in clipboard.",
+          "search URL found in parameter 'url' or in clipboard.",
           call. = FALSE, immediate. = TRUE)
   #
   return(invisible(NULL))
@@ -375,7 +442,9 @@ ctrGetQueryUrlFromBrowser <- function(content = "") {
 #' @examples
 #'
 #' \dontrun{
-#' ctrFindActiveSubstanceSynonyms(activesubstance = "imatinib")
+#' ctrFindActiveSubstanceSynonyms(
+#'   activesubstance = "imatinib"
+#' )
 #' }
 #'
 ctrFindActiveSubstanceSynonyms <- function(activesubstance = ""){
@@ -439,7 +508,12 @@ ctrFindActiveSubstanceSynonyms <- function(activesubstance = ""){
 #' @examples
 #'
 #' \dontrun{
-#' dbQueryHistory()
+#' db <- nodbi::src_sqlite(
+#'   collection = "my_collection"
+#' )
+#' dbQueryHistory(
+#'   con = db
+#' )
 #' }
 #'
 dbQueryHistory <- function(con,
@@ -517,10 +591,12 @@ dbQueryHistory <- function(con,
 #' such a function on the (local or remote) server,
 #' random documents are sampled to generate a list of fields.
 #'
-#' @param namepart A plain string (not a regular expression) to
-#' be searched for among all field names (keys) in the database.
+#' @param namepart A plain string (can include a regular expression,
+#' including Perl-style) to be searched for among all field names
+#' (keys) in the database.
 #'
-#' @param verbose If \code{TRUE}, prints additional information (default \code{FALSE}).
+#' @param verbose If \code{TRUE}, prints additional information
+#' (default \code{FALSE}).
 #'
 #' @importFrom nodbi docdb_query
 #'
@@ -533,8 +609,13 @@ dbQueryHistory <- function(con,
 #' @examples
 #'
 #' \dontrun{
-#' db <- nodbi::src_sqlite(collection = "test")
-#' dbFindFields("date", con = db)
+#' db <- nodbi::src_sqlite(
+#'   collection = "my_collection"
+#' )
+#' dbFindFields(
+#'   nampepart = "date",
+#'   con = db
+#' )
 #' }
 #'
 dbFindFields <- function(namepart = "",
@@ -542,9 +623,9 @@ dbFindFields <- function(namepart = "",
                          verbose = FALSE) {
 
   ## sanity checks
-  if (!is.atomic(namepart)) stop("Name part should be atomic.", call. = FALSE)
-  if (length(namepart) > 1) stop("Name part should have only one element.", call. = FALSE)
-  if (namepart == "")       stop("Empty name part string.", call. = FALSE)
+  if (!is.atomic(namepart)) stop("'namepart' should be atomic.", call. = FALSE)
+  if (length(namepart) > 1) stop("'namepart' should have one element.", call. = FALSE)
+  if (namepart == "")       stop("Empty 'namepart' parameter.", call. = FALSE)
 
   ## check database connection
   if (is.null(con$ctrDb)) con <- ctrDb(con = con)
@@ -666,7 +747,12 @@ dbFindFields <- function(namepart = "",
   }
 
   ## now do the actual search and find for key name parts
-  fields <- keyslist[grepl(namepart, keyslist, ignore.case = TRUE)]
+  fields <- keyslist[grepl(pattern = namepart, x = keyslist,
+                           ignore.case = TRUE, perl = TRUE)]
+
+  # clean
+  fields <- fields[fields != ""]
+  if (!length(fields)) fields <- ""
 
   # return the match(es)
   return(fields)
@@ -703,8 +789,12 @@ dbFindFields <- function(namepart = "",
 #' @examples
 #'
 #' \dontrun{
-#' db <- nodbi::src_sqlite(collection = "test")
-#' dbFindIdsUniqueTrials(con = db)
+#' db <- nodbi::src_sqlite(
+#'   collection = "my_collection"
+#' )
+#' dbFindIdsUniqueTrials(
+#'   con = db
+#' )
 #' }
 #'
 dbFindIdsUniqueTrials <- function(
@@ -967,7 +1057,7 @@ dbFindIdsUniqueTrials <- function(
     }
   } else {
     #
-    # fallsback
+    # fallback
     retids <- c(listofEUCTRids[["_id"]], listofCTGOVids[["_id"]])
     #
   }
@@ -1002,8 +1092,8 @@ dbFindIdsUniqueTrials <- function(
 #' of values if there is more than one value or if the field is (in) an array,
 #' such as follows: value 1 / value 2 / ... (see example)
 #'
-#' For more sophisticated data retrieval from the database, see vignette examples
-#' and other packages to query mongodb such as mongolite.
+#' For more sophisticated data retrieval from the database, see vignette
+#' examples and other packages to query mongodb such as mongolite.
 #'
 #' @param fields Vector of one or more strings, with names of the sought fields.
 #'    See function \link{dbFindFields} for how to find names of fields.
@@ -1030,14 +1120,34 @@ dbFindIdsUniqueTrials <- function(
 #' @examples
 #'
 #' \dontrun{
-#' db <- nodbi::src_sqlite(collection = "test")
-#' dbGetFieldsIntoDf("b1_sponsor.b31_and_b32_status_of_the_sponsor", con = db)[1,]
-#' #                   _id  b1_sponsor.b31_and_b32_status_of_the_sponsor
-#' #  1  2004-000015-25-GB                   Non-commercial / Commercial
+#' db <- nodbi::src_sqlite(
+#'   collection = "my_collection"
+#' )
 #'
-#' dbGetFieldsIntoDf("keyword")[1,]
-#' #            _id                                           keyword
-#' #  1 NCT00129259  T1D / type 1 diabetes / type 1 diabetes mellitus
+#' # access fields that are nested within another field
+#' # and can have multiple values with the other field
+#' dbGetFieldsIntoDf(
+#'   "b1_sponsor.b31_and_b32_status_of_the_sponsor",
+#'   con = db
+#' )[1,]
+#' #                 _id b1_sponsor.b31_and_b32_status_of_the_sponsor
+#' # 1 2004-000015-25-GB                  Non-commercial / Commercial
+#'
+#' # access fields that include a list of values
+#' # which are printed as comma separated values
+#' dbGetFieldsIntoDf(
+#'   "keyword",
+#'   con = db
+#' )[1,]
+#'
+#' #           _id                                 keyword
+#' # 1 NCT00129259 T1D, type 1 diabetes, juvenile diabetes
+#' #
+#' str(.Last.value)
+#' 'data.frame':	1 obs. of  2 variables:
+#' $ _id    : chr "NCT00129259"
+#' $ keyword:List of 1
+#' ..$ : chr  "T1D" "type 1 diabetes" "juvenile diabetes" ...
 #'
 #' }
 #'
@@ -1051,12 +1161,14 @@ dbGetFieldsIntoDf <- function(fields = "",
     stop("Input should be a vector of strings of field names.", call. = FALSE)
   }
 
-  # remove _id if inadventertently mentioned in fields
+  # remove NA, NULL if included in fields
+  fields <- fields[!is.null(fields) & !is.na(fields)]
+
+  # remove _id if included in fields
   fields <- fields["_id" != fields]
 
   # check if valid fields
-  if (any(fields == "", na.rm = TRUE) |
-      (length(fields) == 0)) {
+  if (any(fields == "") | (length(fields) == 0)) {
     stop("'fields' contains empty elements; ",
          "please provide a vector of strings of field names. ",
          "Function dbFindFields() can be used to find field names. ",
@@ -1097,7 +1209,10 @@ dbGetFieldsIntoDf <- function(fields = "",
       #
       # some backends return NA if query matches,
       # other only non-NA values when query matches
-      dfi <- na.omit(dfi)
+      # dfi <- na.omit(dfi)
+      dfi <- dfi[!is.na(dfi["_id"]) &
+                 !sapply(seq_len(nrow(dfi)),
+                         function(r) all(is.na(dfi[r, -1]))), ]
       #
       # ensure intended column order
       if (names(dfi)[1] != "_id") {
@@ -1110,12 +1225,39 @@ dbGetFieldsIntoDf <- function(fields = "",
       dfi <- dfi[ !sapply(dfi[, 2], length) == 0, ]
       #
       # - if each [,2] is a list with one element, concatenate
-      if (all(sapply(dfi[, 2],
+      if ((ncol(dfi) == 2) &&
+          all(sapply(dfi[, 2],
                      function(x)
                        is.data.frame(x) && ncol(x) == 1))) {
-
+        # concatenate
         dfi[, 2] <- sapply(sapply(dfi[, 2], "[", 1),
                            function(x) paste0(x, collapse = " / "))
+        # inform user
+        message("Note: requested field ", item, " has subitems ",
+                paste0(names(dfi)[-1], collapse = ", "),
+                ", collapsed using ' / '")
+        # remove extraneous columns
+        dfi <- dfi[, 1:2]
+      }
+      #
+      # - if dfi[, 2:ncol(dfi)] is from the same field e.g.
+      #   required_header.{download_date,link_text,url}, concatenate
+      if ((ncol(dfi) > 2) &&
+          all(grepl(paste0(item, "[.].+$"),
+                    names(dfi)[-1]))) {
+        # concatenate
+        dfi[, 2] <- unlist(
+          apply(
+            X = dfi[, 2:ncol(dfi)],
+            MARGIN = 1,
+            FUN = function(r)
+              paste0(na.omit(unlist(r)), collapse = " / ")))
+        # inform user
+        message("Note: requested field ", item, " has subitems ",
+                paste0(names(dfi)[-1], collapse = ", "),
+                ", collapsed using ' / '")
+        # remove extraneous columns
+        dfi <- dfi[, 1:2]
       }
       #
       # # - if each [,2] is a list of one dataframe with one or more rows,
@@ -1225,10 +1367,13 @@ dbGetFieldsIntoDf <- function(fields = "",
 #' @examples
 #'
 #' \dontrun{
-#' db <- nodbi::src_sqlite(collection = "test")
+#' db <- nodbi::src_sqlite(
+#'   collection = "my_collection"
+#' )
 #' df <- dbGetFieldsIntoDf(
-#'   fields = c("endPoints.endPoint",
-#'              "subjectDisposition.postAssignmentPeriods"),
+#'   fields = c(
+#'     "endPoints.endPoint",
+#'     "subjectDisposition.postAssignmentPeriods"),
 #'   con = db
 #' )
 #' dfListExtractKey(
@@ -1345,7 +1490,10 @@ dfListExtractKey <- function(
 #'   "other" = c("Withdrawn", "Suspended",
 #'               "No longer available", "Not yet recruiting"))
 #'
-#' dfMergeTwoVariablesRelevel(result, c("Recruitment", "x5_trial_status"), statusvalues)
+#' dfMergeTwoVariablesRelevel(
+#'   df = result,
+#'   colnames = c("Recruitment", "x5_trial_status"),
+#'   levelslist = statusvalues)
 #' }
 #'
 dfMergeTwoVariablesRelevel <- function(
@@ -1386,7 +1534,7 @@ dfMergeTwoVariablesRelevel <- function(
 
     # check
     if (class(levelslist) != "list") {
-      stop("Need lists for parameter levelslist.", call. = FALSE)
+      stop("Need list for parameter 'levelslist'.", call. = FALSE)
     }
 
     # helper function to collapse factor levels into the first
@@ -1851,8 +1999,8 @@ setProxy <- function() {
 
 
 
-#' Convenience function to install a minimal cygwin environment under MS Windows,
-#' including perl, sed and php
+#' Convenience function to install a minimal cygwin environment under MS
+#' Windows, including perl, sed and php
 #'
 #' Alternatively and in case of difficulties, download and run the cygwin
 #' setup yourself as follows: \code{cygwinsetup.exe --no-admin --quiet-mode
@@ -1881,9 +2029,10 @@ installCygwinWindowsDoInstall <- function(
   }
   #
   if (!force & dir.exists("c:\\cygwin")) {
-    stop(
-      "cygwin is already installed. To overwrite, use force = TRUE.",
-      call. = FALSE)
+    message("cygwin is already installed in c:\\cygwin. ",
+            "To re-install, use force = TRUE.")
+    # exit function after testing
+    return(installCygwinWindowsTest(verbose = TRUE))
   }
 
   # define installation command

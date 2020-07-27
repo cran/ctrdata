@@ -73,7 +73,8 @@
 #' # single trial identified by EudraCT number
 #' \dontrun{
 #' db <- nodbi::src_sqlite(collection = "test")
-#' ctrLoadQueryIntoDb(queryterm = "2013-001291-38", cond = db)
+#' ctrLoadQueryIntoDb(
+#'       queryterm = "2013-001291-38", con = db)
 #' }
 #' # Retrieve protocol-related information on
 #' # ongoing interventional cancer trials in children
@@ -86,7 +87,7 @@
 #' ctrLoadQueryIntoDb(
 #'      queryterm = "NCT02239861",
 #'      register = "CTGOV",
-#'      cond = db)
+#'      con = db)
 #' }
 #'
 #' @export
@@ -102,7 +103,7 @@ ctrLoadQueryIntoDb <- function(
   annotation.mode = "append",
   parallelretrievals = 10L,
   only.count = FALSE,
-  con = NULL,
+  con,
   verbose = FALSE) {
 
   ## check database connection
@@ -115,68 +116,7 @@ ctrLoadQueryIntoDb <- function(
     }
   }
 
-  # deduce queryterm and register if a full url is provided
-  if (class(queryterm) == "character" &&
-      is.atomic(queryterm) &&
-      length(queryterm) == 1L &&
-      grepl("^https.+clinicaltrials.+", queryterm)) {
-    #
-    # remove any intrapage anchor from url, e.g. #tableTop
-    queryterm <- sub("#.+$", "", queryterm)
-    #
-    queryterm <- ctrGetQueryUrlFromBrowser(queryterm)
-    #
-  }
-
-  ## deal with data frame as returned from
-  ## ctrQueryHistoryInDb and ctrGetQueryUrlFromBrowser
-  if (is.data.frame(queryterm) &&
-      all(substr(names(queryterm), 1, 6) == "query-")) {
-    #
-    nr <- nrow(queryterm)
-    #
-    if (nr > 1) {
-      warning(
-        "Using last row of queryterm parameter.",
-        call. = FALSE, immediate. = TRUE)
-    }
-    #
-    register  <- queryterm[nr, "query-register"]
-    queryterm <- queryterm[nr, "query-term"]
-    #
-  }
-
-  ## parameter checks
-
-  # check queryterm
-  if (class(queryterm) != "character") {
-    stop("queryterm has to be a character string.",
-         call. = FALSE)
-  }
-
-  ## sanity checks
-  if ((grepl("[^a-zA-Z0-9=+&%_-]",
-             gsub("\\[", "",
-                  gsub("\\]", "",
-                       queryterm)))) &
-      (register == "")) {
-    stop("Parameter 'queryterm' is not an URL showing results ",
-         "of a query or has unexpected characters: ", queryterm,
-         ", expected are: a-zA-Z0-9=+&%_-[].",
-         call. = FALSE)
-  }
-  #
-  if ((queryterm == "") &
-      querytoupdate == 0L) {
-    stop("Parameter 'queryterm' is empty.",
-         call. = FALSE)
-  }
-  #
-  if (!grepl(register, "CTGOVEUCTR")) {
-    stop("Parameter 'register' not known: ",
-         register, call. = FALSE)
-  }
-  #
+  ## check params for update request
   if (class(querytoupdate) != "character" &&
       querytoupdate != trunc(querytoupdate)) {
     stop("Parameter 'querytoupdate' is not an integer value or 'last'.",
@@ -189,8 +129,75 @@ ctrLoadQueryIntoDb <- function(
          call. = FALSE)
   }
 
-  # remove trailing or leading whitespace, line breaks
-  queryterm <- gsub("^\\s+|\\s+$|\n|\r", "", queryterm)
+  ## deduce queryterm and register
+  ## if not querytoupdate
+  if (querytoupdate == 0L) {
+
+    queryterm <- ctrGetQueryUrlFromBrowser(
+      url = queryterm,
+      register = register)
+
+    # deal with data frame as returned from
+    # ctrQueryHistoryInDb and ctrGetQueryUrlFromBrowser
+    if (is.data.frame(queryterm) &&
+        all(substr(names(queryterm), 1, 6) == "query-")) {
+      #
+      nr <- nrow(queryterm)
+      #
+      if (nr > 1) {
+        warning(
+          "Using last row of queryterm parameter.",
+          call. = FALSE, immediate. = TRUE)
+      }
+      #
+      register  <- queryterm[nr, "query-register"]
+      queryterm <- queryterm[nr, "query-term"]
+      #
+    }
+
+    # check queryterm
+    if (length(queryterm) != 1L ||
+        class(queryterm) != "character" ||
+        is.na(queryterm) ||
+        nchar(queryterm) == 0L) {
+      stop("'queryterm' has to be a character string:",
+           queryterm, call. = FALSE)
+    }
+
+    # check register
+    if (length(register) != 1L ||
+        class(register) != "character" ||
+        is.na(register)) {
+      stop("'register' has to be a character string: ",
+           register, call. = FALSE)
+    }
+
+    ## sanity checks
+    if (grepl("[^a-zA-Z0-9=+&%_-]",
+              gsub("\\[", "",
+                   gsub("\\]", "",
+                        queryterm)))) {
+      stop("Parameter 'queryterm' is not an URL showing results ",
+           "of a query or has unexpected characters: ", queryterm,
+           ", expected are: a-zA-Z0-9=+&%_-[].",
+           call. = FALSE)
+    }
+    #
+    if ((queryterm == "") &
+        querytoupdate == 0L) {
+      stop("Parameter 'queryterm' is empty.",
+           call. = FALSE)
+    }
+    #
+    if (!grepl(register, "CTGOVEUCTR")) {
+      stop("Parameter 'register' not known: ",
+           register, call. = FALSE)
+    }
+
+    # remove trailing or leading whitespace, line breaks
+    queryterm <- gsub("^\\s+|\\s+$|\n|\r", "", queryterm)
+
+  } # if not querytoupdate
 
   # check annotation parameters
   if (annotation.text != "" &
@@ -210,10 +217,11 @@ ctrLoadQueryIntoDb <- function(
   ## handle if we need to rerun previous query
 
   # check if parameters are consistent
-  if ((querytoupdate > 0) && (queryterm != "")) {
-    warning("'queryterm' and 'querytoupdate' specified,",
-            " continuing only with new query",
-            immediate. = TRUE)
+  if ((querytoupdate > 0) &&
+      (!is.atomic(queryterm) || queryterm != "")) {
+    stop("'queryterm' and 'querytoupdate' specified,",
+         " which is inconsistent, cannot continue.",
+         call. = FALSE)
   }
 
   # rewrite parameters for running as update
@@ -222,11 +230,15 @@ ctrLoadQueryIntoDb <- function(
        (queryterm == "")) {
     #
     rerunparameters <- ctrRerunQuery(
-      querytoupdate = querytoupdate, forcetoupdate = forcetoupdate,
-      con = con, verbose = verbose,
+      querytoupdate = querytoupdate,
+      forcetoupdate = forcetoupdate,
+      con = con,
+      verbose = verbose,
       queryupdateterm = queryupdateterm)
     #
-    # check rerunparameters and possibly stop function without error
+    # check rerunparameters and stop ctrLoadQueryIntoDb
+    # without error if rerunparameters cannot be used for
+    # running and loading a query
     if (!is.data.frame(rerunparameters)) {
       return(invisible(rerunparameters))
     }
@@ -346,14 +358,37 @@ ctrRerunQuery <- function(
          "'dbQueryHistory()'.", call. = FALSE)
   }
 
-  # set values retrieved
-  rerunquery <- rerunquery[querytoupdate, ]
-  queryterm  <- rerunquery$`query-term`
-  register   <- rerunquery$`query-register`
+  # set query values as retrieved
+  queryterm  <- rerunquery[querytoupdate, "query-term"]
+  register   <- rerunquery[querytoupdate, "query-register"]
+
+  # when was this query last run?
+  #
+  # - dates of all the same queries
+  initialday <- rerunquery[["query-timestamp"]][
+    rerunquery[querytoupdate, "query-term"] ==
+      rerunquery[["query-term"]] ]
+  #
+  # - remove time, keep date
   initialday <- substr(
-    rerunquery$`query-timestamp`,
+    initialday,
     start = 1,
     stop = 10)
+  #
+  # - change to Date class and get
+  #   index of latest (max) date,
+  initialdayindex <- try(
+    which.max(
+      as.Date(initialday,
+              format = "%Y-%m-%d")))
+  if (!inherits(initialdayindex, "try-error")) {
+    # - keep initial (reference) date of this query
+    initialday <- initialday[initialdayindex]
+  } else {
+    # - fallback to number (querytoupdate)
+    #   as specified by user
+    initialday <- rerunquery[querytoupdate, "query-timestamp"]
+  }
 
   # secondary check parameters
   if (queryterm == "") {
@@ -438,14 +473,15 @@ ctrRerunQuery <- function(
         # obtain rss feed with list of recently updated trials
         rssquery <- utils::URLencode(
           paste0("https://www.clinicaltrialsregister.eu/ctr-search/",
-                 "rest/feed/bydates?query=", queryterm))
+                 "rest/feed/bydates?", queryterm))
         #
         if (verbose) {
           message("DEBUG (rss url): ", rssquery)
         }
         #
         resultsRss <- httr::content(
-          httr::GET(url = rssquery),
+          httr::GET(url = rssquery,
+                    httr::config(ssl_verifypeer = FALSE)),
           as = "text")
 
         if (verbose) {
@@ -469,8 +505,11 @@ ctrRerunQuery <- function(
           resultsRssTrials, FUN = function(x)
             substr(resultsRss, x + 15, x + 28))
         #
-        resultsRssTrials <- paste(
-          resultsRssTrials, collapse = "+OR+")
+        resultsRssTrials <- paste0(
+          "query=",
+          paste(
+            resultsRssTrials,
+            collapse = "+OR+"))
         #
         if (verbose) {
           message("DEBUG (rss trials): ", resultsRssTrials)
@@ -873,9 +912,8 @@ ctrLoadQueryIntoDbCtgov <- function(
   }
   #
   if (as.integer(tmp) > 10000L) {
-    message("These are ", tmp, " (more than 10000) trials, this may be ",
-            "unintended. Alternatively, split into separate queries.")
-    return(invisible(list(n = tmp, ids = "")))
+    stop("These are ", tmp, " (more than 10000) trials, this may be ",
+         "unintended. Alternatively, split into separate queries.")
   }
 
   # inform user
@@ -1059,20 +1097,8 @@ ctrLoadQueryIntoDbEuctr <- function(
   queryupdateterm) {
 
   ## sanity correction for naked terms
-  # test cases:
-  # queryterm = c("cancer&age=adult",                      # add query=
-  #               "cancer",                                # add query=
-  #               "cancer+AND breast&age=adult&phase=0",   # add query=
-  #               "cancer&age=adult&phase=0",              # add query=
-  #               "cancer&age=adult&phase=1&results=true", # add query=
-  #               "&age=adult&phase=1&abc=xyz&cancer&results=true", # insert query=
-  #               "age=adult&cancer",                      # insert query=
-  #               "2010-024264-18",                        # add query=
-  #               "NCT1234567890",                         # add query=
-  #               "teratoid&country=dk",                   # add query=
-  #               "term=cancer&age=adult",                 # keep
-  #               "age=adult&term=cancer")                 # keep
-
+  # otherwise all trials would be retrieved
+  # see also ctrGetQueryUrlFromBrowser
   queryterm <- sub(
     "(^|&|[&]?\\w+=\\w+&)([ a-zA-Z0-9+-]+)($|&\\w+=\\w+)",
     "\\1query=\\2\\3",
@@ -1097,9 +1123,14 @@ ctrLoadQueryIntoDbEuctr <- function(
     "&mode=current_page&format=text&dContent=",
     "summary&number=current_page&submit-download=Download")
 
+  # as workaround certificate problems of EUCTR
+  # httr and curl code is made to not verify peers
+
   # check if host is available
   if ("try-error" %in% class(try(httr::headers(
-    httr::HEAD(url = utils::URLencode(queryEuRoot))), silent = TRUE))) {
+    httr::HEAD(
+      url = utils::URLencode(queryEuRoot),
+      httr::config(ssl_verifypeer = FALSE))), silent = TRUE))) {
     stop("Host ", queryEuRoot, " does not respond, cannot continue.",
          call. = FALSE)
   }
@@ -1107,7 +1138,9 @@ ctrLoadQueryIntoDbEuctr <- function(
   # get first result page
   q <- utils::URLencode(paste0(queryEuRoot, queryEuType1, queryterm))
   if (verbose) message("DEBUG: queryterm is ", q)
-  resultsEuPages <- httr::content(httr::GET(url = q), as = "text")
+  resultsEuPages <- httr::content(
+    httr::GET(url = q,
+              httr::config(ssl_verifypeer = FALSE)), as = "text")
 
   # get number of trials identified by query
   resultsEuNumTrials <- sub(
@@ -1117,6 +1150,14 @@ ctrLoadQueryIntoDbEuctr <- function(
   #
   resultsEuNumTrials <- suppressWarnings(
     as.numeric(gsub("[,.]", "", resultsEuNumTrials)))
+  #
+  # register contains 35000+ trials, which would all
+  # be identified if queryterm is just anything
+  if (resultsEuNumTrials > 30000) {
+    stop("ctrLoadQueryIntoDb()): unexpectedly found more than ",
+         "30000 trials; revise your 'queryterm': ", queryterm,
+         call. = FALSE)
+  }
 
   # calculate number of results pages
   resultsEuNumPages  <- ceiling(resultsEuNumTrials / 20)
@@ -1233,7 +1274,7 @@ ctrLoadQueryIntoDbEuctr <- function(
           pool = pool,
           data = fp[x],
           handle = curl::new_handle(
-            ssl_verifypeer = TRUE # NOTE this speeds up?!
+            ssl_verifypeer = FALSE
           )
         ))
 
@@ -1370,7 +1411,8 @@ ctrLoadQueryIntoDbEuctr <- function(
 
     ## parallel download and unzipping into temporary directory
 
-    # "https://www.clinicaltrialsregister.eu/ctr-search/rest/download/result/zip/xml/..."
+    # "https://www.clinicaltrialsregister.eu/ctr-search/rest/
+    # download/result/zip/xml/..."
     # first version:  "2007-000371-42/1"
     # second version: "2007-000371-42/2"
     # latest version: "2007-000371-42"
@@ -1427,7 +1469,7 @@ ctrLoadQueryIntoDbEuctr <- function(
             pool = pool,
             data = fp[x],
             handle = curl::new_handle(
-              ssl_verifypeer = TRUE # NOTE this speeds up?!
+              ssl_verifypeer = FALSE
             )
           ))
 
@@ -1618,8 +1660,8 @@ ctrLoadQueryIntoDbEuctr <- function(
             curl::multi_add(
               handle = curl::new_handle(
                 url = urls[x],
-                ssl_verifypeer = TRUE, # NOTE keep to speed up?!
-                range = "0-22999",     # NOTE only top part of page
+                ssl_verifypeer = FALSE,
+                range = "0-22999", # NOTE only top part of page
                 accept_encoding = "identity"
               ),
               done = done,
@@ -1680,8 +1722,8 @@ ctrLoadQueryIntoDbEuctr <- function(
             gsub("[ ]+", " ",
             gsub("[\n\r]", "",
             gsub("<[a-z/]+>", "",
-             sub(".+Version creation reason.*?<td class=\"valueColumn\">(.+?)</td>.+", "\\1",
-                 ifelse(grepl("Version creation reason", x), x, ""))
+             sub(".+Version creation reason.*?<td class=\"valueColumn\">(.+?)</td>.+",
+                 "\\1", ifelse(grepl("Version creation reason", x), x, ""))
             ))))
         )
 
