@@ -1,8 +1,8 @@
 Package: ctrdata
 Type: Package
 Title: Retrieve and Analyze Clinical Trials in Public Registers
-Version: 1.3.1
-Date: 2020-08-01
+Version: 1.3.2
+Date: 2020-10-03
 Imports: jsonlite, httr, curl, clipr, xml2, rvest, nodbi (>= 0.4)
 SystemRequirements: sed, php, cat, perl
 URL: https://github.com/rfhb/ctrdata
@@ -29,8 +29,8 @@ Encoding: UTF-8
 Authors@R: person(given = "Ralf", family = "Herold", role = c("aut", "cre"),
         email = "ralf.herold@mailbox.org", comment = c(ORCID =
         "0000-0002-8148-6748"))
-Packaged: 2020-08-01 17:25:15 UTC; ralfherold
+Packaged: 2020-10-04 14:20:12 UTC; ralfherold
 Author: Ralf Herold [aut, cre] (<https://orcid.org/0000-0002-8148-6748>)
 Maintainer: Ralf Herold <ralf.herold@mailbox.org>
 Repository: CRAN
-Date/Publication: 2020-08-02 01:10:12 UTC
+Date/Publication: 2020-10-05 07:20:02 UTC

@@ -1,13 +1,13 @@
-3687cd64f553a28ade6cc476ab69ceb4 *DESCRIPTION
+a15d450478d8d3c4e24bc6de53e8b386 *DESCRIPTION
 91476cae4454a3b842c2558895a4cbf2 *LICENSE
 750e2fd1cddd4aa32dd757d58a30493e *NAMESPACE
-707ec436b36048a16d428ac4d176f9ef *NEWS.md
+a49a92411a6408c1e8bb1e9ecd666d6f *NEWS.md
 54cb655b69abedf5e67e57e56b300f08 *R/ctrdata.R
-8f40c160bc2898360a63f0a571570bab *R/main.R
+0a39dda37b4255b9dae015ba8ba96336 *R/main.R
 a96a9f54df208b873097b1bc7f293ffd *R/onload.R
 811786965261bf93aa6168703fd50ea1 *R/utils.R
-3695fa55aaaa08662bb4afa6ec13f3eb *README.md
-c10cd35ee0f0dac2043ec540abe8ba8f *build/vignette.rds
+0490948dafd8b3caeda1ef12a0e12a97 *README.md
+f4d3daaef2d088d5edbcdc8e82749447 *build/vignette.rds
 65aab6436efe8708b820841bde9a50de *exec/euctr2json.sh
 6d69819956518d574047994aaef79361 *exec/xml2json.php
 292cc294abc457c4fca879ff6c12c40d *exec/xml2json_euctrresults.php
@@ -21,7 +21,7 @@ b0ea4bc5796ff1d13185c99e913cd1fb *inst/doc/ctrdata_get_started.pdf.asis
 93ffbc9a0aa87f2cc09eb73052028e5b *inst/image/README-ctrdata_results_neuroblastoma.png
 1afe139844a7489e3cbae628d5f93b6d *inst/image/README-ctrdata_sequence_diagram.jpeg
 9e25bce9cc0a3bb395831b8c99e6b4e9 *inst/tinytest/ctrdata_ctgov.R
-076130990337dc5212542ce5fe297ba7 *inst/tinytest/ctrdata_euctr.R
+22049a95639d18ca93ee9bc013b4e1e2 *inst/tinytest/ctrdata_euctr.R
 a5180b55468297e065a4ed0f8c2f1803 *inst/tinytest/setup_ctrdata.R
 0deb9c5f2de40b729ca77d23ddb221ef *inst/tinytest/test_ctrdata_ctrfindactivesubstance.R
 bf3b385713fb926590137b7b2199c9a1 *inst/tinytest/test_ctrdata_mongo_local_ctgov.R
