@@ -63,31 +63,29 @@
 #' \code{TRUE}; default is \code{FALSE}.
 #'
 #' @return A list with elements "n" (the number of trials that
-#' were newly imported or updated with this function call) and
-#' "ids" (a vector of the _id[s] of these trials), with
-#' attributes (database connection details and a data frame of
+#' were newly imported or updated with this function call),
+#' "ids" (a vector of the _id[s] of these trials) and the
+#' "queryterm" used, with several attributes set
+#' (database connection details and a data frame of
 #' the query history in this database).
 #'
 #' @examples
+#' \dontrun{
+#' db <- nodbi::src_sqlite(
+#'   collection = "test"
+#' )
 #' # Retrieve protocol-related information on a
 #' # single trial identified by EudraCT number
-#' \dontrun{
-#' db <- nodbi::src_sqlite(collection = "test")
 #' ctrLoadQueryIntoDb(
-#'       queryterm = "2013-001291-38", con = db)
-#' }
+#'   queryterm = "2013-001291-38", con = db
+#' )
 #' # Retrieve protocol-related information on
 #' # ongoing interventional cancer trials in children
-#' \dontrun{
-#' db <- nodbi::src_sqlite(collection = "test")
 #' ctrLoadQueryIntoDb(
-#'      queryterm = "cancer&recr=Open&type=Intr&age=0",
-#'      register = "CTGOV",
-#'      con = db)
-#' ctrLoadQueryIntoDb(
-#'      queryterm = "NCT02239861",
-#'      register = "CTGOV",
-#'      con = db)
+#'   queryterm = "cancer&recr=Open&type=Intr&age=0",
+#'   register = "CTGOV",
+#'   con = db
+#' )
 #' }
 #'
 #' @export
@@ -270,6 +268,9 @@ ctrLoadQueryIntoDb <- function(
     "CTGOV" = do.call(ctrLoadQueryIntoDbCtgov, params),
     "EUCTR" = do.call(ctrLoadQueryIntoDbEuctr, params)
   )
+
+  # add query used for function
+  imported <- c(imported, "queryterm" = querytermoriginal)
 
   ## finalise
 
@@ -571,6 +572,8 @@ dbCTRLoadJSONFiles <- function(dir, con, verbose) {
 
   # initialise counters
   retimp <- NULL
+  fc <- length(tempFiles)
+  ic <- 0
 
   # iterate over files
   for (tempFile in tempFiles) {
@@ -588,18 +591,25 @@ dbCTRLoadJSONFiles <- function(dir, con, verbose) {
     # readLines produces: \"_id\": \"2007-000371-42-FR\"
     ids <- sub(".*_id\":[ ]*\"(.*?)\".*", "\\1", tmplines)
 
-    # ids should always be found
+    # ids should always be found and
+    # later, one id will be assumed
+    # to be on one line each
     if (all(ids == "")) {
       stop("No _id(s) detected in JSON file ",
            tempFile, call. = FALSE)
     }
 
+    # initialise counter
+    lc <- length(ids)
+    ic <- ic + 1
+
     # check if in database, create or update
     tmpinsert <- lapply(seq_along(ids), function(i) {
 
       # inform user
-      if (!(i %% 100)) message(i, " ", appendLF = FALSE)
-      if (verbose)     message(i, " ", appendLF = FALSE)
+      message("JSON line #: ", i, " / ", lc,
+              ", file #: ", ic, " / ", fc, "\r",
+              appendLF = FALSE)
 
       # check validity
       tmpvalidate <- jsonlite::validate(tmplines[i])
@@ -630,8 +640,8 @@ dbCTRLoadJSONFiles <- function(dir, con, verbose) {
                nodbi::docdb_update(src = con,
                                    key = con$collection,
                                    value = value)
-        )},
-        silent = TRUE)
+        )
+      }, silent = TRUE)
 
       # return to sapply
       if ("try-error" %in% class(tmp)) {
@@ -691,7 +701,7 @@ dbCTRAnnotateQueryRecords <- function(
   verbose){
 
   # debug
-  if (verbose) message("* Running dbCTRAnnotateQueryRecords ...")
+  if (verbose) message("* Running dbCTRAnnotateQueryRecords...")
   if (verbose) message(recordnumbers)
   if (verbose) message(annotations)
   if (verbose) message(annotation.mode)
@@ -756,7 +766,7 @@ dbCTRUpdateQueryHistory <- function(
   verbose){
 
   # debug
-  if (verbose) message("Running dbCTRUpdateQueryHistory ...")
+  if (verbose) message("Running dbCTRUpdateQueryHistory...")
 
   # retrieve existing history data
   hist <- suppressMessages(
@@ -1015,7 +1025,7 @@ ctrLoadQueryIntoDbCtgov <- function(
   } # if windows
 
   # run conversion of downloaded xml to json
-  message("\n(2/3) Converting to JSON ...")
+  message("\n(2/3) Converting to JSON...")
   if (verbose) message("DEBUG: ", xml2json)
   imported <- system(xml2json, intern = TRUE)
 
@@ -1042,7 +1052,7 @@ ctrLoadQueryIntoDbCtgov <- function(
   } # if annotation.text
 
   ## run import
-  message("(3/3) Importing JSON records into database ...")
+  message("(3/3) Importing JSON records into database...")
   if (verbose) message("DEBUG: ", tempDir)
   imported <- dbCTRLoadJSONFiles(dir = tempDir,
                                  con = con,
@@ -1107,8 +1117,7 @@ ctrLoadQueryIntoDbEuctr <- function(
     queryterm)
 
   # inform user
-  message("* Checking trials in EUCTR:",
-          appendLF = TRUE)
+  message("* Checking trials in EUCTR:", appendLF = FALSE)
 
   # create empty temporary directory on localhost for
   # download from register into temporary directy
@@ -1225,82 +1234,192 @@ ctrLoadQueryIntoDbEuctr <- function(
   #
   message("done.")
 
-  # calculate batches to get data from all results pages
-  resultsNumBatches <- resultsEuNumPages %/% parallelretrievals
-  resultsNumModulo  <- resultsEuNumPages %%  parallelretrievals
+  ## download all text files from pages
+
+  # inform user
   message("(1/3) Downloading trials (max. ",
-          parallelretrievals, " page[s] in parallel):")
+          parallelretrievals, " page[s] in parallel)...")
+
+  # prepare download and saving
+
+  # get cookies
+  cf <- tempfile(
+    pattern = "cookies_",
+    fileext = ".txt"
+  )
+  h <- curl::new_handle(
+    ssl_verifypeer = FALSE,
+    useragent = "",
+    accept_encoding = "gzip,deflate,zstd,br",
+    cookiejar = cf,
+    cookiefile = cf)
+  tmp <- curl::curl_fetch_memory(
+    url = paste0(queryEuRoot, queryEuType3,
+                 "2008-003606-33", "&page=1", queryEuPost),
+    handle = h)
+  # curl::handle_cookies(h)
+  # inform user about capabilities
+  stime <- curl::handle_data(h)[["times"]][["total"]]
+  sgzip <- curl::parse_headers(tmp$headers)
+  sgzip <- sgzip[grepl("Transfer-Encoding", sgzip)]
+  sgzip <- grepl("gzip|deflate", sgzip)
+  if (length(sgzip) && !sgzip) {
+    message("Note: register server cannot compress data, ",
+    "transfer takes longer, about ", round(stime),
+    "s per page")
+  }
+
+  # create pool for concurrent connections
+  pool <- curl::new_pool(
+    host_con = parallelretrievals)
 
   # progress indicator function
-  cb <- function(req){message(". ", appendLF = FALSE)}
+  pc <- 0
+  cb <- function(req){
+    pc <<- pc + 1
+    message("Pages #: ", pc, "\r", appendLF = FALSE)
+    # Note: Tranfer-Encoding does not provide gzip
+    # print(curl::parse_headers(req$headers))
+    # [1] "HTTP/1.1 200 OK"
+    # [2] "Date: Sun, 11 Oct 2020 20:09:10 GMT"
+    # [3] "Server: "
+    # [4] "Content-Disposition: attachment; filename = trials-full.txt"
+    # [5] "Transfer-Encoding: chunked"
+    # [6] "Content-Type: application/octet-stream"
+    # [7] "Content-Language: en"
+  }
 
-  # iterate over batches of results pages
-  for (i in 1:(resultsNumBatches +
-               ifelse(resultsNumModulo > 0, 1, 0))) {
+  # generate vector with URLs of all pages
+  urls <- unlist(lapply(
+    paste0(queryEuRoot, queryEuType3,
+           queryterm, "&page=", 1:resultsEuNumPages, queryEuPost),
+    utils::URLencode))
+  # print(urls)
 
-    # parallel requests by using startpage:stoppage
-    startpage <- (i - 1) * parallelretrievals + 1
-    stoppage  <- ifelse(i > resultsNumBatches,
-                        startpage + resultsNumModulo,
-                        startpage + parallelretrievals) - 1
-    message(" p ", startpage, "-", stoppage, " ",
-            appendLF = FALSE)
+  # generate vector with file names for saving pages
+  fp <- paste0(
+    tempDir, "/euctr-trials-page_",
+    formatC(1:resultsEuNumPages,
+            digits = 0,
+            width = nchar(resultsEuNumPages),
+            flag = 0),
+    ".txt")
 
-    # download all text files from pages
-    # in current batch into a variable
+  # add URLs and file names into pool
+  tmp <- lapply(
+    # alternate sequence
+    sample(seq_along(urls),
+           size = length(urls),
+           replace = FALSE,
+           prob = NULL),
+    function(x)
+      curl::curl_fetch_multi(
+        url = urls[x],
+        done = cb,
+        pool = pool,
+        data = fp[x],
+        handle = curl::new_handle(
+          ssl_verifypeer = FALSE,
+          useragent = "",
+          accept_encoding = "deflate, gzip",
+          cookiejar = cf,
+          cookiefile = cf
+        )
+      )
+  )
 
-    # prepare download and saving
-    pool <- curl::new_pool(
-      total_con = parallelretrievals,
-      host_con = parallelretrievals)
-    #
-    urls <- unlist(lapply(
-      paste0(queryEuRoot, queryEuType3,
-             queryterm, "&page=", startpage:stoppage, queryEuPost),
-      utils::URLencode))
-    #
-    fp <- paste0(
-      tempDir, "/euctr-trials-page_",
-      formatC(startpage:stoppage,
-              digits = 0,
-              width = nchar(resultsEuNumPages),
-              flag = 0),
-      ".txt")
-    #
-    tmp <- lapply(
-      seq_along(urls),
-      function(x)
-        curl::curl_fetch_multi(
-          url = urls[x],
-          done = cb,
-          pool = pool,
-          data = fp[x],
-          handle = curl::new_handle(
-            ssl_verifypeer = FALSE
-          )
-        ))
+  # do download and saving
+  tmp <- curl::multi_run(
+    pool = pool
+  )
 
-    # do download and saving
-    tmp <- curl::multi_run(
-      pool = pool,
-      poll = length(urls))
+  # check plausibility
+  if (class(tmp) == "try-error") {
+    stop("Download from EUCTR failed; last error: ",
+         class(tmp), call. = FALSE)
+  }
+  if (tmp[["success"]] != resultsEuNumPages) {
+    stop("Download from EUCTR failed; incorrect number of records.",
+         call. = FALSE)
+  }
 
-    # check plausibility
-    if (class(tmp) == "try-error") {
-      stop("Download from EUCTR failed; last error: ",
-           class(tmp), call. = FALSE)
-    }
-    #
-    # if (length(tmp) != (stoppage - startpage + 1))
-    if (tmp[["success"]] != (stoppage - startpage + 1)) {
-      stop("Download from EUCTR failed; incorrect number of records.",
-           call. = FALSE)
-    }
 
-    # clean up large object
-    rm(tmp)
-
-  } # for batch
+  # # calculate batches to get data from all results pages
+  # resultsNumBatches <- resultsEuNumPages %/% parallelretrievals
+  # resultsNumModulo  <- resultsEuNumPages %%  parallelretrievals
+  # message("(1/3) Downloading trials (max. ",
+  #         parallelretrievals, " page[s] in parallel):")
+  #
+  # # progress indicator function
+  # cb <- function(req){message(". ", appendLF = FALSE)}
+  #
+  # # iterate over batches of results pages
+  # for (i in 1:(resultsNumBatches +
+  #              ifelse(resultsNumModulo > 0, 1, 0))) {
+  #
+  #   # parallel requests by using startpage:stoppage
+  #   startpage <- (i - 1) * parallelretrievals + 1
+  #   stoppage  <- ifelse(i > resultsNumBatches,
+  #                       startpage + resultsNumModulo,
+  #                       startpage + parallelretrievals) - 1
+  #   message(" p ", startpage, "-", stoppage, " ",
+  #           appendLF = FALSE)
+  #
+  #   # download all text files from pages
+  #   # in current batch into a variable
+  #
+  #   # prepare download and saving
+  #   pool <- curl::new_pool(
+  #     total_con = parallelretrievals,
+  #     host_con = parallelretrievals)
+  #   #
+  #   urls <- unlist(lapply(
+  #     paste0(queryEuRoot, queryEuType3,
+  #            queryterm, "&page=", startpage:stoppage, queryEuPost),
+  #     utils::URLencode))
+  #   #
+  #   fp <- paste0(
+  #     tempDir, "/euctr-trials-page_",
+  #     formatC(startpage:stoppage,
+  #             digits = 0,
+  #             width = nchar(resultsEuNumPages),
+  #             flag = 0),
+  #     ".txt")
+  #   #
+  #   tmp <- lapply(
+  #     seq_along(urls),
+  #     function(x)
+  #       curl::curl_fetch_multi(
+  #         url = urls[x],
+  #         done = cb,
+  #         pool = pool,
+  #         data = fp[x],
+  #         handle = curl::new_handle(
+  #           ssl_verifypeer = FALSE
+  #         )
+  #       ))
+  #
+  #   # do download and saving
+  #   tmp <- curl::multi_run(
+  #     pool = pool,
+  #     poll = length(urls))
+  #
+  #   # check plausibility
+  #   if (class(tmp) == "try-error") {
+  #     stop("Download from EUCTR failed; last error: ",
+  #          class(tmp), call. = FALSE)
+  #   }
+  #   #
+  #   # if (length(tmp) != (stoppage - startpage + 1))
+  #   if (tmp[["success"]] != (stoppage - startpage + 1)) {
+  #     stop("Download from EUCTR failed; incorrect number of records.",
+  #          call. = FALSE)
+  #   }
+  #
+  #   # clean up large object
+  #   rm(tmp)
+  #
+  # } # for batch
 
   ## compose commands: for external script on
   # all files in temporary directory and for import
@@ -1360,12 +1479,12 @@ ctrLoadQueryIntoDbEuctr <- function(
 
   # run conversion of text files saved
   # into file system to json file
-  message("\n(2/3) Converting to JSON ...")
+  message("\n(2/3) Converting to JSON...")
   if (verbose) message("DEBUG: ", euctr2json)
   imported <- system(euctr2json, intern = TRUE)
 
   # run import into mongo from json files
-  message("(3/3) Importing JSON records into database ...")
+  message("(3/3) Importing JSON records into database...")
   if (verbose) message("DEBUG: ", tempDir)
   imported <- dbCTRLoadJSONFiles(dir = tempDir,
                                  con = con,
@@ -1556,12 +1675,12 @@ ctrLoadQueryIntoDbEuctr <- function(
     } # if windows
 
     # run conversion of downloaded xml to json
-    message("\n(2/4) Converting to JSON ...")
+    message("\n(2/4) Converting to JSON...")
     if (verbose) message("DEBUG: ", xml2json)
     importedresults <- system(xml2json, intern = TRUE)
 
     # iterate over batches of results files
-    message("(3/4) Importing JSON into database ...")
+    message("(3/4) Importing JSON into database...")
     importedresults <- NULL
     for (i in 1:(resultsNumBatches +
                  ifelse(resultsNumModulo > 0, 1, 0))) {
@@ -1632,7 +1751,7 @@ ctrLoadQueryIntoDbEuctr <- function(
       # about amendment to the study, as presented at the bottom
       # of the webpage for the respective trial results
       message("(4/4) Retrieving results history and importing ",
-              "into database ...", appendLF = FALSE)
+              "into database...", appendLF = FALSE)
       for (i in 1:(resultsNumBatches +
                    ifelse(resultsNumModulo > 0, 1, 0))) {
 
