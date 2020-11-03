@@ -1,3 +1,8 @@
+# ctrdata 1.4.1
+ - 2020-11-03
+ - reset row names on data frames returned by functions
+ - update curl parameters when accessing EUCTR
+
 # ctrdata 1.4
  - 2020-10-17
  - new: easy access to variables with

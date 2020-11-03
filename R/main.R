@@ -481,8 +481,7 @@ ctrRerunQuery <- function(
         }
         #
         resultsRss <- httr::content(
-          httr::GET(url = rssquery,
-                    httr::config(ssl_verifypeer = FALSE)),
+          httr::GET(url = rssquery),
           as = "text")
 
         if (verbose) {
@@ -571,6 +570,9 @@ dbCTRLoadJSONFiles <- function(dir, con, verbose) {
                    full.names = TRUE)
 
   # initialise counters
+  # TODO preferably preallocate
+  # retimp but at this stage, its
+  # size / length is not yet known
   retimp <- NULL
   fc <- length(tempFiles)
   ic <- 0
@@ -658,7 +660,7 @@ dbCTRLoadJSONFiles <- function(dir, con, verbose) {
 
     }) # sapply
 
-    # increment counters
+    # append to retimp
     retimp <- c(retimp, tmpinsert)
 
     # clean up
@@ -1134,14 +1136,12 @@ ctrLoadQueryIntoDbEuctr <- function(
     "&mode=current_page&format=text&dContent=",
     "summary&number=current_page&submit-download=Download")
 
-  # as workaround certificate problems of EUCTR
-  # httr and curl code is made to not verify peers
-
   # check if host is available
-  if ("try-error" %in% class(try(httr::headers(
-    httr::HEAD(
-      url = utils::URLencode(queryEuRoot),
-      httr::config(ssl_verifypeer = FALSE))), silent = TRUE))) {
+  if ("try-error" %in% class(try(
+    httr::headers(
+      httr::HEAD(
+        url = utils::URLencode(queryEuRoot))),
+    silent = TRUE))) {
     stop("Host ", queryEuRoot, " does not respond, cannot continue.",
          call. = FALSE)
   }
@@ -1150,8 +1150,7 @@ ctrLoadQueryIntoDbEuctr <- function(
   q <- utils::URLencode(paste0(queryEuRoot, queryEuType1, queryterm))
   if (verbose) message("DEBUG: queryterm is ", q)
   resultsEuPages <- httr::content(
-    httr::GET(url = q,
-              httr::config(ssl_verifypeer = FALSE)), as = "text")
+    httr::GET(url = q), as = "text")
 
   # get number of trials identified by query
   resultsEuNumTrials <- sub(
@@ -1248,14 +1247,13 @@ ctrLoadQueryIntoDbEuctr <- function(
     fileext = ".txt"
   )
   h <- curl::new_handle(
-    ssl_verifypeer = FALSE,
     useragent = "",
     accept_encoding = "gzip,deflate,zstd,br",
     cookiejar = cf,
     cookiefile = cf)
   tmp <- curl::curl_fetch_memory(
     url = paste0(queryEuRoot, queryEuType3,
-                 "2008-003606-33", "&page=1", queryEuPost),
+                 "query=2008-003606-33", "&page=1", queryEuPost),
     handle = h)
   # curl::handle_cookies(h)
   # inform user about capabilities
@@ -1265,8 +1263,8 @@ ctrLoadQueryIntoDbEuctr <- function(
   sgzip <- grepl("gzip|deflate", sgzip)
   if (length(sgzip) && !sgzip) {
     message("Note: register server cannot compress data, ",
-    "transfer takes longer, about ", round(stime),
-    "s per page")
+    "transfer takes longer, about ", signif(stime, digits = 1),
+    "s per trial")
   }
 
   # create pool for concurrent connections
@@ -1319,7 +1317,6 @@ ctrLoadQueryIntoDbEuctr <- function(
         pool = pool,
         data = fp[x],
         handle = curl::new_handle(
-          ssl_verifypeer = FALSE,
           useragent = "",
           accept_encoding = "deflate, gzip",
           cookiejar = cf,
@@ -1342,84 +1339,6 @@ ctrLoadQueryIntoDbEuctr <- function(
     stop("Download from EUCTR failed; incorrect number of records.",
          call. = FALSE)
   }
-
-
-  # # calculate batches to get data from all results pages
-  # resultsNumBatches <- resultsEuNumPages %/% parallelretrievals
-  # resultsNumModulo  <- resultsEuNumPages %%  parallelretrievals
-  # message("(1/3) Downloading trials (max. ",
-  #         parallelretrievals, " page[s] in parallel):")
-  #
-  # # progress indicator function
-  # cb <- function(req){message(". ", appendLF = FALSE)}
-  #
-  # # iterate over batches of results pages
-  # for (i in 1:(resultsNumBatches +
-  #              ifelse(resultsNumModulo > 0, 1, 0))) {
-  #
-  #   # parallel requests by using startpage:stoppage
-  #   startpage <- (i - 1) * parallelretrievals + 1
-  #   stoppage  <- ifelse(i > resultsNumBatches,
-  #                       startpage + resultsNumModulo,
-  #                       startpage + parallelretrievals) - 1
-  #   message(" p ", startpage, "-", stoppage, " ",
-  #           appendLF = FALSE)
-  #
-  #   # download all text files from pages
-  #   # in current batch into a variable
-  #
-  #   # prepare download and saving
-  #   pool <- curl::new_pool(
-  #     total_con = parallelretrievals,
-  #     host_con = parallelretrievals)
-  #   #
-  #   urls <- unlist(lapply(
-  #     paste0(queryEuRoot, queryEuType3,
-  #            queryterm, "&page=", startpage:stoppage, queryEuPost),
-  #     utils::URLencode))
-  #   #
-  #   fp <- paste0(
-  #     tempDir, "/euctr-trials-page_",
-  #     formatC(startpage:stoppage,
-  #             digits = 0,
-  #             width = nchar(resultsEuNumPages),
-  #             flag = 0),
-  #     ".txt")
-  #   #
-  #   tmp <- lapply(
-  #     seq_along(urls),
-  #     function(x)
-  #       curl::curl_fetch_multi(
-  #         url = urls[x],
-  #         done = cb,
-  #         pool = pool,
-  #         data = fp[x],
-  #         handle = curl::new_handle(
-  #           ssl_verifypeer = FALSE
-  #         )
-  #       ))
-  #
-  #   # do download and saving
-  #   tmp <- curl::multi_run(
-  #     pool = pool,
-  #     poll = length(urls))
-  #
-  #   # check plausibility
-  #   if (class(tmp) == "try-error") {
-  #     stop("Download from EUCTR failed; last error: ",
-  #          class(tmp), call. = FALSE)
-  #   }
-  #   #
-  #   # if (length(tmp) != (stoppage - startpage + 1))
-  #   if (tmp[["success"]] != (stoppage - startpage + 1)) {
-  #     stop("Download from EUCTR failed; incorrect number of records.",
-  #          call. = FALSE)
-  #   }
-  #
-  #   # clean up large object
-  #   rm(tmp)
-  #
-  # } # for batch
 
   ## compose commands: for external script on
   # all files in temporary directory and for import
@@ -1590,9 +1509,7 @@ ctrLoadQueryIntoDbEuctr <- function(
             done = cb,
             pool = pool,
             data = fp[x],
-            handle = curl::new_handle(
-              ssl_verifypeer = FALSE
-            )
+            handle = curl::new_handle()
           ))
 
       # do download and save
@@ -1681,6 +1598,9 @@ ctrLoadQueryIntoDbEuctr <- function(
 
     # iterate over batches of results files
     message("(3/4) Importing JSON into database...")
+    # TODO preferably, importedresults
+    # would be pre-allocated, but its
+    # size is not known at this stage
     importedresults <- NULL
     for (i in 1:(resultsNumBatches +
                  ifelse(resultsNumModulo > 0, 1, 0))) {
@@ -1739,7 +1659,7 @@ ctrLoadQueryIntoDbEuctr <- function(
 
         }) # import
 
-      # accumulate
+      # append batch to number of results
       importedresults <- c(importedresults, batchresults)
 
     } # for batch
@@ -1784,7 +1704,6 @@ ctrLoadQueryIntoDbEuctr <- function(
             curl::multi_add(
               handle = curl::new_handle(
                 url = urls[x],
-                ssl_verifypeer = FALSE,
                 range = "0-22999", # NOTE only top part of page
                 accept_encoding = "identity"
               ),
@@ -1793,6 +1712,7 @@ ctrLoadQueryIntoDbEuctr <- function(
             ))
 
         # do download and save into batchresults
+        # TODO preferably retdat is pre-allocated
         retdat <- NULL
         tmp <- curl::multi_run(
           pool = pool,

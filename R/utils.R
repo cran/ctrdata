@@ -587,7 +587,7 @@ dbQueryHistory <- function(con,
 #'
 #' Note: Generating a list of fields with this function may take
 #' some time, and may involve running a mapreduce function is
-#' run on the server. If the user is not not authorised to run
+#' run on the server. If the user is not not authorized to run
 #' such a function on the (local or remote) server,
 #' random documents are sampled to generate a list of fields.
 #'
@@ -1498,6 +1498,7 @@ dfName2Value <- function(df, valuename = "",
   }
 
   # return
+  rownames(out) <- NULL
   return(out)
 
 } # end dfName2Value
@@ -1513,7 +1514,7 @@ dfName2Value <- function(df, valuename = "",
 #' and its analysis by number of the measure which
 #' has "Hazard Ratio" in its name).
 #'
-#' @param df Data frame with colums including
+#' @param df Data frame with columns including
 #'  the trial identifier (\code{_id}) and
 #'  one or more variables as obtained from
 #'  \link{dbGetFieldsIntoDf}
@@ -1643,7 +1644,7 @@ dfTrials2Long <- function(df) {
         message("Trial ", r, " / ", numtrials, "\r", appendLF = FALSE)
 
         # get trial
-        atrial = severaltrials[r, ]
+        atrial <- severaltrials[r, ]
 
         # iterate over columns
         cols <- lapply(
@@ -1692,11 +1693,9 @@ dfTrials2Long <- function(df) {
   }
 
   # output
-  return(
-    trials2long(
-      severaltrials = df
-    )
-  )
+  out <- trials2long(severaltrials = df)
+  rownames(out) <- NULL
+  return(out)
 
 } # end dfTrials2Long
 
@@ -1805,7 +1804,7 @@ dfListExtractKey <- function(
       function(ii) {
 
         data.frame(
-          name = gsub("[-0-9]*$", "", # trialing number
+          name = gsub("[-0-9]*$", "", # trailing number
                       gsub("[^a-zA-Z0-9_.-]", "",
                       paste0(list.key[[li]],
                              collapse = "."))),
@@ -1822,6 +1821,7 @@ dfListExtractKey <- function(
   }, simplify = FALSE)
 
   out <- do.call(rbind, out)
+  rownames(out) <- NULL
 
   # return
   out
@@ -1838,7 +1838,7 @@ dfListExtractKey <- function(
 #' obtain the names of columns of a data frame.
 #' @param levelslist A list with one slice each for a new value to be
 #' used for a vector of old values (optional).
-#' @param ... for deprecated varnames parameter (will be removed)
+#' @param ... for deprecated \code{varnames} parameter (will be removed)
 #'
 #' @return A vector of strings
 #'
@@ -2406,7 +2406,7 @@ setProxy <- function() {
 #'   installation in \code{c:\\cygwin}
 #' @param proxy Specify any proxy to be used for downloading via http, e.g.
 #'   "host_or_ip:port". \code{installCygwinWindowsDoInstall} may detect and use
-#'   the proxy configuration uset in MS Windows to use an automatic proxy
+#'   the proxy configuration used in MS Windows to use an automatic proxy
 #'   configuration script. Authenticated proxies are not supported at this time.
 #'
 installCygwinWindowsDoInstall <- function(
