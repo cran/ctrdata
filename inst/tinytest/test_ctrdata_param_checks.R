@@ -22,9 +22,9 @@ tf <- function() {
 
   # do tests
 
-  #### queryterm / ctrLoadQueryIntoDb ####
+  #### ctrLoadQueryIntoDb ####
 
-  tmpdf <- iris[1:5,]
+  tmpdf <- iris[1:5, ]
   names(tmpdf) <- paste0("query-", names(tmpdf))
   # test
   expect_error(
@@ -32,7 +32,7 @@ tf <- function() {
       ctrLoadQueryIntoDb(
         queryterm = tmpdf,
         con = dbc)),
-    "'url' and / or 'register' is not")
+    "'queryterm' has to be a non-empty string")
   # test
   expect_error(
     suppressWarnings(
@@ -50,7 +50,25 @@ tf <- function() {
         ctrLoadQueryIntoDb(
           queryterm = tmpdf,
           con = dbc))),
-    "'url' and / or 'register' is not")
+    "'register' has to be a non-empty string")
+
+  # test
+  expect_error(
+    suppressWarnings(
+      suppressMessages(
+        ctrLoadQueryIntoDb(
+          queryterm = iris,
+          con = dbc))),
+    "'queryterm' does not seem to result from ctr")
+
+  # test
+  expect_error(
+    suppressWarnings(
+      suppressMessages(
+        ctrLoadQueryIntoDb(
+          queryterm = "https\\#@",
+          con = dbc))),
+    "'queryterm'.*has unexpected characters")
 
   # test no history or no table with
   # the name specified in dbc
@@ -61,10 +79,8 @@ tf <- function() {
           querytoupdate = 1L,
           con = dbc))))
 
-  # test
-  # clipr::clear_clip()
-  # was not able to get testing to work
-  # on linux containers
+  # test clipr - was not able to get
+  # testing to work on linux containers
   if (.Platform$OS.type == "windows" ||
       grepl("darwin", sessionInfo()$platform,
             ignore.case = TRUE)) {
@@ -82,7 +98,7 @@ tf <- function() {
             ctrLoadQueryIntoDb(
               queryterm = "",
               con = dbc))),
-        "no clinical trial register search URL found")
+        "'queryterm' is not an non-empty string")
     }
   }
 
@@ -109,31 +125,40 @@ tf <- function() {
         querytoupdate = 1L,
         only.count = TRUE,
         con = dbc)),
-      "'queryterm' and 'querytoupdate' specified.*cannot continue")
-
+    "'queryterm' and 'querytoupdate' specified.*cannot continue")
 
   #### database ####
 
+  # test
+  expect_error(
+    ctrdata:::ctrDb(
+      con = NULL
+    ), "specify in parameter 'con' a database connection")
+
+  RSQLite::dbDisconnect(conn = dbc$con)
   dbc <- nodbi::src_sqlite()
+  # test
   expect_error(
     suppressWarnings(
       ctrLoadQueryIntoDb(
         queryterm = "someQueryForErrorTriggering",
         only.count = TRUE,
         con = dbc)),
-      "parameter 'collection' needs")
+    "parameter 'collection' needs")
 
-  RSQLite::dbDisconnect(conn = dbc$con)
-  dbc <- nodbi::src_sqlite(
-    collection = "inmemory")
-  RSQLite::dbDisconnect(conn = dbc$con)
-  expect_warning(
-    suppressMessages(
-      ctrLoadQueryIntoDb(
-        queryterm = "someQueryForErrorTriggering",
-        only.count = TRUE,
-        con = dbc)),
-      "Database connection was closed, trying to reopen")
+  # test if database connection
+  # is opened by ctrDb
+  dbx <- nodbi::src_sqlite(
+    collection = "otherinmemory")
+  RSQLite::dbDisconnect(conn = dbx$con)
+  # test
+  expect_error(
+    suppressWarnings(
+      dbFindIdsUniqueTrials(
+        con = dbx)),
+    "No records found, check collection 'otherinmemory'")
+  # test
+  expect_true(dbx$collection == "otherinmemory")
 
 } # tf test function
 tf()

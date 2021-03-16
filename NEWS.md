@@ -1,3 +1,19 @@
+# ctrdata 1.5.0
+ - 2021-03-14
+ - return values of dbGetFieldsIntoDf are now mostly 
+   identical whether using src_mongo or src_sqlite,
+   to best ensure portability of analysis code
+ - permit dots in queries / URLs
+ - improved handling of queryterm
+ - renamed ctrGetQueryUrlFromBrowser to ctrGetQueryUrl
+ - soft deprecated ctrGetQueryUrlFromBrowser
+ - ensure parallel retrievals from EUCTR
+ - speed up routines in dbGetFieldsIntoDf
+ - make dfTrials2Long handle NA better
+ - improved documentation, clarified examples
+ - simplified internals for typing fields, 
+   start typing results fields
+
 # ctrdata 1.4.1
  - 2020-11-03
  - reset row names on data frames returned by functions

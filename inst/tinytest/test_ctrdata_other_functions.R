@@ -93,53 +93,70 @@ expect_error(
   "Need list for parameter 'levelslist'")
 
 
-#### ctrGetQueryUrlFromBrowser ####
+#### ctrGetQueryUrl ####
 
 expect_equal(
-  suppressWarnings(ctrGetQueryUrlFromBrowser(
+  suppressWarnings(ctrGetQueryUrl(
     "ThisDoesNotExist")),
   NULL)
 
-# ctrGetQueryUrlFromBrowser(url = "type=Intr&age=0&intr=Drug&phase=0&phase=1&strd_e=12%2F31%2F2010")
-# ctrGetQueryUrlFromBrowser(url = "type=Intr&age=0&intr=Drug&phase=0&phase=1&strd_e=12%2F31%2F2010", "CTGOV")
-# ctrGetQueryUrlFromBrowser(url = "https://clinicaltrials.gov/ct2/results?type=Intr&cond=cancer&age=0")
-# ctrGetQueryUrlFromBrowser(url = "https://clinicaltrials.gov/ct2/results?type=Intr&cond=cancer&age=0", "CTGOV")
-# ctrGetQueryUrlFromBrowser(url = "https://clinicaltrials.gov/ct2/results?type=Intr&cond=cancer&age=0", "EUCTR")
-# ctrGetQueryUrlFromBrowser(url = "")
-# ctrGetQueryUrlFromBrowser(url = NA)
-# ctrGetQueryUrlFromBrowser(url = list())
-
 q <- "https://clinicaltrials.gov/ct2/results?type=Intr&cond=cancer&age=0"
 
-tmp_test <- suppressMessages(
-  ctrGetQueryUrlFromBrowser(
+tmpTest <- suppressMessages(
+  ctrGetQueryUrl(
     url = q))
 
 # test
-expect_true("data.frame" %in% class(tmp_test))
+expect_true("data.frame" %in% class(tmpTest))
 
 # test
 expect_warning(
-  ctrGetQueryUrlFromBrowser(
+  ctrGetQueryUrl(
     url = "ThisDoesNotExist"),
   "no clinical trial register search URL found")
 
 # test if query= is added
 expect_equal(
   suppressMessages(
-    ctrGetQueryUrlFromBrowser(
+    ctrGetQueryUrl(
       url = "query=cancer&status=completed",
       register = "EUCTR")),
   suppressMessages(
-    ctrGetQueryUrlFromBrowser(
+    ctrGetQueryUrl(
       url = "cancer&status=completed",
       register = "EUCTR"))
 )
 
+# test
+expect_warning(
+  ctrGetQueryUrlFromBrowser(
+    url = "ThisDoesNotExist"),
+  "is deprecated")
+
+# test
+expect_warning(
+  ctrGetQueryUrl(
+    url = "LETTERS"),
+  "no clinical trial register search URL found")
+
+# test
+expect_warning(
+  ctrGetQueryUrl(
+    url = "LETTERS",
+    register = "LETTERS"),
+  "no clinical trial register search URL found")
+
+# test
+expect_warning(
+  ctrGetQueryUrl(
+    url = "https://something",
+    register = "CTGOV"),
+  "no clinical trial register search URL")
+
 #### ctrOpenSearchPagesInBrowser ####
 
 if (!at_home()) exit_file("Reason: not at_home")
-if (!check_internet()) exit_file("Reason: no internet connectivity")
+if (!checkInternet()) exit_file("Reason: no internet connectivity")
 
 # test
 expect_message(
@@ -148,18 +165,18 @@ expect_message(
 
 # test
 expect_message(
-  ctrOpenSearchPagesInBrowser(input = tmp_test),
+  ctrOpenSearchPagesInBrowser(input = tmpTest),
   "Opening browser for search:")
 
 q <- paste0("https://www.clinicaltrialsregister.eu/ctr-search/",
             "search?query=&age=under-18&status=completed")
 
-tmp_test <- suppressMessages(
-  ctrGetQueryUrlFromBrowser(
+tmpTest <- suppressMessages(
+  ctrGetQueryUrl(
     url = q))
 
 # test
-expect_true("data.frame" %in% class(tmp_test))
+expect_true("data.frame" %in% class(tmpTest))
 
 # test
 expect_message(
@@ -167,13 +184,17 @@ expect_message(
   "Found search query")
 
 # test
+expect_true(
+  ctrOpenSearchPagesInBrowser(register = ""))
+
+# test
 expect_message(
   ctrOpenSearchPagesInBrowser(q),
   "Opening browser for search:")
 
 # test
 expect_message(
-  ctrOpenSearchPagesInBrowser(tmp_test),
+  ctrOpenSearchPagesInBrowser(tmpTest),
   "Opening browser for search:")
 
 # test

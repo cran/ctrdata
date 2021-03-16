@@ -4,7 +4,7 @@
 
 # test
 expect_message(
-  tmp_test <- suppressWarnings(
+  tmpTest <- suppressWarnings(
     ctrLoadQueryIntoDb(
       queryterm = "2010-024264-18",
       register = "CTGOV",
@@ -12,15 +12,45 @@ expect_message(
   "Imported or updated 1 trial")
 
 # test
-expect_equal(tmp_test$n, 1L)
+expect_equal(tmpTest$n, 1L)
 
 # test
-expect_equal(tmp_test$success, "NCT01471782")
+expect_equal(tmpTest$success, "NCT01471782")
 
 # test
-expect_true(length(tmp_test$failed) == 0L)
+expect_true(length(tmpTest$failed) == 0L)
+
+# test
+expect_message(
+  suppressWarnings(
+    ctrLoadQueryIntoDb(
+      queryterm = "NCT01471782",
+      register = "CTGOV",
+      con = dbc)),
+  "Imported or updated 1 trial")
+
+# test
+expect_error(
+  suppressWarnings(
+    suppressMessages(
+    ctrLoadQueryIntoDb(
+      queryterm = paste0(
+        "https://clinicaltrials.gov/ct2/results?cond=Cancer&type=Intr&phase=0",
+        "&strd_s=01%2F02%2F2005&strd_e=12%2F31%2F2017"),
+      con = dbc))),
+  "more than 10,000) trials")
+
 
 #### ctrLoadQueryIntoDb update ####
+
+# test
+expect_message(
+  suppressWarnings(
+    ctrLoadQueryIntoDb(
+      querytoupdate = "last",
+      verbose = TRUE,
+      con = dbc)),
+  "No trials or number of trials could not be determined")
 
 # new query
 q <- paste0("https://clinicaltrials.gov/ct2/results?",
@@ -28,7 +58,7 @@ q <- paste0("https://clinicaltrials.gov/ct2/results?",
 
 # test
 expect_message(
-  tmp_test <- suppressWarnings(
+  tmpTest <- suppressWarnings(
     ctrLoadQueryIntoDb(
       queryterm = paste0(q, "12%2F31%2F2008"),
       con = dbc)),
@@ -54,20 +84,20 @@ nodbi::docdb_update(
 
 # test
 expect_message(
-  tmp_test <- suppressWarnings(
+  tmpTest <- suppressWarnings(
     ctrLoadQueryIntoDb(
       querytoupdate = "last",
       con = dbc)),
   "Imported or updated")
 
 # test
-expect_true(tmp_test$n > 2L)
+expect_true(tmpTest$n > 2L)
 
 # test
-expect_true(length(tmp_test$success) > 2L)
+expect_true(length(tmpTest$success) > 2L)
 
 # test
-expect_true(length(tmp_test$failed) == 0L)
+expect_true(length(tmpTest$failed) == 0L)
 
 # test
 expect_message(
@@ -93,19 +123,28 @@ result <- suppressMessages(
         "clinical_results.baseline.analyzed_list.analyzed.units",
         "clinical_results.outcome_list.outcome",
         "study_design_info.allocation",
+        "location.facility.name",
         "location"),
-      con = dbc)))
-
-result$number_sites <- sapply(
-  result$location,
-  function(x) length(x[["facility"]][["name"]]))
+      con = dbc)
+  ))
 
 # test
-expect_true(sum(result$number_sites, na.rm = TRUE) > 30L)
+expect_equal(
+  sapply(
+    result[["location"]],
+    function(x) length(x[["facility"]][["name"]])),
+  c(1, 1, 1, 30))
 
 # test
 expect_true("character" == class(result[[
   "study_design_info.allocation"]]))
+
+# test
+expect_true(
+  any(grepl(" / ", result[["location.facility.name"]])))
+expect_true(
+  length(unlist(strsplit(
+    result[["location.facility.name"]], " / "))) >= 32L)
 
 # test
 expect_true("list" == class(result[[
@@ -117,10 +156,10 @@ expect_true(
     # note: deprecated function
     suppressWarnings(
       dfListExtractKey(
-    result,
-    list(c("location", "name"))
-  ))),
-  na.rm = TRUE) > 1000L)
+        result,
+        list(c("location", "name"))
+      ))[["value"]]),
+    na.rm = TRUE) > 1000L)
 
 # convert to long
 df <- suppressMessages(
@@ -130,14 +169,14 @@ df <- suppressMessages(
 
 # test
 expect_identical(
-    names(df),
-    c("trial_id", "main_id",
-      "sub_id", "name", "value")
+  names(df),
+  c("trial_id", "main_id",
+    "sub_id", "name", "value")
 )
 
 # test
 expect_true(
-  nrow(df) > 900L
+  nrow(df) > 800L
 )
 
 # select value from
@@ -161,4 +200,16 @@ expect_true(
 expect_true(
   all(df2$main_id[df2$trial_id == "NCT01471782"] == 5L)
 )
+
+# test
+expect_error(
+  suppressWarnings(
+    suppressMessages(
+      ctrLoadQueryIntoDb(
+        queryterm = "term=ET743OVC3006",
+        register = "CTGOV",
+        annotation.text = "something",
+        annotation.mode = "WRONG",
+        con = dbc))),
+  "'annotation.mode' incorrect")
 

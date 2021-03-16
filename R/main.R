@@ -10,9 +10,10 @@
 #' different registers.
 #'
 #' @param queryterm Either a string with the full URL of a search in
-#' a register or the data frame returned by the
-#' \link{ctrGetQueryUrlFromBrowser} or the
-#' \link{dbQueryHistory} functions.
+#' a register, or the data frame returned by the
+#' \link{ctrGetQueryUrl} or the
+#' \link{dbQueryHistory} functions, or, together with parameter
+#' \code{register}, a string with query elements of a search URL.
 #' The queryterm is recorded in the \code{collection} for later
 #' use to update records.
 #'
@@ -115,14 +116,10 @@ ctrLoadQueryIntoDb <- function(
   }
 
   ## check params for update request
-  if (class(querytoupdate) != "character" &&
-      querytoupdate != trunc(querytoupdate)) {
-    stop("Parameter 'querytoupdate' is not an integer value or 'last'.",
-         call. = FALSE)
-  }
-  #
-  if (class(querytoupdate) == "character" &&
-      querytoupdate != "last") {
+  if ((class(querytoupdate) != "character" &&
+       querytoupdate != trunc(querytoupdate)) ||
+      (class(querytoupdate) == "character" &&
+       querytoupdate != "last")) {
     stop("Parameter 'querytoupdate' is not an integer value or 'last'.",
          call. = FALSE)
   }
@@ -131,53 +128,69 @@ ctrLoadQueryIntoDb <- function(
   ## if not querytoupdate
   if (querytoupdate == 0L) {
 
-    queryterm <- ctrGetQueryUrlFromBrowser(
-      url = queryterm,
-      register = register)
+    # check queryterm
+    if (!is.data.frame(queryterm)) {
+
+      # obtain url and register
+      tmpTest <- try(
+        ctrGetQueryUrl(
+          url = queryterm,
+          register = register),
+        silent = TRUE)
+
+      if (inherits(tmpTest, "try-error")) {
+        stop("'queryterm' is not an non-empty string: ",
+             deparse(queryterm), call. = FALSE)
+      }
+
+      queryterm <- tmpTest
+    }
 
     # deal with data frame as returned from
-    # ctrQueryHistoryInDb and ctrGetQueryUrlFromBrowser
-    if (is.data.frame(queryterm) &&
-        all(substr(names(queryterm), 1, 6) == "query-")) {
-      #
-      nr <- nrow(queryterm)
-      #
-      if (nr > 1) {
-        warning(
-          "Using last row of queryterm parameter.",
-          call. = FALSE, immediate. = TRUE)
-      }
-      #
-      register  <- queryterm[nr, "query-register"]
-      queryterm <- queryterm[nr, "query-term"]
-      #
+    # ctrQueryHistoryInDb and ctrGetQueryUrl
+    if (!all(substr(names(queryterm), 1, 6) == "query-") ||
+        !is.data.frame(queryterm)) {
+      stop("'queryterm' does not seem to result from ctrQueryHistoryInDb() ",
+           "or ctrGetQueryUrl(): ", deparse(queryterm), call. = FALSE)
     }
+
+    # process queryterm dataframe
+    nr <- nrow(queryterm)
+    #
+    if (nr > 1) {
+      warning(
+        "Using last row of queryterm parameter.",
+        call. = FALSE, immediate. = TRUE)
+    }
+    #
+    register  <- queryterm[nr, "query-register"]
+    queryterm <- queryterm[nr, "query-term"]
 
     # check queryterm
     if (length(queryterm) != 1L ||
         class(queryterm) != "character" ||
         is.na(queryterm) ||
         nchar(queryterm) == 0L) {
-      stop("'queryterm' has to be a character string:",
-           queryterm, call. = FALSE)
+      stop("'queryterm' has to be a non-empty string: ",
+           deparse(queryterm), call. = FALSE)
     }
 
     # check register
     if (length(register) != 1L ||
         class(register) != "character" ||
         is.na(register)) {
-      stop("'register' has to be a character string: ",
+      stop("'register' has to be a non-empty string: ",
            register, call. = FALSE)
     }
 
     ## sanity checks
-    if (grepl("[^a-zA-Z0-9=+&%_-]",
+    if (grepl("[^.a-zA-Z0-9=+&%_-]",
               gsub("\\[", "",
                    gsub("\\]", "",
                         queryterm)))) {
       stop("Parameter 'queryterm' is not an URL showing results ",
            "of a query or has unexpected characters: ", queryterm,
-           ", expected are: a-zA-Z0-9=+&%_-[].",
+           ", expected are: a-zA-Z0-9=+&%_-.[]",
            call. = FALSE)
     }
     #
@@ -199,11 +212,8 @@ ctrLoadQueryIntoDb <- function(
 
   # check annotation parameters
   if (annotation.text != "" &
-      annotation.mode == "") {
-    stop(" annotation.mode empty", call. = FALSE)
-  }
-  if (!(annotation.mode %in% c("append", "prepend", "replace"))) {
-    stop(" annotation.mode incorrect", call. = FALSE)
+      !any(annotation.mode == c("append", "prepend", "replace"))) {
+    stop("'annotation.mode' incorrect", call. = FALSE)
   }
 
   # initialise variable that is filled if an update is to be made
@@ -225,7 +235,7 @@ ctrLoadQueryIntoDb <- function(
   # rewrite parameters for running as update
   querytermoriginal <- queryterm
   if ((querytoupdate > 0) &&
-       (queryterm == "")) {
+      (queryterm == "")) {
     #
     rerunparameters <- ctrRerunQuery(
       querytoupdate = querytoupdate,
@@ -309,7 +319,7 @@ ctrLoadQueryIntoDb <- function(
     suppressWarnings({
       remove(list = paste0(con$db, "/", con$collection),
              envir = .dbffenv)
-      })
+    })
   }
 
   # add metadata
@@ -368,7 +378,7 @@ ctrRerunQuery <- function(
   # - dates of all the same queries
   initialday <- rerunquery[["query-timestamp"]][
     rerunquery[querytoupdate, "query-term"] ==
-      rerunquery[["query-term"]] ]
+      rerunquery[["query-term"]]]
   #
   # - remove time, keep date
   initialday <- substr(
@@ -452,10 +462,9 @@ ctrRerunQuery <- function(
     # euctr
     if (register == "EUCTR") {
 
-      # euctr:
-      # studies added or updated in the last 7 days:
-      # https://www.clinicaltrialsregister.eu/ctr-search/rest/feed/
-      # bydates?query=cancer&age=children
+      # euctr: studies added or updated in the last 7 days:
+      # "https://www.clinicaltrialsregister.eu/ctr-search/rest/feed/
+      # bydates?query=cancer&age=children"
 
       # check if update request is in time window of the register (7 days)
       if (difftime(Sys.Date(), initialday, units = "days") > 7) {
@@ -501,9 +510,9 @@ ctrRerunQuery <- function(
         #
         # if new trials found, construct
         # differential query to run
-        resultsRssTrials <- sapply(
+        resultsRssTrials <- vapply(
           resultsRssTrials, FUN = function(x)
-            substr(resultsRss, x + 15, x + 28))
+            substr(resultsRss, x + 15, x + 28), character(1L))
         #
         resultsRssTrials <- paste0(
           "query=",
@@ -530,7 +539,7 @@ ctrRerunQuery <- function(
         #
       }
     } # register euctr
-  } # !forcetoupdate
+  } # forcetoupdate
 
   ## return main parameters needed
   return(data.frame(
@@ -570,106 +579,107 @@ dbCTRLoadJSONFiles <- function(dir, con, verbose) {
                    full.names = TRUE)
 
   # initialise counters
-  # TODO preferably preallocate
-  # retimp but at this stage, its
-  # size / length is not yet known
-  retimp <- NULL
-  fc <- length(tempFiles)
-  ic <- 0
+  fc <- 0L
+  ic <- 0L
 
   # iterate over files
-  for (tempFile in tempFiles) {
+  retimp <- sapply(
+    X = tempFiles,
+    function(tempFile) {
 
-    # main function for fast reading,
-    # switching off warning about final EOL missing
-    fd <- file(description = tempFile)
-    tmplines <- readLines(con = fd, warn = FALSE)
-    close(fd)
-
-    # inform user
-    if (verbose) message("DEBUG: read file ", tempFile,
-                         "\nImporting line: ", appendLF = FALSE)
-
-    # readLines produces: \"_id\": \"2007-000371-42-FR\"
-    ids <- sub(".*_id\":[ ]*\"(.*?)\".*", "\\1", tmplines)
-
-    # ids should always be found and
-    # later, one id will be assumed
-    # to be on one line each
-    if (all(ids == "")) {
-      stop("No _id(s) detected in JSON file ",
-           tempFile, call. = FALSE)
-    }
-
-    # initialise counter
-    lc <- length(ids)
-    ic <- ic + 1
-
-    # check if in database, create or update
-    tmpinsert <- lapply(seq_along(ids), function(i) {
+      # main function for fast reading,
+      # switching off warning about final EOL missing
+      fd <- file(description = tempFile)
+      tmplines <- readLines(con = fd, warn = FALSE)
+      close(fd)
 
       # inform user
-      message("JSON line #: ", i, " / ", lc,
-              ", file #: ", ic, " / ", fc, "\r",
-              appendLF = FALSE)
+      if (verbose) message("DEBUG: read file ", tempFile,
+                           "\nImporting line: ", appendLF = FALSE)
 
-      # check validity
-      tmpvalidate <- jsonlite::validate(tmplines[i])
-      if (!tmpvalidate) {
-        warning("Invalid json for trial ", ids[i], "\n",
-                "Line ", i, " in file ", tempFile, "\n",
-                attr(x = tmpvalidate, which = "err"),
-                noBreaks. = TRUE,
-                call. = FALSE,
-                immediate. = TRUE)
+      # readLines produces: \"_id\": \"2007-000371-42-FR\"
+      ids <- sub(".*_id\":[ ]*\"(.*?)\".*", "\\1", tmplines)
+
+      # ids should always be found and later,
+      # one id will be assumed to be on one line each
+      if (all(ids == "")) {
+        stop("No _id(s) detected in JSON file ",
+             tempFile, call. = FALSE)
       }
 
-      # slice data to be processed
-      value <- data.frame("_id" = ids[i],
-                          "json" = tmplines[i],
-                          stringsAsFactors = FALSE,
-                          check.names = FALSE)
+      # update counters
+      lc <- length(ids)
+      ic <- ic + 1L
+      fc <- fc + 1L
 
-      # check if document exists,
-      # then create or update
-      tmp <- try({
-        # use try construct in case
-        # json could not be imported
-        ifelse(!checkDoc(con, ids[i]),
-               nodbi::docdb_create(src = con,
-                                   key = con$collection,
-                                   value = value),
-               nodbi::docdb_update(src = con,
-                                   key = con$collection,
-                                   value = value)
-        )
-      }, silent = TRUE)
+      # check if in database, create or update
+      tmpinsert <- lapply(
+        X = seq_along(ids),
+        function(i) {
 
-      # return to sapply
-      if ("try-error" %in% class(tmp)) {
-        # inform user
-        message(ids[i], ": ", tmp)
-        list(success = NA,
-             failed = ids[i],
-             n = 0L)
-      } else {
-        list(success = ids[i],
-             failed = NA,
-             n = tmp)
-      }
+          # inform user
+          message("JSON record #: ", i, " / ", lc,
+                  ", file #: ", ic, " / ", fc, "\r",
+                  appendLF = FALSE)
 
-    }) # sapply
+          # one row is one trial record
 
-    # append to retimp
-    retimp <- c(retimp, tmpinsert)
+          # check validity
+          tmpvalidate <- jsonlite::validate(tmplines[i])
+          if (!tmpvalidate) {
+            warning("Invalid json for trial ", ids[i], "\n",
+                    "Line ", i, " in file ", tempFile, "\n",
+                    attr(x = tmpvalidate, which = "err"),
+                    noBreaks. = TRUE,
+                    call. = FALSE,
+                    immediate. = TRUE)
+          }
 
-    # clean up
-    rm("tmplines")
-    if (verbose) message(" ")
+          # slice data to be processed
+          value <- data.frame("_id" = ids[i],
+                              "json" = tmplines[i],
+                              stringsAsFactors = FALSE,
+                              check.names = FALSE)
 
-  }
+          # load into database
+          # - first, try update
+          tmp <- try({
+            nodbi::docdb_update(src = con,
+                                key = con$collection,
+                                value = value)
+          }, silent = TRUE)
+          # - if error, try insert
+          if ("try-error" %in% class(tmp) ||
+              tmp == 0L) {
+            tmp <- try({
+              nodbi::docdb_create(src = con,
+                                  key = con$collection,
+                                  value = value)
+            }, silent = TRUE)}
 
-  # prepare return value, n is successful only
+          # return values for lapply
+          if ("try-error" %in% class(tmp) ||
+              tmp == 0L) {
+            # inform user
+            message(ids[i], ": ", tmp)
+            list(success = NA,
+                 failed = ids[i],
+                 n = 0L)
+          } else {
+            list(success = ids[i],
+                 failed = NA,
+                 n = tmp)
+          }
+
+        }) # lapply
+
+      # output
+      if (verbose) message(" ")
+      tmpinsert
+
+    }, simplify = TRUE) # sapply tempFiles
+
+  # prepare return values, n is successful only
   n <- sum(sapply(retimp, "[[", "n"), na.rm = TRUE)
   success <- sapply(retimp, "[[", "success")
   success <- as.character(na.omit(success))
@@ -684,7 +694,6 @@ dbCTRLoadJSONFiles <- function(dir, con, verbose) {
 } # end dbCTRLoadJSONFiles
 
 
-
 #' dbQueryAnnotateRecords
 #'
 #' @inheritParams ctrLoadQueryIntoDb
@@ -696,17 +705,22 @@ dbCTRLoadJSONFiles <- function(dir, con, verbose) {
 #'
 dbCTRAnnotateQueryRecords <- function(
   recordnumbers,
-  annotations,
   annotation.text,
   annotation.mode,
   con,
-  verbose){
+  verbose) {
 
   # debug
   if (verbose) message("* Running dbCTRAnnotateQueryRecords...")
   if (verbose) message(recordnumbers)
-  if (verbose) message(annotations)
   if (verbose) message(annotation.mode)
+
+  # get any existing annotations
+  annotations <- nodbi::docdb_query(
+    src = con,
+    key = con$collection,
+    query = paste0('{"_id": {"$ne": "meta-info"}}'),
+    fields = '{"_id": 1, "annotation": 1}')
 
   # keep only those annotations that are to be modified
   annotations <- annotations[annotations[["_id"]] %in%
@@ -723,14 +737,15 @@ dbCTRAnnotateQueryRecords <- function(
   }
 
   # modify the annotations
-  annotations[["annotation"]] <- switch(
-    annotation.mode,
-    "replace" = paste0(annotation.text),
-    "prepend" = paste0(annotation.text, " ", annotations$annotation),
-    paste0(annotations$annotation, " ", annotation.text)
-  )
+  annotations[["annotation"]] <- trimws(
+    switch(
+      annotation.mode,
+      "replace" = paste0(annotation.text),
+      "prepend" = paste0(annotation.text, " ", annotations$annotation),
+      paste0(annotations$annotation, " ", annotation.text)
+    ))
 
-  # FIXME ensure column order - why needed?
+  # ensure columns including order
   annotations <- annotations[, c("_id", "annotation")]
 
   # debug
@@ -738,17 +753,16 @@ dbCTRAnnotateQueryRecords <- function(
 
   # update the database
   for (i in annotations[["_id"]]) {
-    tmp <- nodbi::docdb_update(
+    nodbi::docdb_update(
       src = con,
       key = con$collection,
-      value = annotations[ annotations[["_id"]] == i, ])
+      value = annotations[annotations[["_id"]] == i, ])
   }
 
-
-    # inform user
+  # inform user
   message("= Annotated retrieved records")
 
-} # end dbQueryAnnotateRecords
+} # end dbCTRAnnotateQueryRecords
 
 
 #' dbCTRUpdateQueryHistory
@@ -765,7 +779,7 @@ dbCTRUpdateQueryHistory <- function(
   queryterm,
   recordnumber,
   con,
-  verbose){
+  verbose) {
 
   # debug
   if (verbose) message("Running dbCTRUpdateQueryHistory...")
@@ -790,7 +804,7 @@ dbCTRUpdateQueryHistory <- function(
     stringsAsFactors = FALSE)
 
 
-    # debug
+  # debug
   if (verbose) message(hist)
 
   # update database
@@ -801,7 +815,7 @@ dbCTRUpdateQueryHistory <- function(
 
   # transform into array and encapsulate in element meta-info
   tmp <- jsonlite::toJSON(hist)
-  tmp <- paste0('{"queries": ',  as.character(tmp), '}')
+  tmp <- paste0('{"queries": ',  as.character(tmp), "}")
 
   # create history
   tmp <- nodbi::docdb_create(
@@ -818,7 +832,6 @@ dbCTRUpdateQueryHistory <- function(
 
 }
 # end dbCTRUpdateQueryHistory
-
 
 
 #' ctrLoadQueryIntoDbCtgov
@@ -869,8 +882,8 @@ ctrLoadQueryIntoDbCtgov <- function(
 
   # CTGOV standard identifiers
   # updated 2017-07 with revised ctgov website links, e.g.
-  # https://clinicaltrials.gov/ct2/results/download_studies?
-  # rslt=With&cond=Neuroblastoma&age=0&draw=3
+  # "https://clinicaltrials.gov/ct2/results/download_studies?
+  # rslt=With&cond=Neuroblastoma&age=0&draw=3"
   queryUSRoot   <- "https://clinicaltrials.gov/"
   queryUSType1  <- "ct2/results/download_studies?"
   queryUSType2  <- "ct2/results?"
@@ -891,24 +904,20 @@ ctrLoadQueryIntoDbCtgov <- function(
   ctgovdownloadcsvurl <- paste0(
     queryUSRoot, queryUSType1, "&", queryterm, queryupdateterm)
   #
-  if (verbose) {message("DEBUG: ", ctgovdownloadcsvurl)}
-
-  # check if host is available
-  if ("try-error" %in%
-      class(try(httr::headers(
-        httr::HEAD(
-          url = utils::URLencode(queryUSRoot))),
-        silent = TRUE))) {
-    stop("Host ", queryUSRoot, " does not respond, cannot continue.",
-         call. = FALSE)
-  }
+  if (verbose) message("DEBUG: ", ctgovdownloadcsvurl)
 
   # check number of trials to be downloaded
   ctgovdfirstpageurl <- paste0(
     queryUSRoot, queryUSType2, "&", queryterm, queryupdateterm)
   #
-  tmp <- httr::content(httr::GET(
-    url = utils::URLencode(ctgovdfirstpageurl)), as = "text")
+  tmp <- try(httr::content(httr::GET(
+    url = utils::URLencode(ctgovdfirstpageurl)), as = "text"),
+    silent = TRUE)
+  #
+  if (inherits(tmp, "try-error")) {
+    stop("Host ", queryUSRoot, " does not respond, cannot continue.",
+         call. = FALSE)
+  }
   #
   tmp <- gsub("\n|\t|\r", " ", tmp)
   tmp <- gsub("<.*?>", " ", tmp)
@@ -924,8 +933,9 @@ ctrLoadQueryIntoDbCtgov <- function(
   }
   #
   if (as.integer(tmp) > 10000L) {
-    stop("These are ", tmp, " (more than 10000) trials, this may be ",
-         "unintended. Alternatively, split into separate queries.")
+    stop("These are ", tmp, " (more than 10,000) trials, this may be ",
+         "unintended. Downloading more than 10,000 trials is not supported ",
+         "by the register. Consider correcting or splitting queries.")
   }
 
   # inform user
@@ -1009,7 +1019,7 @@ ctrLoadQueryIntoDbCtgov <- function(
     xml2json <- gsub("([A-Z]):/", "/cygdrive/\\1/", xml2json)
     #
     xml2json <- paste0(
-      'cmd.exe /c ',
+      "cmd.exe /c ",
       rev(Sys.glob("c:\\cygw*\\bin\\bash.exe"))[1],
       ' --login -c "', xml2json, '"')
     #
@@ -1031,28 +1041,6 @@ ctrLoadQueryIntoDbCtgov <- function(
   if (verbose) message("DEBUG: ", xml2json)
   imported <- system(xml2json, intern = TRUE)
 
-  # get any annotations for any later update
-  if (annotation.text != "") {
-
-    # check if record exists
-    if (!nodbi::docdb_exists(
-      src = con,
-      key = con$collection)) {
-
-      annotations <- data.frame()
-
-    } else {
-
-      # retrieve annotations
-      annotations <- nodbi::docdb_query(
-        src = con,
-        key = con$collection,
-        query = paste0('{"_id": {"$ne": "meta-info"}}'),
-        fields = '{"_id": 1, "annotation": 1}')
-
-    } # if data base exists
-  } # if annotation.text
-
   ## run import
   message("(3/3) Importing JSON records into database...")
   if (verbose) message("DEBUG: ", tempDir)
@@ -1067,7 +1055,6 @@ ctrLoadQueryIntoDbCtgov <- function(
     # dispatch
     dbCTRAnnotateQueryRecords(
       recordnumbers = imported$success,
-      annotations = annotations,
       annotation.text = annotation.text,
       annotation.mode = annotation.mode,
       con = con,
@@ -1076,7 +1063,7 @@ ctrLoadQueryIntoDbCtgov <- function(
   }
 
   ## find out number of trials imported into database
-  message("\n= Imported or updated ", imported$n, " trial(s).")
+  message("= Imported or updated ", imported$n, " trial(s).")
 
   # clean up temporary directory
   if (!verbose) unlink(tempDir, recursive = TRUE)
@@ -1112,14 +1099,14 @@ ctrLoadQueryIntoDbEuctr <- function(
 
   ## sanity correction for naked terms
   # otherwise all trials would be retrieved
-  # see also ctrGetQueryUrlFromBrowser
+  # see also ctrGetQueryUrl
   queryterm <- sub(
     "(^|&|[&]?\\w+=\\w+&)([ a-zA-Z0-9+-]+)($|&\\w+=\\w+)",
     "\\1query=\\2\\3",
     queryterm)
 
   # inform user
-  message("* Checking trials in EUCTR:", appendLF = FALSE)
+  message("* Checking trials in EUCTR: ", appendLF = FALSE)
 
   # create empty temporary directory on localhost for
   # download from register into temporary directy
@@ -1129,28 +1116,23 @@ ctrLoadQueryIntoDbEuctr <- function(
   # EUCTR standard identifiers
   queryEuRoot  <- "https://www.clinicaltrialsregister.eu/"
   queryEuType1 <- "ctr-search/search?"
-  #queryEuType2 <- "ctr-search/rest/download/summary?"
   queryEuType3 <- "ctr-search/rest/download/full?"
   queryEuType4 <- "ctr-search/rest/download/result/zip/xml/"
   queryEuPost  <- paste0(
     "&mode=current_page&format=text&dContent=",
     "summary&number=current_page&submit-download=Download")
 
-  # check if host is available
-  if ("try-error" %in% class(try(
-    httr::headers(
-      httr::HEAD(
-        url = utils::URLencode(queryEuRoot))),
-    silent = TRUE))) {
-    stop("Host ", queryEuRoot, " does not respond, cannot continue.",
-         call. = FALSE)
-  }
-
   # get first result page
   q <- utils::URLencode(paste0(queryEuRoot, queryEuType1, queryterm))
   if (verbose) message("DEBUG: queryterm is ", q)
-  resultsEuPages <- httr::content(
-    httr::GET(url = q), as = "text")
+  #
+  resultsEuPages <- try(httr::content(
+    httr::GET(url = q), as = "text"), silent = TRUE)
+  #
+  if (inherits("try-error", resultsEuPages)) {
+    stop("Host ", queryEuRoot, " does not respond, cannot continue.",
+         call. = FALSE)
+  }
 
   # get number of trials identified by query
   resultsEuNumTrials <- sub(
@@ -1159,13 +1141,13 @@ ctrLoadQueryIntoDbEuctr <- function(
     resultsEuPages)
   #
   resultsEuNumTrials <- suppressWarnings(
-    as.numeric(gsub("[,.]", "", resultsEuNumTrials)))
+    as.integer(gsub("[,.]", "", resultsEuNumTrials)))
   #
-  # register contains 35000+ trials, which would all
-  # be identified if queryterm is just anything
-  if (resultsEuNumTrials > 30000) {
-    stop("ctrLoadQueryIntoDb()): unexpectedly found more than ",
-         "30000 trials; revise your 'queryterm': ", queryterm,
+  # no trials found even though host may have been online
+  if (!is.integer(resultsEuNumTrials)) {
+    stop("ctrLoadQueryIntoDb(): register does not deliver ",
+         "search results as expected, check if working with ",
+         "'browseURL(\"", q, "\")'",
          call. = FALSE)
   }
 
@@ -1192,6 +1174,12 @@ ctrLoadQueryIntoDbEuctr <- function(
     return(list(n = resultsEuNumTrials,
                 success = NULL,
                 failed = NULL))
+  }
+
+  # suggest chunking if large number of trials found
+  if (as.integer(resultsEuNumTrials) > 10000L) {
+    stop("These are ", resultsEuNumTrials, " (more than 10,000) trials. ",
+         "Consider correcting or splitting into separate queries.")
   }
 
   ## system check, in analogy to onload.R
@@ -1255,7 +1243,6 @@ ctrLoadQueryIntoDbEuctr <- function(
     url = paste0(queryEuRoot, queryEuType3,
                  "query=2008-003606-33", "&page=1", queryEuPost),
     handle = h)
-  # curl::handle_cookies(h)
   # inform user about capabilities
   stime <- curl::handle_data(h)[["times"]][["total"]]
   sgzip <- curl::parse_headers(tmp$headers)
@@ -1263,49 +1250,52 @@ ctrLoadQueryIntoDbEuctr <- function(
   sgzip <- grepl("gzip|deflate", sgzip)
   if (length(sgzip) && !sgzip) {
     message("Note: register server cannot compress data, ",
-    "transfer takes longer, about ", signif(stime, digits = 1),
-    "s per trial")
+            "transfer takes longer, about ", signif(stime, digits = 1),
+            "s per trial")
   }
 
   # create pool for concurrent connections
   pool <- curl::new_pool(
+    total_con = parallelretrievals,
     host_con = parallelretrievals)
 
-  # progress indicator function
-  pc <- 0
-  cb <- function(req){
-    pc <<- pc + 1
-    message("Pages #: ", pc, "\r", appendLF = FALSE)
-    # Note: Tranfer-Encoding does not provide gzip
-    # print(curl::parse_headers(req$headers))
-    # [1] "HTTP/1.1 200 OK"
-    # [2] "Date: Sun, 11 Oct 2020 20:09:10 GMT"
-    # [3] "Server: "
-    # [4] "Content-Disposition: attachment; filename = trials-full.txt"
-    # [5] "Transfer-Encoding: chunked"
-    # [6] "Content-Type: application/octet-stream"
-    # [7] "Content-Language: en"
-  }
-
   # generate vector with URLs of all pages
-  urls <- unlist(lapply(
+  urls <- vapply(
     paste0(queryEuRoot, queryEuType3,
            queryterm, "&page=", 1:resultsEuNumPages, queryEuPost),
-    utils::URLencode))
-  # print(urls)
+    utils::URLencode, character(1L))
 
   # generate vector with file names for saving pages
   fp <- paste0(
-    tempDir, "/euctr-trials-page_",
+    tempDir,
+    # NOTE this file name pattern is used
+    # by subsequent functions including
+    # shell scripts so not to be changed
+    "/euctr-trials-page_",
     formatC(1:resultsEuNumPages,
             digits = 0,
             width = nchar(resultsEuNumPages),
             flag = 0),
     ".txt")
 
+  # success handling: saving to file
+  # and progress indicator function
+  pc <- 0
+  curlSuccess <- function(res) {
+    pc <<- pc + 1
+    # save to file - NOTE the number in page_nnn
+    # is not expected to correspond to the page
+    # number in the URL that was downloaded
+    cat(rawToChar(res$content), file = fp[pc])
+    # inform user
+    message("Pages: ", pc, " done, ",
+            length(curl::multi_fdset(pool = pool)[["reads"]]), " ongoing   ",
+            "\r", appendLF = FALSE)
+  }
+
   # add URLs and file names into pool
   tmp <- lapply(
-    # alternate sequence
+    # randomise sequence
     sample(seq_along(urls),
            size = length(urls),
            replace = FALSE,
@@ -1313,17 +1303,12 @@ ctrLoadQueryIntoDbEuctr <- function(
     function(x)
       curl::curl_fetch_multi(
         url = urls[x],
-        done = cb,
-        pool = pool,
-        data = fp[x],
-        handle = curl::new_handle(
-          useragent = "",
-          accept_encoding = "deflate, gzip",
-          cookiejar = cf,
-          cookiefile = cf
-        )
-      )
+        done = curlSuccess,
+        pool = pool)
   )
+
+  # inform user on first page
+  message("Pages: 0 done...\r", appendLF = FALSE)
 
   # do download and saving
   tmp <- curl::multi_run(
@@ -1359,7 +1344,7 @@ ctrLoadQueryIntoDbEuctr <- function(
     euctr2json <- gsub("\\\\", "/", euctr2json)
     euctr2json <- gsub("([A-Z]):/", "/cygdrive/\\1/", euctr2json)
     euctr2json <- paste0(
-      'cmd.exe /c ',
+      "cmd.exe /c ",
       rev(Sys.glob("c:\\cygw*\\bin\\bash.exe"))[1],
       ' --login -c "', euctr2json, '"')
     #
@@ -1375,26 +1360,6 @@ ctrLoadQueryIntoDbEuctr <- function(
       tempDir)
     #
   } # if windows
-
-  # get any annotations for any later update
-  if (annotation.text != "") {
-
-    if (!nodbi::docdb_exists(
-      src = con,
-      key = con$collection)) {
-
-      annotations <- data.frame()
-
-    } else {
-
-      # retrieve annotations
-      annotations <- nodbi::docdb_query(
-        src = con,
-        key = con$collection,
-        query = paste0('{"_id": {"$ne": "meta-info"}}'),
-        fields = '{"_id": 1, "annotation": 1}')
-    } # if data base exists
-  } # if annotation.text
 
   # run conversion of text files saved
   # into file system to json file
@@ -1420,7 +1385,6 @@ ctrLoadQueryIntoDbEuctr <- function(
     # dispatch
     dbCTRAnnotateQueryRecords(
       recordnumbers = eudractnumbersimported,
-      annotations = annotations,
       annotation.text = annotation.text,
       annotation.mode = annotation.mode,
       con = con,
@@ -1438,9 +1402,9 @@ ctrLoadQueryIntoDbEuctr <- function(
     # results are available only one-by-one for
     # each trial as just retrieved and imported
 
-    # transform eudract numbers with country info
-    # ("2010-024264-18-3RD") into eudract numbers
-    # ("2010-024264-18")
+    # transform eudract numbers
+    # with country info ("2010-024264-18-3RD")
+    # into eudract numbers ("2010-024264-18")
     eudractnumbersimported <- unique(
       substring(text = eudractnumbersimported,
                 first = 1,
@@ -1491,34 +1455,40 @@ ctrLoadQueryIntoDbEuctr <- function(
         total_con = parallelretrievals,
         host_con = parallelretrievals)
       #
-      urls <- unlist(lapply(
+      urls <- vapply(
         paste0(queryEuRoot, queryEuType4,
                eudractnumbersimported[startindex:stopindex]),
-        utils::URLencode))
+        utils::URLencode, character(1L))
       #
       fp <- paste0(
         tempDir, "/",
         eudractnumbersimported[startindex:stopindex],
         ".zip")
       #
+      # success handling: saving to file
+      # and progress indicator function
+      pc <- 0
+      curlSuccess <- function(res) {
+        pc <<- pc + 1
+        # save to file
+        writeBin(object = res$content, con = fp[[pc]])
+      }
+      #
       tmp <- lapply(
         seq_along(urls),
         function(x)
           curl::curl_fetch_multi(
             url = urls[x],
-            done = cb,
-            pool = pool,
-            data = fp[x],
-            handle = curl::new_handle()
+            done = curlSuccess,
+            pool = pool
           ))
 
       # do download and save
       tmp <- curl::multi_run(
-        pool = pool,
-        poll = length(urls))
+        pool = pool)
 
       # unzip downloaded file and rename
-      tmp <- unlist(lapply(
+      tmp <- lapply(
         seq_along(urls), function(x) {
 
           if (file.size(fp[x]) != 0) {
@@ -1546,7 +1516,7 @@ ctrLoadQueryIntoDbEuctr <- function(
           # clean up
           if (!verbose) unlink(fp[x])
 
-        }))
+        })
 
     } # for batch
 
@@ -1573,7 +1543,7 @@ ctrLoadQueryIntoDbEuctr <- function(
       xml2json <- gsub("\\\\", "/", xml2json)
       xml2json <- gsub("([A-Z]):/", "/cygdrive/\\1/", xml2json)
       xml2json <- paste0(
-        'cmd.exe /c ',
+        "cmd.exe /c ",
         rev(Sys.glob("c:\\cygw*\\bin\\bash.exe"))[1],
         ' --login -c "', xml2json, '"')
       #
@@ -1628,16 +1598,18 @@ ctrLoadQueryIntoDbEuctr <- function(
               useBytes = TRUE)
 
             # update database with results
-            tmp <- try({tmpnodbi <-
-              nodbi::docdb_update(
-                src = con,
-                key = con$collection,
-                value = data.frame(
-                  "a2_eudract_number" = x,
-                  "json" = tmpjson,
-                  stringsAsFactors = FALSE))
+            tmp <- try({
+              tmpnodbi <-
+                nodbi::docdb_update(
+                  src = con,
+                  key = con$collection,
+                  value = data.frame(
+                    "a2_eudract_number" = x,
+                    "json" = tmpjson,
+                    stringsAsFactors = FALSE))
 
-            max(tmpnodbi, na.rm = TRUE)},
+              max(tmpnodbi, na.rm = TRUE)
+            },
             silent = TRUE)
 
             # inform user on failed trial
@@ -1657,7 +1629,7 @@ ctrLoadQueryIntoDbEuctr <- function(
           # return for accumulating information
           return(tmp)
 
-        }) # import
+        }) # end batchresults
 
       # append batch to number of results
       importedresults <- c(importedresults, batchresults)
@@ -1691,12 +1663,12 @@ ctrLoadQueryIntoDbEuctr <- function(
           total_con = parallelretrievals,
           host_con = parallelretrievals)
         #
-        done <- function(res){retdat <<- c(retdat, list(res))}
+        done <- function(res) retdat <<- c(retdat, list(res))
         #
-        urls <- unlist(lapply(paste0(
+        urls <- vapply(paste0(
           "https://www.clinicaltrialsregister.eu/ctr-search/trial/",
           eudractnumbersimported[startindex:stopindex], "/results"),
-          utils::URLencode))
+          utils::URLencode, character(1L))
 
         tmp <- lapply(
           seq_along(urls),
@@ -1722,10 +1694,6 @@ ctrLoadQueryIntoDbEuctr <- function(
           retdat,
           function(x) rawToChar(x[["content"]]))
 
-        if (verbose) {
-          message("\n", paste0(sapply(batchresults, nchar),
-                               collapse = " "))}
-
         # curl return sequence is not predictable
         # therefore recalculate the eudract numbers
         eudractnumberscurled <- sapply(
@@ -1741,13 +1709,13 @@ ctrLoadQueryIntoDbEuctr <- function(
 
         # extract information about results
         tmpFirstDate <- as.Date(
-          sapply(batchresults, function(x)
+          vapply(batchresults, function(x)
             trimws(sub(
               ".+First version publication date</div>.*?<div>(.+?)</div>.*",
               "\\1",
               ifelse(grepl(
                 "First version publication date", x),
-                x, "")))),
+                x, ""))), character(1L)),
           format = "%d %b %Y")
 
         # global end date is variably represented in euctr:
@@ -1761,35 +1729,32 @@ ctrLoadQueryIntoDbEuctr <- function(
         # reset date time
         Sys.setlocale("LC_TIME", lct)
 
-        tmpChanges <- sapply(batchresults, function(x)
+        tmpChanges <- vapply(batchresults, function(x)
           trimws(
             gsub("[ ]+", " ",
-            gsub("[\n\r]", "",
-            gsub("<[a-z/]+>", "",
-             sub(".+Version creation reason.*?<td class=\"valueColumn\">(.+?)</td>.+",
-                 "\\1", ifelse(grepl("Version creation reason", x), x, ""))
-            ))))
-        )
+                 gsub("[\n\r]", "",
+                      gsub("<[a-z/]+>", "",
+                           sub(".+Version creation reason.*?<td class=\"valueColumn\">(.+?)</td>.+",
+                               "\\1", ifelse(grepl("Version creation reason", x), x, ""))
+                      )))),
+          character(1L))
 
         tmp <- lapply(
           seq_along(
             along.with = startindex:stopindex),
           function(x) {
 
-          if (tmpChanges[x] == "") {
-            tmpChanges[x] <- "(not specified)"}
+            if (tmpChanges[x] == "") tmpChanges[x] <- "(not specified)"
 
-          upd <- nodbi::docdb_update(
-            src = con,
-            key = con$collection,
-            value = data.frame(
-              "a2_eudract_number" = eudractnumberscurled[x],
-              "firstreceived_results_date" = as.character(tmpFirstDate[x]),
-              "version_results_history" = tmpChanges[x],
-              stringsAsFactors = FALSE))
+            upd <- nodbi::docdb_update(
+              src = con,
+              key = con$collection,
+              value = data.frame(
+                "a2_eudract_number" = eudractnumberscurled[x],
+                "firstreceived_results_date" = as.character(tmpFirstDate[x]),
+                "version_results_history" = tmpChanges[x],
+                stringsAsFactors = FALSE))
 
-          if (verbose) {
-            message(upd)}
           })
 
         # clean up large object
@@ -1820,7 +1785,7 @@ ctrLoadQueryIntoDbEuctr <- function(
   if (!verbose) {
     unlink(tempDir,
            recursive = TRUE)
-    }
+  }
 
   # return
   return(imported)
