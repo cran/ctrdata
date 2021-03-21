@@ -12,6 +12,24 @@ expect_error(
         con = dbc))),
   "more than 10,000) trials")
 
+# correct _id association
+suppressWarnings(
+  suppressMessages(
+    ctrLoadQueryIntoDb(
+      queryterm = "2005-001267-63+OR+2008-003606-33",
+      register = "EUCTR",
+      euctrresults = TRUE,
+      con = dbc
+    )))
+# test
+expect_identical(
+  suppressMessages(
+    dbGetFieldsIntoDf(
+      fields = "endPoints.endPoint.title",
+      con = dbc
+    ))[1, "_id", drop = TRUE],
+  "2008-003606-33-GB")
+
 # next
 q <- paste0("https://www.clinicaltrialsregister.eu/ctr-search/search?query=",
             "neuroblastoma&status=completed&phase=phase-one&country=pl")
@@ -159,7 +177,7 @@ result <- suppressMessages(
 
 # test
 expect_true(
-  nrow(result) > 25L
+  nrow(result) > 45L
 )
 
 # keep only one record for trial
@@ -167,6 +185,10 @@ result <- suppressWarnings(suppressMessages(
   result[result[["_id"]] %in%
            dbFindIdsUniqueTrials(con = dbc), ]
 ))
+# test
+expect_true(
+  nrow(result) < 15L
+)
 
 # test
 expect_true(all(as.Date(c("2013-10-28", "2018-03-13")) %in%
@@ -211,19 +233,22 @@ df <- suppressMessages(
 # test
 expect_identical(
   names(df),
-  c("trial_id", "main_id",
-    "sub_id", "name", "value")
+  c("_id", "identifier", "name", "value")
 )
 
 # test
 expect_true(
-  nrow(df) > 2500L
+  nrow(df) > 3300L
 )
 
 # extract
 df2 <- dfName2Value(
   df = df,
   valuename = "subjectDisposition.*postAssignmentPeriod.arms.arm.type.value"
+)
+# test
+expect_true(
+  length(unique(df2[["_id"]])) >= 2L
 )
 
 # extract
@@ -236,7 +261,7 @@ df2 <- dfName2Value(
 
 # test
 expect_true(
-  length(unique(df2[["trial_id"]])) >= 2L
+  length(unique(df2[["_id"]])) >= 2L
 )
 
 # test
@@ -246,7 +271,7 @@ expect_true(
 
 # test
 expect_true(all(
-  df2$value %in%
+  df2[["value"]] %in%
     c("ARM_TYPE.placeboComp", "ARM_TYPE.experimental"))
 )
 
@@ -268,7 +293,7 @@ expect_error(
   dfTrials2Long(
     df = result[, -1]
   ),
-  "Missing _id column / variable in parameter")
+  "Missing _id column or other variables in 'df'")
 
 
 #### dbFindFields #####
@@ -344,18 +369,13 @@ tmpTest <- suppressMessages(
       fields = "annotation",
       con = dbc)))
 
-tmpTest <-
-  tmpTest[
-    tmpTest[["_id"]] %in%
-      suppressMessages(
-        suppressWarnings(
-          dbFindIdsUniqueTrials(
-            con = dbc))), ]
-
 # test
-tmpTest <- tmpTest[tmpTest[["annotation"]] != "", ]
-expect_equal(sort(unique(tmpTest[["annotation"]])),
-             sort(unique(c("EU ANNO", "ANNO"))))
+expect_true(all(
+  tmpTest[grepl("2010-024264-18", tmpTest[["_id"]]), "annotation"] == "EU ANNO"))
+# test
+expect_true(all(
+  tmpTest[grepl("^NCT", tmpTest[["_id"]]), "annotation"] == "ANNO"))
+
 
 #### deduplicate ####
 
@@ -500,6 +520,9 @@ tmpc <- table(tmpc)
 # tmpc
 # character Date   integer      list   logical
 # 561         10        19         3        59
+# tmpc
+# character Date   integer      list   logical
+# 51           8         6        11        55
 
 # tests
 expect_true(tmpc[["character"]] > 50)

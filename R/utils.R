@@ -9,6 +9,13 @@ countriesEUCTR <- c(
   "DE", "GR", "HU", "IE", "IT", "LV", "LT", "LU", "MT", "NL",
   "PL", "PT", "RO", "SK", "SE", "SI", "ES", "GB", "IS", "LI",
   "NO", "3RD")
+#
+# regexpr
+# - EUCTR e.g. 2010-022945-52-3RD
+regEuctr <- "[0-9]{4}-[0-9]{6}-[0-9]{2}"
+# - CTGOV
+regCtgov <- "NCT[0-9]{8}"
+
 
 #' Check and prepare nodbi connection object for ctrdata
 #'
@@ -1206,7 +1213,6 @@ dbGetFieldsIntoDf <- function(fields = "",
   }
 
   ## check database connection
-  #print(RSQLite::dbIsValid(con$con))
   if (is.null(con$ctrDb)) con <- ctrDb(con = con)
 
   # helper function for managing lists
@@ -1280,6 +1286,7 @@ dbGetFieldsIntoDf <- function(fields = "",
     function(i) {
       #
       item <- fields[i]
+      message(". ", appendLF = FALSE)
       #
       query <- paste0('{"_id": {"$ne": "meta-info"}}')
       if (verbose) message("DEBUG: field: ", item)
@@ -1352,7 +1359,7 @@ dbGetFieldsIntoDf <- function(fields = "",
             X = dfi[, 2],
             INDEX = dfi[, 1],
             function(i) {
-              if (all(is.na(i))) { #
+              if (all(is.na(i))) {
                 # keep NULL elements in output
                 NULL
               } else {
@@ -1430,7 +1437,7 @@ dbGetFieldsIntoDf <- function(fields = "",
                                paste0(na.omit(unlist(x)),
                                       collapse = " / "))
           # inform user
-          message("* Collapsed with '/' [1]: '", item, "'")
+          message("\r* Collapsed with '/' [1]: '", item, "'")
           # remove any extraneous columns
           dfi <- dfi[, 1:2]
         }
@@ -1457,7 +1464,7 @@ dbGetFieldsIntoDf <- function(fields = "",
           dfi[[2]] <- tmpById
 
           # inform user
-          message("* Converted to list [2]: '", item, "'")
+          message("\r* Converted to list [2]: '", item, "'")
 
         }
         #
@@ -1473,7 +1480,7 @@ dbGetFieldsIntoDf <- function(fields = "",
             function(i)
               paste0(na.omit(unlist(i)), collapse = " / "), character(1L))
           # inform user
-          message("* Simplified or collapsed with '/' [3]: '", item, "'")
+          message("\r* Simplified or collapsed with '/' [3]: '", item, "'")
         }
 
       },
@@ -1544,10 +1551,10 @@ dbGetFieldsIntoDf <- function(fields = "",
 
 #' Extract information of interest (e.g., endpoint)
 #' from long data frame of protocol- or result-related
-#' trial information as returned from \link{dfTrials2Long}
+#' trial information as returned by \link{dfTrials2Long}
 #'
-#' @param df A data frame with 5 columns (trial_id,
-#'  main_id, sub_id, name, value) as returned from
+#' @param df A data frame with four columns (_id,
+#'  identifier, name, value) as returned by
 #'  \link{dfTrials2Long}
 #'
 #' @param valuename A character string for the name of the variable
@@ -1559,8 +1566,10 @@ dbGetFieldsIntoDf <- function(fields = "",
 #' @param wherevalue A character string with the value of interest
 #'  for the variable of interest
 #'
-#' @return A data frame with columns trial_id, main_id, sub_id,
-#'  name, value that only includes the values of interest
+#' @return A data frame with columns _id, identifier,
+#'  name, value that only includes the values of interest,
+#'  where value are strings unless all value elements
+#'  are numbers.
 #'
 #' @export
 #' @examples
@@ -1611,81 +1620,62 @@ dfName2Value <- function(df, valuename = "",
     stop("'valuename' must be specified.",
          call. = FALSE)
   }
-  if (!identical(
-    names(df),
-    c("trial_id", "main_id",
-      "sub_id", "name", "value"))) {
+  if (!identical(names(df),
+                 c("_id", "identifier", "name", "value"))) {
     stop("'df' does not seem to come from dfTrials2Long()",
          call. = FALSE)
   }
 
-  # if now where... are specified, just
-  # return the rows where name corresponds
+  # indices of valuename
+  indexVnames <- which(grepl(valuename, df[["name"]],
+                             perl = TRUE, ignore.case = TRUE))
+  if (!length(indexVnames)) stop("No rows found for 'valuename' = ", valuename)
+
+  # if no where... are specified, just
+  # return rows where name corresponds
   # to valuename
   if (wherename == "" & wherevalue == "") {
 
     # get relevant rows
-    df <- df[grepl(valuename, df[["name"]]), ]
+    out <- df[indexVnames, ]
 
-    # value column is character
-    # try to convert it to numeric
-    out <- suppressWarnings(
-      as.numeric(df[["value"]])
-    )
-    # use if converted ok
-    if (all(is.na(out) == is.na(df[["value"]]))) {
-      df["value"] <- out
-    }
+  } else {# if where... are specified, continue
 
-    # output
-    rownames(df) <- NULL
-    return(df)
+    # get where... indices per trial
+    indexRows <- which(
+      grepl(wherename, df[["name"]], perl = TRUE, ignore.case = TRUE) &
+      grepl(wherevalue, df[["value"]], perl = TRUE, ignore.case = TRUE))
+    if (!length(indexRows)) stop("No rows found for 'wherename' and 'wherevalue'")
 
-  } # otherwise continue
+    # get trial ids and identifiers for where...
+    indexCases <- df[indexRows, c("_id", "identifier")]
 
-  # get indices per trial
-  indexNames <- which(
-    grepl(wherename, df[["name"]],
-          perl = TRUE,
-          ignore.case = TRUE) &
-      grepl(wherevalue, df[["value"]],
-            perl = TRUE,
-            ignore.case = TRUE))
-
-  # get trial ids, main_id, sub_id
-  indexCases <-
-    df[indexNames, c("trial_id", "main_id", "sub_id")]
-
-  # get output
-  out <- lapply(
-    seq_len(nrow(indexCases)),
-    function(i) {
-
-      tmp <- intersect(
-        which(df["trial_id"] == indexCases[i, "trial_id"]),
-        which(df["main_id"] == indexCases[i, "main_id"])
-      )
-      if (!is.na(indexCases[i, "sub_id"])) {
-        tmp <- intersect(
-          tmp,
-          which(df["sub_id"] == indexCases[i, "sub_id"])
-        )
+    # get output iterate over trials
+    out <- apply(
+      indexCases, 1,
+      function(i) {
+        ids <- Reduce(
+          intersect, list(
+            # trial id
+            which(grepl(i[["_id"]], df[["_id"]], fixed = TRUE)),
+            # identifier to match starting from left and
+            # do not match e.g. 22 for identifier 2
+            which(grepl(paste0("^", i[["identifier"]], "([.]|$)"),
+                        df[["identifier"]])),
+            # indices of sought valuename
+            indexVnames
+          ))
+        # return value
+        if (length(ids)) df[ids, ]
       }
-      df <- df[tmp, ]
-      tmp <- which(grepl(
-        valuename, df[, "name"],
-        perl = FALSE,
-        ignore.case = TRUE)
-      )
-      if (length(tmp)) df[tmp, ]
-    }
-  )
+    )
 
-  # bind into data frame
-  out <- do.call(
-    rbind,
-    out
-  )
+    # bind into data frame
+    out <- do.call(
+      rbind,
+      c(out, stringsAsFactors = FALSE, make.row.names = FALSE))
+
+  } # if where...
 
   # value column is character
   # try to convert it to numeric
@@ -1698,7 +1688,6 @@ dfName2Value <- function(df, valuename = "",
   }
 
   # return
-  rownames(out) <- NULL
   return(out)
 
 } # end dfName2Value
@@ -1710,17 +1699,22 @@ dfName2Value <- function(df, valuename = "",
 #' related information. It converts lists and other
 #' values into individual rows of a long data frame.
 #' From the resulting data frame, values of interest
-#' can then be selected (e.g. select and outcome
-#' and its analysis by number of the measure which
-#' has "Hazard Ratio" in its name).
+#' can then be selected (e.g. select an outcome
+#' and its analysis by the identifier of the measure
+#' which has "Hazard Ratio" in its name, see
+#' \link{dfName2Value}).
 #'
 #' @param df Data frame with columns including
 #'  the trial identifier (\code{_id}) and
 #'  one or more variables as obtained from
 #'  \link{dbGetFieldsIntoDf}
 #'
-#' @return A data frame with the five columns:
-#'  trial_id, main_id, sub_id, name, value
+#' @return A data frame with the four columns:
+#'  _id, identifier, name, value
+#'
+#' @importFrom stringi stri_extract_all_charclass
+#' @importFrom stringi stri_extract_first
+#' @importFrom stringi stri_replace_first
 #'
 #' @export
 #'
@@ -1741,180 +1735,122 @@ dfName2Value <- function(df, valuename = "",
 dfTrials2Long <- function(df) {
 
   # check parameters
+  if (!any("_id" == names(df)) ||
+      ncol(df) == 1L) stop(
+        "Missing _id column or other variables in 'df'",
+        call. = FALSE
+      )
+  if (any(c("identifier", "name", "value") %in% names(df))) stop(
+        "Unexpected columns; 'df' should not come from dfTrials2Long",
+        call. = FALSE
+      )
 
-  # check if _id present
-  if (!any("_id" == names(df))) stop(
-    "Missing _id column / variable in parameter 'df'.",
-    call. = FALSE
-  )
-
-  # do by endpoint
-  col2df <- function(atrialcol) {
-
-    # the full column is needed in atrialcol
-    # to extract the name of the column
-    atcname <- paste0("", names(atrialcol))
-
-    # atrialcol is a single cell of a
-    # larger data.frame and this
-    # extracts the element in this cell
-    atrialcol <- atrialcol[[1]]
-
-    # if not inheriting from data.frame,
-    # change into one so that row indexing
-    # in lapply below will work
-    if (!inherits(atrialcol, "data.frame")) {
-
-      atrialcol <- data.frame(
-        # unname to eliminate any
-        # name of root element
-        unname(atrialcol),
-        check.names = FALSE,
-        stringsAsFactors = FALSE)
-
+  # helper function
+  flattenDf <- function(x) {
+    while (any(vapply(x, is.list, logical(1L)))) {
+      x <- lapply(x, function(x) if (is.list(x)) x else list(x))
+      x <- unlist(x, recursive = FALSE)
     }
-
-    # for each endpoint / measure,
-    # expand the lists into long
-    # format by unlisting
-    measures <- lapply(
-
-      seq_len(nrow(atrialcol)),
-      function(r) {
-
-        # get rows of data
-        measure <- atrialcol[r, , drop = TRUE]
-
-        # fully unlist
-        measure <- unlist(
-          measure,
-          recursive = TRUE,
-          use.names = TRUE)
-
-        # in case the column is empty
-        if (is.null(measure)) {
-          data.frame(
-            main_id = NA,
-            sub_id = NA,
-            name = atcname,
-            value = NA,
-            stringsAsFactors = FALSE
-          )
-        } else {
-          data.frame(
-            main_id = r,
-            sub_id = NA,
-            name = paste0(atcname, ".", names(measure)),
-            value = as.character(measure),
-            stringsAsFactors = FALSE
-          )
-        }
-
-      }) # lapply over measure
-
-    # concatenate into long format
-    measures <- do.call(
-      rbind,
-      measures
-    )
-
-    # format names
-    measures["sub_id"] <- suppressWarnings(
-      as.integer(
-        sub("^.*?([0-9]+)$", "\\1", measures$name)
-      ))
-    measures["name"] <- sub("[0-9]+$", "", measures$name)
-    measures["name"] <- sub("@attributes[.]", "", measures$name)
-    measures["name"] <- sub("[.]$", "", measures$name)
-
-    # output
-    row.names(measures) <- NULL
-    measures
-
+    x
   }
 
-  # for each trial
-  trials2long <- function(severaltrials) {
+  # to add a first row in the next step,
+  # columns that are not compatible with
+  # adding a row are converted to character
+  conv <- sapply(df, class) == "Date"
+  conv <- seq_len(ncol(df))[conv]
+  for (c in conv) df[, c] <- as.character(df[, c, drop = TRUE])
 
-    # total number of trials
-    numtrials <- nrow(severaltrials)
+  # add a first row to df to hold item name
+  # which otherwise is not available in apply
+  df <- rbind(
+    names(df),
+    df)
 
-    # iterate over trials
-    trials <- lapply(
-      seq_len(nrow(severaltrials)),
-      function(r) {
+  # iterative unnesting, by column
+  out <- lapply(
+    df[, -match("_id", names(df)), drop = FALSE],
+    function(cc) {
+      message(". ", appendLF = FALSE)
+      # get item name as added in first row
+      tn <- cc[[1]]
+      # and by element in column
+      lapply(cc[-1], function(c) {
+        x <- unlist(flattenDf(c))
+        if (!is.null(names(x))) tn <- names(x)
+        if (is.null(x)) x <- NA
+        data.frame(
+          "name" = tn,
+          "value" = x,
+          check.names = FALSE,
+          stringsAsFactors = FALSE,
+          row.names = NULL)
+      })})
 
-        # r-th trial in works
-        message("Trial ", r, " / ", numtrials, "\r", appendLF = FALSE)
+  # add _id to list elements and
+  # simplify into data frames
+  out <- lapply(
+    out, function(e) {
+      message(". ", appendLF = FALSE)
+      names(e) <- df[-1, "_id", drop = TRUE]
+      do.call(rbind, e)
+    })
 
-        # get trial
-        atrial <- severaltrials[r, ]
+  # combine lists into data frame
+  out <- do.call(rbind, c(out, stringsAsFactors = FALSE))
+  message(". ", appendLF = FALSE)
 
-        # iterate over columns
-        cols <- lapply(
-          # exclude "_id"
-          seq(from = 2, to = ncol(severaltrials[r, ])),
-          function(c) {
+  # remove rows where value is NA
+  out <- out[!is.na(out[["value"]]), , drop = FALSE]
 
-            if (!is.na(atrial[[c]]) &&
-                !identical(atrial[[c]], list(NULL))) {
+  # process row.names such as "clinical_results.NCT00082758.73"
+  # to to obtain "clinical_results" as part of variable name
+  names <- stringi::stri_replace_first(
+    str = row.names(out), replacement = "",
+    regex = c(paste0(".(", regCtgov, "|", regEuctr, "-[3A-Z]+)[.0-9]*")))
 
-              # convert into long format
-              switch(
-                class(atrial[[c]]),
-                "data.frame" =
-                  data.frame(
-                    main_id = NA,
-                    sub_id = NA,
-                    name = names(atrial)[c],
-                    value = atrial[[c]],
-                    stringsAsFactors = FALSE
-                  ),
-                # all other (Date, list, ...)
-                col2df(atrialcol = atrial[c])
-              )
-            } # if is.na
-          }
-        ) # cols
+  # generate new data frame with target columns and order
+  out <- data.frame(
+    # process row.names to obtain trial id
+    "_id" = stringi::stri_extract_first(
+      str = row.names(out),
+      regex = c(paste0(regCtgov, "|", regEuctr, "-[3A-Z]+"))),
+    "identifier" = NA,
+    "name" = out[["name"]],
+    "value" = out[["value"]],
+    check.names = FALSE,
+    row.names = NULL,
+    stringsAsFactors = FALSE)
+  message(". ", appendLF = FALSE)
 
-        # concatenate
-        out <- do.call(
-          rbind,
-          cols
-        )
+  # generate variable names from processed row names
+  # and name unless the same is as already in name
+  out[["name"]] <- ifelse(
+    out[["name"]] == names,
+    out[["name"]],
+    paste0(names, ".", out[["name"]]))
 
-        # format trial
-        if (!is.null(out)) {
-          data.frame(
-            trial_id = atrial[["_id"]],
-            out,
-            stringsAsFactors = FALSE
-          )}
+  # name can have from 0 to about 6 number groups, get all
+  # and concatenate to oid like string such as "1.2.2.1.4"
+  out[["identifier"]] <- vapply(
+    stringi::stri_extract_all_regex(out[["name"]], "[0-9]+([.]|$)"),
+    function(i) paste0(gsub("[.]", "", i), collapse = "."),
+    character(1L))
+  out[["identifier"]] [out[["identifier"]] == "NA"] <- "0"
+  message(". ", appendLF = FALSE)
 
-      }) # iterate over trials
+  # remove numbers from variable name
+  out[["name"]] <- gsub("[0-9]+([.])|[0-9]+$|[.]?@attributes", "\\1", out[["name"]], perl = TRUE)
 
-    # concatenate into long format
-    do.call(
-      rbind,
-      trials
-    )
-
-  } # end trials2long
-
-  # collate
-  out <- trials2long(severaltrials = df)
-
-  # keep only uniques, e.g. if df columns
-  # repeated or had overlapping content
-  out <- unique(out)
+  # remove any double separators
+  out[["name"]] <- gsub("[.]+", ".", out[["name"]], perl = TRUE)
 
   # inform
   message("\nTotal ", nrow(out), " rows, ",
-          length(unique(out$name)),
+          length(unique(out[["name"]])),
           " unique names of variables")
 
   # output
-  rownames(out) <- NULL
   return(out)
 
 } # end dfTrials2Long
@@ -1975,7 +1911,7 @@ dfListExtractKey <- function(
   .Deprecated(new = "dfName2Value")
 
   # check
-  if (!("_id" %in% names(df))) {
+  if (!any("_id" == names(df))) {
     stop("Data frame 'df' lacks '_id' column.",
          call. = FALSE)
   }
@@ -2496,7 +2432,7 @@ typeField <- function(dfi) {
   silent = TRUE)
 
   # prepare output
-  if (!("try-error" %in% class(tmp)) &&
+  if (!inherits(tmp, "try-error") &&
       !is.null(unlist(tmp))) {
 
     # need to construct new data frame,
@@ -2638,7 +2574,7 @@ installCygwinWindowsDoInstall <- function(
   # check
   if (!file.exists(dstfile) ||
       file.size(dstfile) < (5 * 10 ^ 5) ||
-      ("try-error" %in% class(tmpdl))) {
+      (inherits(tmpdl, "try-error"))) {
     stop("Failed, please download manually and install with:\n",
          tmpurl, " ", installcmd,
          call. = FALSE)

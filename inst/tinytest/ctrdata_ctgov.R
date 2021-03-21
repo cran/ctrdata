@@ -170,8 +170,7 @@ df <- suppressMessages(
 # test
 expect_identical(
   names(df),
-  c("trial_id", "main_id",
-    "sub_id", "name", "value")
+  c("_id", "identifier", "name", "value")
 )
 
 # test
@@ -193,12 +192,12 @@ df2 <- dfName2Value(
 
 # test
 expect_true(
-  nrow(df2) > 2L
+  any("NCT01471782" %in% df2[["_id"]])
 )
 
 # test
 expect_true(
-  all(df2$main_id[df2$trial_id == "NCT01471782"] == 5L)
+  all(grepl("^5", df2[["identifier"]][ df2[["_id"]] == "NCT01471782" ]))
 )
 
 # test

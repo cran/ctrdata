@@ -7,7 +7,9 @@
 #' This is the main function of package \link{ctrdata} for accessing
 #' registers. Note that re-rerunning this function adds or updates
 #' trial records in a database, even if from different queries or
-#' different registers.
+#' different registers. Updating means that the previously stored
+#' record is overwritten; see \code{annotation.text} for persisting
+#' user comments added to a record.
 #'
 #' @param queryterm Either a string with the full URL of a search in
 #' a register, or the data frame returned by the
@@ -17,8 +19,10 @@
 #' The queryterm is recorded in the \code{collection} for later
 #' use to update records.
 #'
-#' @param register Vector of abbreviations of the register to query,
-#' defaults to "EUCTR".
+#' @param register String with abbreviation of register to query,
+#' at this time either "EUCTR" (default) or "CTGOV". Not needed
+#' if \code{queryterm} provide the information which register to
+#' query (see \code{queryterm}).
 #'
 #' @param querytoupdate Either the word "last" or the number of the
 #' query (based on \link{dbQueryHistory}) that should be run to
@@ -41,6 +45,10 @@
 #' @param euctrresultshistory If \code{TRUE}, also download
 #' available history of results publication in EUCTR.
 #' This is quite time-consuming (default is \code{FALSE}).
+#'
+#' @param euctrresultspdfpath If a valid directory is specified,
+#' save PDF files of result publications from EUCTR into
+#' this directory (default is \code{NULL}).
 #'
 #' @param annotation.text Text to be including in the records
 #' retrieved with the current query, in the field "annotation".
@@ -98,6 +106,7 @@ ctrLoadQueryIntoDb <- function(
   forcetoupdate = FALSE,
   euctrresults = FALSE,
   euctrresultshistory = FALSE,
+  euctrresultspdfpath = NULL,
   annotation.text = "",
   annotation.mode = "append",
   parallelretrievals = 10L,
@@ -265,6 +274,7 @@ ctrLoadQueryIntoDb <- function(
                  register = register,
                  euctrresults = euctrresults,
                  euctrresultshistory = euctrresultshistory,
+                 euctrresultspdfpath = euctrresultspdfpath,
                  annotation.text = annotation.text,
                  annotation.mode = annotation.mode,
                  parallelretrievals = parallelretrievals,
@@ -649,16 +659,17 @@ dbCTRLoadJSONFiles <- function(dir, con, verbose) {
                                 value = value)
           }, silent = TRUE)
           # - if error, try insert
-          if ("try-error" %in% class(tmp) ||
+          if (inherits(tmp, "try-error") ||
               tmp == 0L) {
             tmp <- try({
               nodbi::docdb_create(src = con,
                                   key = con$collection,
                                   value = value)
-            }, silent = TRUE)}
+            }, silent = TRUE)
+          }
 
           # return values for lapply
-          if ("try-error" %in% class(tmp) ||
+          if (inherits(tmp, "try-error") ||
               tmp == 0L) {
             # inform user
             message(ids[i], ": ", tmp)
@@ -849,6 +860,7 @@ ctrLoadQueryIntoDbCtgov <- function(
   register,
   euctrresults,
   euctrresultshistory,
+  euctrresultspdfpath,
   annotation.text,
   annotation.mode,
   parallelretrievals,
@@ -879,6 +891,7 @@ ctrLoadQueryIntoDbCtgov <- function(
   # downloading from register into temporary directy
   tempDir <- tempfile(pattern = "ctrDATA")
   dir.create(tempDir)
+  tempDir <- normalizePath(tempDir, mustWork = TRUE)
 
   # CTGOV standard identifiers
   # updated 2017-07 with revised ctgov website links, e.g.
@@ -991,7 +1004,7 @@ ctrLoadQueryIntoDbCtgov <- function(
                      overwrite = TRUE))
 
   # inform user
-  if (file.size(f) == 0) {
+  if (!file.exists(f) || file.size(f) == 0L) {
     stop("No studies downloaded. Please check 'queryterm' or run ",
          "again with verbose = TRUE.", call. = FALSE)
   }
@@ -1000,7 +1013,7 @@ ctrLoadQueryIntoDbCtgov <- function(
   utils::unzip(f, exdir = tempDir)
 
   ## compose commands to transform xml into json, into
-  # a single allfiles.json in the temporaray directory
+  # a single alltrials.json in the temporaray directory
   # special command handling on windows
   if (.Platform$OS.type == "windows") {
     #
@@ -1090,6 +1103,7 @@ ctrLoadQueryIntoDbEuctr <- function(
   register,
   euctrresults,
   euctrresultshistory,
+  euctrresultspdfpath,
   annotation.text,
   annotation.mode,
   parallelretrievals,
@@ -1105,13 +1119,28 @@ ctrLoadQueryIntoDbEuctr <- function(
     "\\1query=\\2\\3",
     queryterm)
 
-  # inform user
-  message("* Checking trials in EUCTR: ", appendLF = FALSE)
-
   # create empty temporary directory on localhost for
   # download from register into temporary directy
   tempDir <- tempfile(pattern = "ctrDATA")
   dir.create(tempDir)
+  tempDir <- normalizePath(tempDir, mustWork = TRUE)
+
+  # check results parameters
+  if (is.null(euctrresultspdfpath)) {
+    euctrresultspdfpath <- tempDir
+  }
+  if (euctrresults &&
+      (is.na(file.info(euctrresultspdfpath)[["isdir"]]) ||
+       !file.info(euctrresultspdfpath)[["isdir"]])) {
+    warning("Invalid directory specified for 'euctrresultspdfpath': ",
+            euctrresultspdfpath, call. = FALSE, immediate. = TRUE)
+    euctrresultspdfpath <- tempDir
+  }
+  # canonical directory path
+  euctrresultspdfpath <- normalizePath(euctrresultspdfpath, mustWork = TRUE)
+
+  # inform user
+  message("* Checking trials in EUCTR: ", appendLF = FALSE)
 
   # EUCTR standard identifiers
   queryEuRoot  <- "https://www.clinicaltrialsregister.eu/"
@@ -1257,7 +1286,8 @@ ctrLoadQueryIntoDbEuctr <- function(
   # create pool for concurrent connections
   pool <- curl::new_pool(
     total_con = parallelretrievals,
-    host_con = parallelretrievals)
+    host_con = parallelretrievals,
+    multiplex = TRUE)
 
   # generate vector with URLs of all pages
   urls <- vapply(
@@ -1266,54 +1296,57 @@ ctrLoadQueryIntoDbEuctr <- function(
     utils::URLencode, character(1L))
 
   # generate vector with file names for saving pages
-  fp <- paste0(
-    tempDir,
-    # NOTE this file name pattern is used
-    # by subsequent functions including
-    # shell scripts so not to be changed
-    "/euctr-trials-page_",
-    formatC(1:resultsEuNumPages,
-            digits = 0,
-            width = nchar(resultsEuNumPages),
-            flag = 0),
-    ".txt")
+  fp <- tempfile(
+    pattern = paste0(
+      "euctr_trials_",
+      formatC(seq_len(resultsEuNumPages),
+              digits = 0L,
+              width = nchar(resultsEuNumPages),
+              flag = 0), "_"),
+    tmpdir = tempDir,
+    fileext = ".txt"
+  )
 
   # success handling: saving to file
   # and progress indicator function
-  pc <- 0
+  pc <- 0L
   curlSuccess <- function(res) {
-    pc <<- pc + 1
-    # save to file - NOTE the number in page_nnn
+    pc <<- pc + 1L
+    # note that the number in euctr_trials_nnn
     # is not expected to correspond to the page
     # number in the URL that was downloaded
-    cat(rawToChar(res$content), file = fp[pc])
+    # save to file
+    # if (res$status_code == 200L) {
+    #   cat(rawToChar(res$content), file = fp[pc])
+    # }
+    if (res$status_code == 200L) {
+      writeChar(object = rawToChar(res$content), con = fp[pc], useBytes = TRUE)
+    }
     # inform user
     message("Pages: ", pc, " done, ",
             length(curl::multi_fdset(pool = pool)[["reads"]]), " ongoing   ",
             "\r", appendLF = FALSE)
   }
 
-  # add URLs and file names into pool
+  # add randomised URLs and file names into pool
   tmp <- lapply(
-    # randomise sequence
     sample(seq_along(urls),
            size = length(urls),
            replace = FALSE,
            prob = NULL),
-    function(x)
+    function(u) {
       curl::curl_fetch_multi(
-        url = urls[x],
+        url = urls[u],
         done = curlSuccess,
         pool = pool)
-  )
+    })
 
   # inform user on first page
   message("Pages: 0 done...\r", appendLF = FALSE)
 
   # do download and saving
   tmp <- curl::multi_run(
-    pool = pool
-  )
+    pool = pool)
 
   # check plausibility
   if (class(tmp) == "try-error") {
@@ -1453,17 +1486,21 @@ ctrLoadQueryIntoDbEuctr <- function(
       # prepare download and save
       pool <- curl::new_pool(
         total_con = parallelretrievals,
-        host_con = parallelretrievals)
+        host_con = parallelretrievals,
+        multiplex = TRUE)
       #
       urls <- vapply(
         paste0(queryEuRoot, queryEuType4,
                eudractnumbersimported[startindex:stopindex]),
-        utils::URLencode, character(1L))
+        utils::URLencode, character(1L), USE.NAMES = FALSE)
       #
-      fp <- paste0(
-        tempDir, "/",
-        eudractnumbersimported[startindex:stopindex],
-        ".zip")
+      fp <- tempfile(
+        pattern = paste0(
+          "euctr_results_",
+          startindex:stopindex, "_"),
+        tmpdir = tempDir,
+        fileext = ".zip"
+      )
       #
       # success handling: saving to file
       # and progress indicator function
@@ -1471,17 +1508,18 @@ ctrLoadQueryIntoDbEuctr <- function(
       curlSuccess <- function(res) {
         pc <<- pc + 1
         # save to file
-        writeBin(object = res$content, con = fp[[pc]])
-      }
+        if (res$status_code == 200L) {
+          writeBin(object = res$content, con = fp[pc])
+        }}
       #
       tmp <- lapply(
         seq_along(urls),
-        function(x)
+        function(i) {
           curl::curl_fetch_multi(
-            url = urls[x],
+            url = urls[i],
             done = curlSuccess,
             pool = pool
-          ))
+          )})
 
       # do download and save
       tmp <- curl::multi_run(
@@ -1489,36 +1527,78 @@ ctrLoadQueryIntoDbEuctr <- function(
 
       # unzip downloaded file and rename
       tmp <- lapply(
-        seq_along(urls), function(x) {
+        fp, function(f) {
 
-          if (file.size(fp[x]) != 0) {
+          if (file.exists(f) &&
+              file.size(f) != 0L) {
 
             tmp <- utils::unzip(
-              zipfile = fp[x],
+              zipfile = f,
               exdir = tempDir)
+            # results in files such as
+            # EU-CTR 2008-003606-33 v1 - Results.xml
 
             if (any(grepl("pdf$", tmp))) {
               message("PDF ", appendLF = FALSE)
-            }
+              if (euctrresultspdfpath != tempDir) {
+                euctrnr <- gsub(paste0(".*(", regEuctr, ").*"), "\\1", tmp[!grepl("pdf$", tmp)])
+                # move PDF file(s) to user specified directory
+                saved <- try(file.rename(
+                  from = tmp[grepl("pdf$", tmp)],
+                  to = normalizePath(
+                    paste0(euctrresultspdfpath, "/",
+                           euctrnr, "--",
+                           basename(tmp[grepl("pdf$", tmp)])
+                    ), mustWork = FALSE)), silent = TRUE)
+                if (any(!saved)) {
+                  warning("Could not save ", tmp[!saved],
+                          call. = FALSE, immediate. = TRUE)
+                }
+              } # if paths
+            } # if any pdf
 
-            # TODO could there be more than one XML file?
-            if (any(tmp2 <- grepl("xml$", tmp)))
-              file.rename(tmp[tmp2][1], paste0(
-                tempDir, "/",
-                eudractnumbersimported[startindex:stopindex][x],
-                ".xml"))
-
+            # inform user
             message(". ", appendLF = FALSE)
           } else {
+            # unsuccessful
             message("x ", appendLF = FALSE)
           }
 
           # clean up
-          if (!verbose) unlink(fp[x])
+          if (!verbose) unlink(f)
 
-        })
+        }) # lapply fp
 
-    } # for batch
+      # # unzip downloaded file and rename
+      # tmp <- lapply(
+      #   seq_along(fp), function(i) {
+      #
+      #     if (file.exists(fp[i]) &&
+      #         file.size(fp[i]) != 0L) {
+      #
+      #       tmp <- utils::unzip(
+      #         zipfile = fp[i],
+      #         exdir = tempDir)
+      #       # results in files such as
+      #       # EU-CTR 2008-003606-33 v1 - Results.xml
+      #
+      #       if (any(grepl("pdf$", tmp))) {
+      #         message("PDF ", appendLF = FALSE)
+      #       }
+      #
+      #       # inform user
+      #       message(". ", appendLF = FALSE)
+      #     } else {
+      #       # unsuccessful
+      #       message("x ", appendLF = FALSE)
+      #     }
+      #
+      #     # clean up
+      #     if (!verbose) unlink(fp[i])
+      #
+      #   })
+
+    } # iterate over batches of results
 
     ## use system commands to convert
     ## xml to json and to import json
@@ -1566,75 +1646,67 @@ ctrLoadQueryIntoDbEuctr <- function(
     if (verbose) message("DEBUG: ", xml2json)
     importedresults <- system(xml2json, intern = TRUE)
 
-    # iterate over batches of results files
+    # iterate over results files
     message("(3/4) Importing JSON into database...")
-    # TODO preferably, importedresults
-    # would be pre-allocated, but its
-    # size is not known at this stage
-    importedresults <- NULL
-    for (i in 1:(resultsNumBatches +
-                 ifelse(resultsNumModulo > 0, 1, 0))) {
+    importedresults <- sapply(
+      # e.g., EU-CTR 2008-003606-33 v1 - Results.json
+      dir(path = tempDir,
+          pattern = "EU.*Results[.]json",
+          full.names = TRUE),
+      function(fileName) {
 
-      # calculated indices for
-      # eudractnumbersimported vector
-      startindex <- (i - 1) * parallelretrievals + 1
-      stopindex  <- ifelse(
-        i > resultsNumBatches,
-        startindex + resultsNumModulo,
-        startindex + parallelretrievals) - 1
+        # check file
+        if (file.exists(fileName) &&
+            file.size(fileName) > 0L) {
 
-      batchresults <- sapply(
-        eudractnumbersimported[startindex:stopindex],
-        function(x) {
+          # read contents
+          tmpjson <- readChar(
+            con = fileName,
+            nchars = file.info(fileName)$size,
+            useBytes = TRUE)
 
-          # compose file name and check
-          fileName <- paste0(tempDir, "/", x, ".json")
-          if (file.exists(fileName) && file.size(fileName) > 0) {
-
-            # read contents
-            tmpjson <- readChar(
-              con = fileName,
-              nchars = file.info(fileName)$size,
-              useBytes = TRUE)
-
-            # update database with results
-            tmp <- try({
-              tmpnodbi <-
-                nodbi::docdb_update(
-                  src = con,
-                  key = con$collection,
-                  value = data.frame(
-                    "a2_eudract_number" = x,
-                    "json" = tmpjson,
-                    stringsAsFactors = FALSE))
-
-              max(tmpnodbi, na.rm = TRUE)
-            },
-            silent = TRUE)
-
-            # inform user on failed trial
-            if (class(tmp) == "try-error") {
-              warning(paste0("Import into mongo failed for trial ", x),
-                      immediate. = TRUE)
-              tmp <- 0
-            }
-
-          } else {
-
-            # file did not exist
-            tmp <- 0
-
+          # get eudract number
+          # "{\"@attributes\":{\"eudractNumber\":\"2004-004386-15\",
+          euctrnumber <- sub(
+            '^\\{\"@attributes\":\\{\"eudractNumber\":\"([0-9]{4}-[0-9]{6}-[0-9]{2})\".*$',
+            "\\1", tmpjson)
+          if (!grepl("^[0-9]{4}-[0-9]{6}-[0-9]{2}$", euctrnumber)) {
+            warning("No EudraCT number recognised in file ", fileName, call. = FALSE)
           }
 
-          # return for accumulating information
-          return(tmp)
+          # update database with results
+          tmp <- try({
+            tmpnodbi <-
+              nodbi::docdb_update(
+                src = con,
+                key = con$collection,
+                value = data.frame(
+                  "a2_eudract_number" = euctrnumber,
+                  "json" = tmpjson,
+                  stringsAsFactors = FALSE))
 
-        }) # end batchresults
+            max(tmpnodbi, na.rm = TRUE)
+          },
+          silent = TRUE)
 
-      # append batch to number of results
-      importedresults <- c(importedresults, batchresults)
+          # inform user on failed trial
+          if (class(tmp) == "try-error") {
+            warning(paste0("Import into mongo failed for trial ", euctrnumber),
+                    immediate. = TRUE)
+            tmp <- 0
+          }
 
-    } # for batch
+        } else {
+
+          # file did not exist
+          tmp <- 0
+
+        }
+
+        # return for accumulating information
+        return(tmp)
+
+      }) # end batchresults
 
     # iterate over batches of result history from webpage
     if (euctrresultshistory) {
@@ -1661,10 +1733,15 @@ ctrLoadQueryIntoDbEuctr <- function(
         # prepare download and save
         pool <- curl::new_pool(
           total_con = parallelretrievals,
-          host_con = parallelretrievals)
+          host_con = parallelretrievals,
+          multiplex = TRUE)
         #
-        done <- function(res) retdat <<- c(retdat, list(res))
-        #
+        done <- function(res) {
+          if (res$status_code == 206L) {
+            retdat <<- c(retdat, list(res))
+          }}
+
+        # compose urls to access results page
         urls <- vapply(paste0(
           "https://www.clinicaltrialsregister.eu/ctr-search/trial/",
           eudractnumbersimported[startindex:stopindex], "/results"),
@@ -1672,32 +1749,32 @@ ctrLoadQueryIntoDbEuctr <- function(
 
         tmp <- lapply(
           seq_along(urls),
-          function(x)
+          function(i) {
             curl::multi_add(
               handle = curl::new_handle(
-                url = urls[x],
-                range = "0-22999", # NOTE only top part of page
+                url = urls[i],
+                range = "0-30000", # only need top of page
                 accept_encoding = "identity"
               ),
               done = done,
               pool = pool
-            ))
+            )})
 
         # do download and save into batchresults
         # TODO preferably retdat is pre-allocated
         retdat <- NULL
         tmp <- curl::multi_run(
-          pool = pool,
-          poll = length(urls))
+          pool = pool)
 
+        # process top of results pages
         batchresults <- lapply(
           retdat,
-          function(x) rawToChar(x[["content"]]))
+          function(i) rawToChar(i[["content"]]))
 
         # curl return sequence is not predictable
-        # therefore recalculate the eudract numbers
+        # therefore recalculate eudract numbers
         eudractnumberscurled <- sapply(
-          retdat, function(x) x[["url"]])
+          retdat, function(i) i[["url"]])
         #
         eudractnumberscurled <- sub(
           ".*([0-9]{4}-[0-9]{6}-[0-9]{2}).*",
@@ -1709,13 +1786,13 @@ ctrLoadQueryIntoDbEuctr <- function(
 
         # extract information about results
         tmpFirstDate <- as.Date(
-          vapply(batchresults, function(x)
+          vapply(batchresults, function(t) {
             trimws(sub(
               ".+First version publication date</div>.*?<div>(.+?)</div>.*",
               "\\1",
               ifelse(grepl(
-                "First version publication date", x),
-                x, ""))), character(1L)),
+                "First version publication date", t),
+                t, "")))}, character(1L)),
           format = "%d %b %Y")
 
         # global end date is variably represented in euctr:
@@ -1729,36 +1806,51 @@ ctrLoadQueryIntoDbEuctr <- function(
         # reset date time
         Sys.setlocale("LC_TIME", lct)
 
-        tmpChanges <- vapply(batchresults, function(x)
+        tmpChanges <- vapply(batchresults, function(t) {
           trimws(
             gsub("[ ]+", " ",
-                 gsub("[\n\r]", "",
-                      gsub("<[a-z/]+>", "",
-                           sub(".+Version creation reason.*?<td class=\"valueColumn\">(.+?)</td>.+",
-                               "\\1", ifelse(grepl("Version creation reason", x), x, ""))
-                      )))),
+            gsub("[\n\r]", "",
+            gsub("<[a-z/]+>", "",
+            sub(".+Version creation reason.*?<td class=\"valueColumn\">(.+?)</td>.+",
+                "\\1", ifelse(grepl("Version creation reason", t), t, ""))
+            ))))},
           character(1L))
-
-        tmp <- lapply(
-          seq_along(
-            along.with = startindex:stopindex),
-          function(x) {
-
-            if (tmpChanges[x] == "") tmpChanges[x] <- "(not specified)"
-
-            upd <- nodbi::docdb_update(
-              src = con,
-              key = con$collection,
-              value = data.frame(
-                "a2_eudract_number" = eudractnumberscurled[x],
-                "firstreceived_results_date" = as.character(tmpFirstDate[x]),
-                "version_results_history" = tmpChanges[x],
-                stringsAsFactors = FALSE))
-
-          })
 
         # clean up large object
         rm(batchresults)
+
+        # create data frame for apply
+        resultHistory <- data.frame(
+          eudractnumberscurled,
+          tmpFirstDate,
+          tmpChanges,
+          stringsAsFactors = FALSE
+        )
+
+        tmp <- apply(
+          resultHistory, 1,
+          function(r) {
+            r <- as.list(r)
+
+            # check, add default, inform user
+            if (r$tmpChanges == "") {
+
+              message("x ", appendLF = FALSE)
+
+            } else {
+
+              # update record
+              message(". ", appendLF = FALSE)
+              nodbi::docdb_update(
+                src = con,
+                key = con$collection,
+                value = data.frame(
+                  "a2_eudract_number" = r$eudractnumberscurled,
+                  "firstreceived_results_date" = as.character(r$tmpFirstDate),
+                  "version_results_history" = r$tmpChanges,
+                  stringsAsFactors = FALSE))
+            }
+          }) # apply resultsHistory
 
       } # for batch
     } else {
@@ -1777,6 +1869,10 @@ ctrLoadQueryIntoDbEuctr <- function(
     message("\n= Imported or updated results for ",
             importedresults, " records for ",
             resultsEuNumTrials, " trial(s).")
+    if (euctrresultspdfpath != tempDir) {
+      message("= Results PDF files if any saved in '",
+              euctrresultspdfpath, "'")
+    }
 
   } # if euctrresults
 
