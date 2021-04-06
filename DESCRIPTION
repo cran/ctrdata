@@ -1,7 +1,7 @@
 Package: ctrdata
 Type: Package
 Title: Retrieve and Analyze Clinical Trials in Public Registers
-Version: 1.5.1
+Version: 1.5.2
 Imports: jsonlite, httr, curl, clipr, xml2, rvest, nodbi (>= 0.4), DBI,
         stringi
 SystemRequirements: sed, php, cat, perl
@@ -21,7 +21,6 @@ Description: Provides functions for querying, retrieving and analyzing
         the design and conduct as well as results of clinical trials.
 License: MIT + file LICENSE
 RoxygenNote: 7.1.1
-LazyData: true
 Suggests: devtools, knitr, rmarkdown, RSQLite (>= 2.1.2), mongolite,
         tinytest (>= 1.2.1), R.rsp
 VignetteBuilder: R.rsp
@@ -30,8 +29,8 @@ Encoding: UTF-8
 Authors@R: person(given = "Ralf", family = "Herold", role = c("aut", "cre"),
         email = "ralf.herold@mailbox.org", comment = c(ORCID =
         "0000-0002-8148-6748"))
-Packaged: 2021-03-21 13:54:28 UTC; ralfherold
+Packaged: 2021-04-05 19:15:25 UTC; ralfherold
 Author: Ralf Herold [aut, cre] (<https://orcid.org/0000-0002-8148-6748>)
 Maintainer: Ralf Herold <ralf.herold@mailbox.org>
 Repository: CRAN
-Date/Publication: 2021-03-21 15:50:19 UTC
+Date/Publication: 2021-04-06 07:10:16 UTC

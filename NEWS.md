@@ -1,3 +1,7 @@
+# ctrdata 1.5.2
+ - 2021-04-05
+ - bugfix of EOL for converting EUCTR files
+
 # ctrdata 1.5.1
  - 2021-03-21
  - bugfix for non-matching euctr protocol and result ids: 

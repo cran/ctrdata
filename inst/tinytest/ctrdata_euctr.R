@@ -23,11 +23,12 @@ suppressWarnings(
     )))
 # test
 expect_identical(
-  suppressMessages(
+  suppressWarnings(
+    suppressMessages(
     dbGetFieldsIntoDf(
       fields = "endPoints.endPoint.title",
       con = dbc
-    ))[1, "_id", drop = TRUE],
+    )))[1, "_id", drop = TRUE],
   "2008-003606-33-GB")
 
 # next
@@ -97,9 +98,10 @@ q <- paste0("https://www.clinicaltrialsregister.eu/ctr-search/search?query=cance
 
 # test
 expect_message(
-  tmpTest <- suppressWarnings(
+  suppressWarnings(
     ctrLoadQueryIntoDb(
       queryterm = paste0(q),
+      verbose = TRUE,
       con = dbc)),
   "(Imported or updated|First result page empty)")
 
@@ -129,7 +131,6 @@ expect_message(
   tmpTest <- suppressWarnings(
     ctrLoadQueryIntoDb(
       querytoupdate = "last",
-      verbose = TRUE,
       con = dbc)),
   "(Imported or updated|First result page empty)")
 
@@ -176,22 +177,21 @@ result <- suppressMessages(
   ))
 
 # test
-expect_true(
-  nrow(result) > 45L
-)
+expect_true(nrow(result) > 45L)
 
 # keep only one record for trial
-result <- suppressWarnings(suppressMessages(
+result2 <- suppressWarnings(suppressMessages(
   result[result[["_id"]] %in%
            dbFindIdsUniqueTrials(con = dbc), ]
 ))
 # test
-expect_true(
-  nrow(result) < 15L
+expect_identical(
+  length(unique(result$a2_eudract_number)),
+  nrow(result2)
 )
 
 # test
-expect_true(all(as.Date(c("2013-10-28", "2018-03-13")) %in%
+expect_true(all(as.Date(c("2013-10-28")) %in%
                   result$trialInformation.globalEndOfTrialDate))
 
 # test
@@ -217,17 +217,17 @@ expect_true(
     # is deprecated
     suppressWarnings(
       dfListExtractKey(
-        df = result,
+        df = result2,
         list.key = list(
           c("endPoints.endPoint", "title"))
       )[["value"]]
     )), na.rm = TRUE)
-  > 3000L)
+  > 3300L)
 
 # convert to long
 df <- suppressMessages(
   dfTrials2Long(
-    df = result
+    df = result2
   ))
 
 # test
@@ -238,7 +238,7 @@ expect_identical(
 
 # test
 expect_true(
-  nrow(df) > 3300L
+  nrow(df) > 3000L
 )
 
 # extract
@@ -525,7 +525,7 @@ tmpc <- table(tmpc)
 # 51           8         6        11        55
 
 # tests
-expect_true(tmpc[["character"]] > 50)
+expect_true(tmpc[["character"]] > 45)
 expect_true(tmpc[["Date"]]      >  5)
 expect_true(tmpc[["logical"]]   > 50)
 

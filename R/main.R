@@ -111,11 +111,8 @@ ctrLoadQueryIntoDb <- function(
   annotation.mode = "append",
   parallelretrievals = 10L,
   only.count = FALSE,
-  con,
+  con = NULL,
   verbose = FALSE) {
-
-  ## check database connection
-  con <- ctrDb(con = con)
 
   ## system check, in analogy to onload.R
   if (.Platform$OS.type == "windows") {
@@ -148,8 +145,9 @@ ctrLoadQueryIntoDb <- function(
         silent = TRUE)
 
       if (inherits(tmpTest, "try-error")) {
-        stop("'queryterm' is not an non-empty string: ",
-             deparse(queryterm), call. = FALSE)
+        stop("Cannot use 'queryterm' ", deparse(substitute(queryterm)),
+             " and / or 'register' ", deparse(substitute(register)),
+             call. = FALSE)
       }
 
       queryterm <- tmpTest
@@ -193,13 +191,11 @@ ctrLoadQueryIntoDb <- function(
     }
 
     ## sanity checks
-    if (grepl("[^.a-zA-Z0-9=+&%_-]",
-              gsub("\\[", "",
-                   gsub("\\]", "",
-                        queryterm)))) {
+    if (grepl("[^.a-zA-Z0-9=+&%_:\", -]",
+              gsub("\\[", "", gsub("\\]", "", queryterm)))) {
       stop("Parameter 'queryterm' is not an URL showing results ",
            "of a query or has unexpected characters: ", queryterm,
-           ", expected are: a-zA-Z0-9=+&%_-.[]",
+           ", expected are: a-zA-Z0-9=+&%_-,.: []\"",
            call. = FALSE)
     }
     #
@@ -357,6 +353,9 @@ ctrRerunQuery <- function(
   con = con,
   verbose = verbose,
   queryupdateterm = queryupdateterm) {
+
+  ## check database connection
+  con <- ctrDb(con = con)
 
   ## prepare
 
@@ -792,6 +791,9 @@ dbCTRUpdateQueryHistory <- function(
   con,
   verbose) {
 
+  ## check database connection
+  con <- ctrDb(con = con)
+
   # debug
   if (verbose) message("Running dbCTRUpdateQueryHistory...")
 
@@ -944,12 +946,6 @@ ctrLoadQueryIntoDbCtgov <- function(
     message("No trials or number of trials could not be determined: ", tmp)
     return(invisible(list(n = 0L, ids = "")))
   }
-  #
-  if (as.integer(tmp) > 10000L) {
-    stop("These are ", tmp, " (more than 10,000) trials, this may be ",
-         "unintended. Downloading more than 10,000 trials is not supported ",
-         "by the register. Consider correcting or splitting queries.")
-  }
 
   # inform user
   message("Retrieved overview, records of ", tmp, " ",
@@ -963,6 +959,16 @@ ctrLoadQueryIntoDbCtgov <- function(
                 success = NULL,
                 failed = NULL))
   }
+
+  # exit if too many records
+  if (as.integer(tmp) > 10000L) {
+    stop("These are ", tmp, " (more than 10,000) trials, this may be ",
+         "unintended. Downloading more than 10,000 trials is not supported ",
+         "by the register. Consider correcting or splitting queries.")
+  }
+
+  ## check database connection
+  con <- ctrDb(con = con)
 
   ## system check, in analogy to onload.R
   message("Checking helper binaries: ", appendLF = FALSE)
@@ -1158,7 +1164,7 @@ ctrLoadQueryIntoDbEuctr <- function(
   resultsEuPages <- try(httr::content(
     httr::GET(url = q), as = "text"), silent = TRUE)
   #
-  if (inherits("try-error", resultsEuPages)) {
+  if (inherits(resultsEuPages, "try-error")) {
     stop("Host ", queryEuRoot, " does not respond, cannot continue.",
          call. = FALSE)
   }
@@ -1210,6 +1216,9 @@ ctrLoadQueryIntoDbEuctr <- function(
     stop("These are ", resultsEuNumTrials, " (more than 10,000) trials. ",
          "Consider correcting or splitting into separate queries.")
   }
+
+  ## check database connection
+  con <- ctrDb(con = con)
 
   ## system check, in analogy to onload.R
   message("Checking helper binaries: ", appendLF = FALSE)
@@ -1316,11 +1325,8 @@ ctrLoadQueryIntoDbEuctr <- function(
     # is not expected to correspond to the page
     # number in the URL that was downloaded
     # save to file
-    # if (res$status_code == 200L) {
-    #   cat(rawToChar(res$content), file = fp[pc])
-    # }
     if (res$status_code == 200L) {
-      writeChar(object = rawToChar(res$content), con = fp[pc], useBytes = TRUE)
+      writeLines(text = rawToChar(res$content), con = fp[pc], useBytes = TRUE)
     }
     # inform user
     message("Pages: ", pc, " done, ",
@@ -1541,7 +1547,8 @@ ctrLoadQueryIntoDbEuctr <- function(
             if (any(grepl("pdf$", tmp))) {
               message("PDF ", appendLF = FALSE)
               if (euctrresultspdfpath != tempDir) {
-                euctrnr <- gsub(paste0(".*(", regEuctr, ").*"), "\\1", tmp[!grepl("pdf$", tmp)])
+                euctrnr <- gsub(paste0(".*(", regEuctr, ").*"),
+                                "\\1", tmp[!grepl("pdf$", tmp)])
                 # move PDF file(s) to user specified directory
                 saved <- try(file.rename(
                   from = tmp[grepl("pdf$", tmp)],
@@ -1568,35 +1575,6 @@ ctrLoadQueryIntoDbEuctr <- function(
           if (!verbose) unlink(f)
 
         }) # lapply fp
-
-      # # unzip downloaded file and rename
-      # tmp <- lapply(
-      #   seq_along(fp), function(i) {
-      #
-      #     if (file.exists(fp[i]) &&
-      #         file.size(fp[i]) != 0L) {
-      #
-      #       tmp <- utils::unzip(
-      #         zipfile = fp[i],
-      #         exdir = tempDir)
-      #       # results in files such as
-      #       # EU-CTR 2008-003606-33 v1 - Results.xml
-      #
-      #       if (any(grepl("pdf$", tmp))) {
-      #         message("PDF ", appendLF = FALSE)
-      #       }
-      #
-      #       # inform user
-      #       message(". ", appendLF = FALSE)
-      #     } else {
-      #       # unsuccessful
-      #       message("x ", appendLF = FALSE)
-      #     }
-      #
-      #     # clean up
-      #     if (!verbose) unlink(fp[i])
-      #
-      #   })
 
     } # iterate over batches of results
 
@@ -1762,7 +1740,7 @@ ctrLoadQueryIntoDbEuctr <- function(
 
         # do download and save into batchresults
         # TODO preferably retdat is pre-allocated
-        retdat <- NULL
+        retdat <- list()
         tmp <- curl::multi_run(
           pool = pool)
 
@@ -1863,7 +1841,7 @@ ctrLoadQueryIntoDbEuctr <- function(
 
     # sum up successful downloads
     importedresults <- sum(unlist(
-      importedresults), na.rm = TRUE)
+      importedresults, use.names = FALSE), na.rm = TRUE)
 
     ## inform user on final import outcome
     message("\n= Imported or updated results for ",
