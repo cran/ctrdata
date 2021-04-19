@@ -630,10 +630,10 @@ dbQueryHistory <- function(con,
 #' \url{https://prsinfo.clinicaltrials.gov/definitions.html}.
 #'
 #' Note: Generating a list of fields with this function may take
-#' some time, and may involve running a mapreduce function is
-#' run on the server. If the user is not not authorized to run
-#' such a function on the (local or remote) server,
-#' random documents are sampled to generate a list of fields.
+#' some time, and may involve running a mapreduce function if using
+#' a MongoDB server. If the user is not not authorized to run
+#' such a function, random documents are sampled to generate a
+#' list of fields.
 #'
 #' @param namepart A plain string (can include a regular expression,
 #' including Perl-style) to be searched for among all field names
@@ -646,7 +646,8 @@ dbQueryHistory <- function(con,
 #'
 #' @inheritParams ctrDb
 #'
-#' @return Vector of names of found field(s)
+#' @return Vector of names of found field(s) in alphabetical
+#' order (that is, not by register or field frequency)
 #'
 #' @export
 #'
@@ -798,7 +799,7 @@ dbFindFields <- function(namepart = "",
   if (!length(fields)) fields <- ""
 
   # return the match(es)
-  return(fields)
+  return(sort(fields))
 
 } # end dbFindFields
 
@@ -1690,6 +1691,9 @@ dfName2Value <- function(df, valuename = "",
   if (all(is.na(tmp) == is.na(out[["value"]]))) {
     out["value"] <- tmp
   }
+  # remove any duplicates such as
+  # from duplicate where... criteria
+  out <- unique(out)
 
   # return
   return(out)
@@ -1793,11 +1797,14 @@ dfTrials2Long <- function(df) {
 
   # add _id to list elements and
   # simplify into data frames
+  tmpNames <- df[-1, "_id", drop = TRUE]
   out <- lapply(
     out, function(e) {
       message(". ", appendLF = FALSE)
-      names(e) <- df[-1, "_id", drop = TRUE]
-      do.call(rbind, e)
+      names(e) <- tmpNames
+      # duplicate e to force generating
+      # names in the later rbind step
+      do.call(rbind, c(e, e, stringsAsFactors = FALSE))
     })
 
   # combine lists into data frame
@@ -1832,7 +1839,7 @@ dfTrials2Long <- function(df) {
   out[["name"]] <- ifelse(
     out[["name"]] == names,
     out[["name"]],
-    paste0(names, ".", out[["name"]]))
+    paste0(names, ".0.", out[["name"]]))
 
   # name can have from 0 to about 6 number groups, get all
   # and concatenate to oid-like string such as "1.2.2.1.4"
@@ -1848,6 +1855,9 @@ dfTrials2Long <- function(df) {
 
   # remove any double separators
   out[["name"]] <- gsub("[.]+", ".", out[["name"]], perl = TRUE)
+
+  # remove double rows from duplicating e above
+  out <- unique(out)
 
   # inform
   message("\nTotal ", nrow(out), " rows, ",
@@ -2051,15 +2061,23 @@ dfMergeTwoVariablesRelevel <- function(
   # bind as ...
   if (class(df[, 1]) == class(df[, 2]) &&
       class(df[, 1]) != "character") {
+    # check
+    if (nrow(na.omit(df[!vapply(df[, 1, drop = TRUE], is.null, logical(1L)) &
+                        !vapply(df[, 2, drop = TRUE], is.null, logical(1L)), ,
+                        drop = FALSE]))) {
+      warning("Some rows had values for both columns, used first",
+              noBreaks. = TRUE, immediate. = TRUE)
+    }
     # values, with first having
     # priority over the second
     tmp <- ifelse(is.na(tt <- df[, 1]), df[, 2], df[, 1])
-    if (nrow(df)) {
-      warning("Some rows had values for both columns, ",
-              "used ", colnames[1],
+  } else {
+    # check
+    if (nrow(df[df[, 1] != "" &
+                df[, 2] != "", , drop = FALSE])) {
+      warning("Some rows had values for both columns, concatenated",
               noBreaks. = TRUE, immediate. = TRUE)
     }
-  } else {
     # strings, concatenated
     tmp <- paste0(
       ifelse(is.na(tt <- as.character(df[, 1])), "", tt),
@@ -2102,9 +2120,9 @@ dfMergeTwoVariablesRelevel <- function(
   }
 
   # check and inform user
-  if (length(tt <- unique(tmp)) > 10) {
-    message("Unique values returned (limited to ten): ",
-            paste(tt[1:10], collapse = ", "))
+  if (length(tt <- unique(tmp)) > 3L) {
+    message("Unique values returned (first three): ",
+            paste(tt[1L:3L], collapse = ", "))
   } else {
     message("Unique values returned: ",
             paste(tt, collapse = ", "))

@@ -498,9 +498,10 @@ ctrRerunQuery <- function(
           message("DEBUG (rss url): ", rssquery)
         }
         #
-        resultsRss <- httr::content(
+        resultsRss <- try(httr::content(
           httr::GET(url = rssquery),
-          as = "text")
+          encoding = "UTF-8",
+          as = "text"), silent = TRUE)
 
         if (verbose) {
           message("DEBUG (rss content): ", resultsRss)
@@ -514,7 +515,13 @@ ctrRerunQuery <- function(
         if (length(resultsRssTrials) == 1L &&
             resultsRssTrials == -1L) {
           message("First result page empty - no (new) trials found?")
-          return(invisible(0L))
+          return(invisible(list(
+            # return structure as in dbCTRLoadJSONFiles
+            # which is handed through to ctrLoadQueryIntoDb
+            n = 0L,
+            success = character(0L),
+            failed = character(0L),
+            queryterm = querytermoriginal)))
         }
         #
         # if new trials found, construct
@@ -1161,13 +1168,23 @@ ctrLoadQueryIntoDbEuctr <- function(
   q <- utils::URLencode(paste0(queryEuRoot, queryEuType1, queryterm))
   if (verbose) message("DEBUG: queryterm is ", q)
   #
-  resultsEuPages <- try(httr::content(
-    httr::GET(url = q), as = "text"), silent = TRUE)
+  resultsEuPages <- try(httr::GET(url = q), silent = TRUE)
   #
   if (inherits(resultsEuPages, "try-error")) {
-    stop("Host ", queryEuRoot, " does not respond, cannot continue.",
-         call. = FALSE)
+    if (grepl("SSL certificate.*local issuer certificate", resultsEuPages)) {
+      stop("Host ", queryEuRoot, " cannot be queried as expected, error:\n",
+           trimws(resultsEuPages), "\nFor a potential workaround, check ",
+           "https://github.com/rfhb/ctrdata/issues/19#issuecomment-820127139",
+           call. = FALSE)
+    } else {
+    stop("Host ", queryEuRoot, " does not respond as expected, error:\n",
+         resultsEuPages, call. = FALSE)
+    }
   }
+  # - store options from request
+  requestOptions <- resultsEuPages$request$options
+  # - get content of response
+  resultsEuPages <- httr::content(resultsEuPages, as = "text")
 
   # get number of trials identified by query
   resultsEuNumTrials <- sub(
@@ -1189,12 +1206,18 @@ ctrLoadQueryIntoDbEuctr <- function(
   # calculate number of results pages
   resultsEuNumPages  <- ceiling(resultsEuNumTrials / 20)
 
-  # check for plausbility and stop function without erro
+  # check for plausibility and stop function without erro
   if (is.na(resultsEuNumPages) ||
       is.na(resultsEuNumTrials) ||
       (resultsEuNumTrials == 0)) {
     message("First result page empty - no (new) trials found?")
-    return(invisible(list(n = 0, ids = "")))
+    return(invisible(list(
+      # return structure as in dbCTRLoadJSONFiles
+      # which is handed through to ctrLoadQueryIntoDb
+      n = 0L,
+      success = character(0L),
+      failed = character(0L),
+      queryterm = queryterm)))
   }
 
   # inform user
@@ -1267,16 +1290,21 @@ ctrLoadQueryIntoDbEuctr <- function(
 
   # prepare download and saving
 
-  # get cookies
+  # prepare curl operations
+  #
+  # - make handle work with cookies
   cf <- tempfile(
     pattern = "cookies_",
-    fileext = ".txt"
-  )
+    fileext = ".txt")
+  # - new handle
   h <- curl::new_handle(
     useragent = "",
     accept_encoding = "gzip,deflate,zstd,br",
     cookiejar = cf,
     cookiefile = cf)
+  # - add any user options specified for httr
+  curl::handle_setopt(h, .list = requestOptions)
+  # - do fetch
   tmp <- curl::curl_fetch_memory(
     url = paste0(queryEuRoot, queryEuType3,
                  "query=2008-003606-33", "&page=1", queryEuPost),
@@ -1341,10 +1369,13 @@ ctrLoadQueryIntoDbEuctr <- function(
            replace = FALSE,
            prob = NULL),
     function(u) {
+      h <- curl::new_handle()
+      curl::handle_setopt(h, .list = requestOptions)
       curl::curl_fetch_multi(
         url = urls[u],
         done = curlSuccess,
-        pool = pool)
+        pool = pool,
+        handle = h)
     })
 
   # inform user on first page
@@ -1521,11 +1552,14 @@ ctrLoadQueryIntoDbEuctr <- function(
       tmp <- lapply(
         seq_along(urls),
         function(i) {
+          h <- curl::new_handle()
+          curl::handle_setopt(h, .list = requestOptions)
           curl::curl_fetch_multi(
             url = urls[i],
             done = curlSuccess,
-            pool = pool
-          )})
+            pool = pool,
+            handle = h)
+        })
 
       # do download and save
       tmp <- curl::multi_run(
@@ -1728,15 +1762,16 @@ ctrLoadQueryIntoDbEuctr <- function(
         tmp <- lapply(
           seq_along(urls),
           function(i) {
+            h <- curl::new_handle(
+              url = urls[i],
+              range = "0-30000", # only top of page needed
+              accept_encoding = "identity")
+            curl::handle_setopt(h, .list = requestOptions)
             curl::multi_add(
-              handle = curl::new_handle(
-                url = urls[i],
-                range = "0-30000", # only need top of page
-                accept_encoding = "identity"
-              ),
+              handle = h,
               done = done,
-              pool = pool
-            )})
+              pool = pool)
+          })
 
         # do download and save into batchresults
         # TODO preferably retdat is pre-allocated
