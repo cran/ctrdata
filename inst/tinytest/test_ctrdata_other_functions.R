@@ -12,6 +12,12 @@ statusvalues <- list(
   "Firstvalues" = c("12", "23"),
   "Lastvalue"   = c("34"))
 
+#### binaries ####
+
+expect_message(
+  ctrdata:::checkBinary(b = "notworking"),
+  "nonexistingbinarytested not found")
+
 
 #### environment ####
 
@@ -160,13 +166,13 @@ if (!checkInternet()) exit_file("Reason: no internet connectivity")
 
 # test
 expect_message(
-  ctrOpenSearchPagesInBrowser(input = q),
+  ctrOpenSearchPagesInBrowser(url = q),
   "Found search query")
 
 # test
-expect_message(
+expect_warning(
   ctrOpenSearchPagesInBrowser(input = tmpTest),
-  "Opening browser for search:")
+  "Parameter 'input' is deprecated, use 'url' instead")
 
 q <- paste0("https://www.clinicaltrialsregister.eu/ctr-search/",
             "search?query=&age=under-18&status=completed")
@@ -184,22 +190,15 @@ expect_message(
   "Found search query")
 
 # test
-expect_true(
-  ctrOpenSearchPagesInBrowser(register = ""))
-
-# test
 expect_message(
   ctrOpenSearchPagesInBrowser(q),
-  "Opening browser for search:")
-
-# test
-expect_message(
-  ctrOpenSearchPagesInBrowser(tmpTest),
-  "Opening browser for search:")
+  "Found search query")
 
 # test
 expect_equal(
+  ctrOpenSearchPagesInBrowser(tmpTest), q)
+
+# test
+expect_null(
   ctrOpenSearchPagesInBrowser(
-    register = c("EUCTR", "CTGOV"),
-    copyright = TRUE),
-  TRUE)
+    copyright = TRUE))
