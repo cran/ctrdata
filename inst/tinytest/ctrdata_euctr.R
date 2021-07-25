@@ -1,5 +1,11 @@
 ## RH 2019-09-28
 
+# check server
+if (httr::status_code(
+  httr::GET("https://www.clinicaltrialsregister.eu/ctr-search/search",
+             httr::timeout(5))) != 200L
+) exit_file("Reason: EUCTR not working")
+
 #### ctrLoadQueryIntoDb ####
 
 # test
@@ -8,11 +14,21 @@ expect_error(
     suppressMessages(
       ctrLoadQueryIntoDb(
         queryterm = "query=",
-        register = "EUCTR",
-        con = dbc))),
+        register = "EUCTR"))),
   "more than 10,000) trials")
 
+# test
+expect_true(
+  suppressWarnings(
+    suppressMessages(
+      ctrLoadQueryIntoDb(
+        queryterm = "2005-001267-63+OR+2008-003606-33",
+        register = "EUCTR",
+        only.count = TRUE)))[["n"]] >= 2L)
+
 # correct _id association
+
+# test
 suppressWarnings(
   suppressMessages(
     ctrLoadQueryIntoDb(
@@ -25,10 +41,10 @@ suppressWarnings(
 expect_identical(
   suppressWarnings(
     suppressMessages(
-    dbGetFieldsIntoDf(
-      fields = "endPoints.endPoint.title",
-      con = dbc
-    )))[1, "_id", drop = TRUE],
+      dbGetFieldsIntoDf(
+        fields = "endPoints.endPoint.title",
+        con = dbc
+      )))[1, "_id", drop = TRUE],
   "2008-003606-33-GB")
 
 # next
@@ -56,6 +72,15 @@ expect_true(all(
 expect_true(length(tmpTest$failed) == 0L)
 rm(tmpTest, q)
 
+# test
+expect_message(
+  suppressWarnings(
+    ctrLoadQueryIntoDb(
+      # trial with f1111, f1121 to check typeField
+      queryterm = "2013-003488-71",
+      register = "EUCTR",
+      con = dbc)),
+  "Imported or updated")
 
 #### ctrLoadQueryIntoDb update ####
 
@@ -85,7 +110,7 @@ expect_message(
       querytoupdate = "last",
       con = dbc,
       verbose = TRUE)),
-  "search\\?query=neuro")
+  "search[?]query=2013-003488-71")
 
 # checking as only works for last 7 days with rss mechanism
 # query just based on date is used to avoids no trials are found
@@ -148,15 +173,21 @@ rm(tmpTest, q, hist, json, date.from, date.to, date.today)
 q <- paste0("https://www.clinicaltrialsregister.eu/ctr-search/search?query=",
             "2013-003420-37+OR+2009-011454-17+OR+2006-005357-29")
 
+# temp folder
+tempD <- tempdir()
+
+# test
 expect_message(
   suppressWarnings(
     ctrLoadQueryIntoDb(
       queryterm = q,
       euctrresults = TRUE,
       euctrresultshistory = TRUE,
-      verbose = TRUE,
+      euctrresultspdfpath = tempD,
       con = dbc)),
-  "Imported or updated results for")
+  "Imported or updated results for 3")
+rm(tempD, q)
+
 
 # get results
 result <- suppressMessages(
@@ -173,8 +204,7 @@ result <- suppressMessages(
         "trialInformation.analysisForPrimaryCompletion",
         "e71_human_pharmacology_phase_i"
       ),
-      con = dbc,
-      stopifnodata = FALSE)
+      con = dbc)
   ))
 
 # test
@@ -211,6 +241,8 @@ expect_true("Date" == class(result[[
 expect_true("list" == class(result[[
   "endPoints.endPoint"]]))
 
+#### dfListExtractKey ####
+
 # test
 expect_true(
   sum(nchar(
@@ -224,6 +256,15 @@ expect_true(
       )[["value"]]
     )), na.rm = TRUE)
   > 3000L)
+
+# test
+expect_error(
+  suppressWarnings(
+    dfListExtractKey(
+      df = iris)),
+  "'df' lacks '_id' column")
+
+#### dfTrials2Long ####
 
 # convert to long
 df <- suppressMessages(
@@ -241,6 +282,19 @@ expect_identical(
 expect_true(
   nrow(df) > 3300L
 )
+
+# test
+expect_error(
+  dfTrials2Long(
+    df = result2[, -1]),
+  "Missing _id column or other variables in 'df'")
+
+expect_error(
+  dfTrials2Long(
+    df = df),
+  "'df' should not come from dfTrials2Long")
+
+#### dfName2Value ####
 
 # extract
 df2 <- dfName2Value(
@@ -291,10 +345,19 @@ expect_true(
 
 # test
 expect_error(
-  dfTrials2Long(
-    df = result[, -1]
-  ),
-  "Missing _id column or other variables in 'df'")
+  dfName2Value(
+    df = df,
+    valuename = "doesnotexist"),
+  "No rows found for 'valuename'")
+
+# test
+expect_error(
+  dfName2Value(
+    df = df,
+    valuename = "^endPoints.endPoint.statisticalAnalyses.statisticalAnalysis.statisticalHypothesisTest.value$",
+    wherename = "endPoints.endPoint.statisticalAnalyses.statisticalAnalysis.statisticalHypothesisTest.method.value",
+    wherevalue = "doesnotexist"),
+  "No rows found for 'wherename' and 'wherevalue'")
 
 # cleanup
 rm(result, result2, df, df2)
@@ -454,6 +517,8 @@ expect_warning(
   "Preferred EUCTR version set to 3RD country trials")
 
 # test, reusing the query string
+q <- paste0("https://www.clinicaltrialsregister.eu/ctr-search/search?query=",
+            "2013-003420-37+OR+2009-011454-17+OR+2006-005357-29")
 tmpQ <- strsplit(q, "+OR+", fixed = TRUE)[[1]]
 tmpQ <- gsub(".+=(.?)", "\\1", tmpQ)
 expect_true(all(
@@ -461,7 +526,7 @@ expect_true(all(
     gsub("([0-9]{4}-[0-9]{6}-[0-9]{2})-.*", "\\1", tmpTest)))
 
 # clean up
-rm(tmpTest, tmpQ)
+rm(tmpTest, tmpQ, q)
 
 #### dbGetFieldsIntoDf ####
 
@@ -520,6 +585,7 @@ tmpc <- table(tmpc)
 #       558        10        19         3        79
 
 # tests
+expect_equal(length(tmpf), ncol(result))
 expect_true(tmpc[["character"]] > 45)
 expect_true(tmpc[["Date"]]      >  5)
 expect_true(tmpc[["logical"]]   > 50)

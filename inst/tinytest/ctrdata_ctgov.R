@@ -1,6 +1,20 @@
 ## RH 2019-09-28
 
+# check server
+if (httr::status_code(
+  httr::GET("https://clinicaltrials.gov/ct2/search",
+             httr::timeout(5))) != 200L
+) exit_file("Reason: CTGOV not working")
+
 #### ctrLoadQueryIntoDb ####
+
+# test
+expect_equal(
+  suppressMessages(
+  ctrLoadQueryIntoDb(
+    queryterm = "2010-024264-18",
+    register = "CTGOV",
+    only.count = TRUE))[["n"]], 1L)
 
 # test
 expect_message(
@@ -51,6 +65,14 @@ expect_message(
       verbose = TRUE,
       con = dbc)),
   "No trials or number of trials could not be determined")
+
+# test
+expect_error(
+  suppressWarnings(
+    ctrLoadQueryIntoDb(
+      querytoupdate = 999L,
+      con = dbc)),
+  "'querytoupdate': specified number not found")
 
 # new query
 q <- paste0("https://clinicaltrials.gov/ct2/results?",
@@ -211,4 +233,3 @@ expect_error(
         annotation.mode = "WRONG",
         con = dbc))),
   "'annotation.mode' incorrect")
-

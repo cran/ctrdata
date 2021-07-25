@@ -1,6 +1,26 @@
 ## RH 2021-04-25
 
+# check server
+if (httr::status_code(
+  httr::GET("https://www.isrctn.com/editAdvancedSearch",
+             httr::timeout(5))) != 200L
+) exit_file("Reason: CTGOV not working")
+
 #### ctrLoadQueryIntoDb ####
+
+# test with slightly incorrect url
+expect_message(
+  ctrLoadQueryIntoDb(
+    queryterm = "https://www.isrctn.com/search?neuroblastoma",
+    only.count = TRUE),
+  "search query from ISRCTN: q=neuroblastoma")
+
+# test
+expect_error(
+  suppressMessages(
+    ctrLoadQueryIntoDb(
+      queryterm = "https://www.isrctn.com/search?q=")),
+  "consider correcting or splitting queries")
 
 # test
 expect_message(
@@ -31,6 +51,16 @@ expect_message(
       con = dbc)),
   "Search result page empty")
 
+# test
+expect_message(
+  suppressWarnings(
+    ctrLoadQueryIntoDb(
+      querytoupdate = "last",
+      con = dbc,
+      verbose = TRUE)),
+  "Updating using this additional query term")
+
+
 # new query (last edited before)
 oldQueryDate <- format(Sys.Date() - 365 * 2,  "%Y-%m-%d")
 q <- paste0("https://www.isrctn.com/search?q=neuroblastoma&filters=condition:Cancer",
@@ -44,6 +74,13 @@ expect_message(
       queryterm = q,
       con = dbc)),
   "Imported or updated ")
+
+# test
+expect_warning(
+  ctrLoadQueryIntoDb(
+    querytoupdate = "last",
+    con = dbc),
+  "running again with these limits")
 
 # manipulate history to remove lastEdited filter
 # test updating using dbCTRUpdateQueryHistory
@@ -107,7 +144,6 @@ expect_message(
       con = dbc)),
   "Imported or updated 1 trial")
 
-
 #### dbGetFieldsIntoDf ####
 
 res <- suppressMessages(
@@ -122,6 +158,16 @@ expect_true(
   res[, "annotation", drop = TRUE] == "just_this" &
     res[, "_id", drop = TRUE] == "98918118")
 rm(res)
+
+# test
+expect_error(
+  suppressMessages(
+    suppressWarnings(
+      dbGetFieldsIntoDf(
+        fields = c("doesnotexist"),
+        con = dbc))),
+  "No data could be extracted for")
+
 
 #### dbFindIdsUniqueTrials ####
 

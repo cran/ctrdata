@@ -11,6 +11,12 @@
 library(tinytest)
 suppressMessages(library(ctrdata))
 
+# throw error for && and || with vectors longer than 1 element
+Sys.setenv("_R_CHECK_LENGTH_1_LOGIC2_" = "TRUE")
+
+# throw error for if statement with length > 1 vector
+Sys.setenv("_R_CHECK_LENGTH_1_CONDITION_" = "TRUE")
+
 
 #### global variables for data bases ####
 
@@ -57,15 +63,11 @@ checkBinaries <- function() {
 
 checkInternet <- function() {
   tmp <- try(
-    {
-      httr::HEAD("www.clinicaltrials.gov", httr::timeout(5))
-      httr::HEAD("www.clinicaltrialsregister.eu", httr::timeout(5))
-      httr::HEAD("www.isrctn.com", httr::timeout(5))
-    },
+    httr::HEAD("https://httpbin.org/anything", httr::timeout(5)),
     silent = TRUE
   )
 
-  out <- !("try-error" %in% class(tmp))
+  out <- !inherits(tmp, "try-error")
   out
 }
 
@@ -73,7 +75,7 @@ checkInternet <- function() {
 checkSqlite <- function() {
   tmp <- try(nodbi::src_sqlite(), silent = TRUE)
 
-  out <- all(c("src_sqlite", "docdb_src") %in% class(tmp))
+  out <- inherits(tmp, c("src_sqlite", "docdb_src"))
   if (out) RSQLite::dbDisconnect(conn = tmp$con)
   out
 }
@@ -89,7 +91,7 @@ checkMongoLocal <- function() {
     silent = TRUE
   )
 
-  out <- all(c("src_mongo", "docdb_src") %in% class(tmp))
+  out <- inherits(tmp, c("src_mongo", "docdb_src"))
   if (out) tmp$con$disconnect()
   out
 }
@@ -105,7 +107,7 @@ checkMongoRemoteRo <- function() {
     silent = TRUE
   )
 
-  out <- all(c("src_mongo", "docdb_src") %in% class(tmp))
+  out <- inherits(tmp, c("src_mongo", "docdb_src"))
   if (out) tmp$con$disconnect()
   out
 }
@@ -120,7 +122,7 @@ checkMongoRemoteRw <- function() {
     silent = TRUE
   )
 
-  out <- all(c("src_mongo", "docdb_src") %in% class(tmp))
+  out <- inherits(tmp, c("src_mongo", "docdb_src"))
   if (out) tmp$con$disconnect()
   out
 }

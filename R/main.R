@@ -126,7 +126,7 @@ ctrLoadQueryIntoDb <- function(
        querytoupdate != trunc(querytoupdate)) ||
       (class(querytoupdate) == "character" &&
        querytoupdate != "last")) {
-    stop("Parameter 'querytoupdate' is not an integer value or 'last'.",
+    stop("Parameter 'querytoupdate' is not an integer value or 'last'",
          call. = FALSE)
   }
 
@@ -168,7 +168,7 @@ ctrLoadQueryIntoDb <- function(
     nr <- nrow(queryterm)
     if (nr > 1L) {
       warning(
-        "Using last row of queryterm parameter.",
+        "Using last row of queryterm parameter",
         call. = FALSE, immediate. = TRUE)
     }
     register  <- queryterm[nr, "query-register"]
@@ -194,21 +194,9 @@ ctrLoadQueryIntoDb <- function(
     ## sanity checks
     if (grepl("[^.a-zA-Z0-9=+&%_:\"/, -]",
               gsub("\\[", "", gsub("\\]", "", queryterm)))) {
-      stop("Parameter 'queryterm' is not an URL showing results ",
-           "of a query or has unexpected characters: ", queryterm,
-           ", expected are: a-zA-Z0-9=+&%_-,.: []/\"",
+      stop("Parameter 'queryterm' has unexpected characters: ",
+           queryterm, ", expected are: a-zA-Z0-9=+&%_-,.: []/\"",
            call. = FALSE)
-    }
-    #
-    if ((queryterm == "") &
-        querytoupdate == 0L) {
-      stop("Parameter 'queryterm' is empty.",
-           call. = FALSE)
-    }
-    #
-    if (!any(register == registerList)) {
-      stop("Parameter 'register' not known: ",
-           register, call. = FALSE)
     }
 
     # remove trailing or leading whitespace, line breaks
@@ -234,7 +222,7 @@ ctrLoadQueryIntoDb <- function(
   if ((querytoupdate > 0) &&
       (!is.atomic(queryterm) || queryterm != "")) {
     stop("'queryterm' and 'querytoupdate' specified,",
-         " which is inconsistent, cannot continue.",
+         " which is inconsistent, cannot continue",
          call. = FALSE)
   }
 
@@ -302,7 +290,7 @@ ctrLoadQueryIntoDb <- function(
   # return some useful information or break
   if (!exists("imported") ||
       (imported$n == 0)) {
-    message("Function did not result in any trial information imports.")
+    message("Function did not result in any trial information imports")
     return(invisible(list(n = 0, ids = "")))
   }
 
@@ -346,6 +334,7 @@ ctrLoadQueryIntoDb <- function(
 #' @inheritParams ctrLoadQueryIntoDb
 #'
 #' @keywords internal
+#' @noRd
 #'
 #' @importFrom httr content GET
 #'
@@ -368,7 +357,7 @@ ctrRerunQuery <- function(
   # check parameters
   if (is.null(rerunquery))
     stop("'querytoupdate': no previous queries found in collection, ",
-         "aborting query update.", call. = FALSE)
+         "aborting query update", call. = FALSE)
 
   # select last query if specified
   if (querytoupdate == "last")
@@ -377,7 +366,7 @@ ctrRerunQuery <- function(
   # try to select the query to be updated
   if (querytoupdate > nrow(rerunquery)) {
     stop("'querytoupdate': specified number not found, check ",
-         "'dbQueryHistory()'.", call. = FALSE)
+         "'dbQueryHistory()'", call. = FALSE)
   }
 
   # set query values as retrieved
@@ -447,7 +436,7 @@ ctrRerunQuery <- function(
         # remove queryupdateterm, thus running full again
         queryupdateterm <- ""
         warning("Query has date(s) for start or end of last update ",
-                "('&lup_'); running again with these limits.",
+                "('&lup_'); running again with these limits",
                 immediate. = TRUE)
         #
       } else {
@@ -483,7 +472,7 @@ ctrRerunQuery <- function(
         warning("'querytoupdate=", querytoupdate, "' not possible because ",
                 "it was last run more than 7 days ago and the register ",
                 "provides information on changes only for the last 7 days. ",
-                "Reverting to normal download.",
+                "Reverting to normal download",
                 immediate. = TRUE)
         #
         message("Rerunning query: ", queryterm,
@@ -568,12 +557,12 @@ ctrRerunQuery <- function(
 
       # if already in query term, just re-run full query to avoid
       # multiple queries in history that only differ in timestamp:
-      if (grepl("lastEdited", queryterm)) {
+      if (grepl("lastEdited:", queryterm)) {
         #
         # remove queryupdateterm, thus running full again
         queryupdateterm <- ""
         warning("Query has date(s) for start or end of last update ",
-                "('lasteEdited'); running again with these limits.",
+                "('lastEdited'); running again with these limits",
                 immediate. = TRUE)
         #
       } else {
@@ -624,6 +613,7 @@ ctrRerunQuery <- function(
 #' @return System messages from converting
 #'
 #' @keywords internal
+#' @noRd
 #'
 ctrConvertToJSON <- function(tempDir, scriptName, verbose) {
 
@@ -697,6 +687,7 @@ ctrConvertToJSON <- function(tempDir, scriptName, verbose) {
 #' _id's of trials that failed to import
 #'
 #' @keywords internal
+#' @noRd
 #'
 dbCTRLoadJSONFiles <- function(dir, con, verbose) {
 
@@ -750,9 +741,9 @@ dbCTRLoadJSONFiles <- function(dir, con, verbose) {
         }
 
         # inform user
-        message("JSON record #: ", li, # " / ", lc,
+        message("JSON record #: ", li,
                 ", file #: ", tempFile, " / ", fc,
-                "                                                     \r",
+                "                               \r",
                 appendLF = FALSE)
 
         # check validity
@@ -810,8 +801,8 @@ dbCTRLoadJSONFiles <- function(dir, con, verbose) {
 
     }) # sapply tempFiles
 
-  # output
-  if (verbose) message(" ")
+  # clear output
+  message("                                       \r", appendLF = FALSE)
 
   # prepare return values, n is successful only
   n <- sum(sapply(retimp, "[[", "n"), na.rm = TRUE)
@@ -831,6 +822,7 @@ dbCTRLoadJSONFiles <- function(dir, con, verbose) {
 #' @inheritParams ctrLoadQueryIntoDb
 #'
 #' @keywords internal
+#' @noRd
 #'
 #' @importFrom jsonlite toJSON
 #' @importFrom nodbi docdb_update
@@ -902,6 +894,7 @@ dbCTRAnnotateQueryRecords <- function(
 #' @inheritParams ctrLoadQueryIntoDb
 #'
 #' @keywords internal
+#' @noRd
 #'
 #' @importFrom jsonlite toJSON
 #' @importFrom nodbi docdb_delete docdb_create
@@ -924,6 +917,17 @@ dbCTRUpdateQueryHistory <- function(
     dbQueryHistory(con, verbose)
   )
 
+  # create document if not existing
+  if (!nrow(hist)) {
+    nodbi::docdb_create(
+      src = con,
+      key = con$collection,
+      value = data.frame("_id" = "meta-info",
+                         "json" = '{}',
+                         stringsAsFactors = FALSE,
+                         check.names = FALSE))
+  }
+
   # append current search
   # default for format methods is "%Y-%m-%d %H:%M:%S"
   hist <- rbind(
@@ -935,29 +939,26 @@ dbCTRUpdateQueryHistory <- function(
       "query-term"      = queryterm),
     stringsAsFactors = FALSE)
 
-  # update database
-  tmp <- nodbi::docdb_delete(
-    src = con,
-    key = con$collection,
-    query = '{"_id": {"$eq": "meta-info"}}')
-
   # transform into array and encapsulate in element meta-info
-  tmp <- jsonlite::toJSON(hist)
-  tmp <- paste0('{"queries": ',  as.character(tmp), "}")
+  hist <- jsonlite::toJSON(hist)
+  hist <- paste0('{"queries": ',  as.character(hist), "}")
 
-  # create history
-  tmp <- nodbi::docdb_create(
+  # update database
+  tmp <- nodbi::docdb_update(
     src = con,
     key = con$collection,
     value = data.frame("_id" = "meta-info",
-                       "json" = tmp,
+                       "json" = hist,
                        stringsAsFactors = FALSE,
                        check.names = FALSE))
 
   # inform user
-  message('* Updated history in meta-info of "',
-          con$collection, '"')
-
+  if (tmp == 1L) {
+    message('* Updated history ("meta-info" in "', con$collection, '")')
+  } else {
+    warning('Could not update history ("meta-info" in "', con$collection,
+            '")', call. = FALSE, immediate. = FALSE)
+  }
 }
 # end dbCTRUpdateQueryHistory
 
@@ -967,9 +968,10 @@ dbCTRUpdateQueryHistory <- function(
 #' @inheritParams ctrLoadQueryIntoDb
 #'
 #' @keywords internal
+#' @noRd
 #'
 #' @importFrom jsonlite toJSON
-#' @importFrom httr content headers progress write_disk GET HEAD
+#' @importFrom httr content headers progress write_disk GET HEAD status_code
 #' @importFrom nodbi docdb_query
 #'
 ctrLoadQueryIntoDbCtgov <- function(
@@ -985,12 +987,6 @@ ctrLoadQueryIntoDbCtgov <- function(
   con,
   verbose,
   queryupdateterm) {
-
-  ## create empty temporary directory on localhost for
-  # downloading from register into temporary directy
-  tempDir <- tempfile(pattern = "ctrDATA")
-  dir.create(tempDir)
-  tempDir <- normalizePath(tempDir, mustWork = TRUE)
 
   # CTGOV standard identifiers
   # updated 2017-07 with revised ctgov website links, e.g.
@@ -1011,15 +1007,17 @@ ctrLoadQueryIntoDbCtgov <- function(
   ctgovdfirstpageurl <- paste0(
     queryUSRoot, queryUSType2, "&", queryterm, queryupdateterm)
   #
-  tmp <- try(httr::content(httr::GET(
-    url = utils::URLencode(ctgovdfirstpageurl)), as = "text"),
+  tmp <- try(httr::GET(
+    url = utils::URLencode(ctgovdfirstpageurl)),
     silent = TRUE)
   #
-  if (inherits(tmp, "try-error")) {
-    stop("Host ", queryUSRoot, " does not respond, cannot continue.",
-         call. = FALSE)
+  if (inherits(tmp, "try-error") ||
+      !any(httr::status_code(tmp) == c(200L, 404L))) {
+    stop("Host ", queryUSRoot, " not working as expected, ",
+         "cannot continue: ", tmp[[1]], call. = FALSE)
   }
   #
+  tmp <- httr::content(tmp, as = "text")
   tmp <- gsub("\n|\t|\r", " ", tmp)
   tmp <- gsub("<.*?>", " ", tmp)
   tmp <- gsub("  +", " ", tmp)
@@ -1035,7 +1033,7 @@ ctrLoadQueryIntoDbCtgov <- function(
 
   # inform user
   message("Retrieved overview, records of ", tmp, " ",
-          "trial(s) are to be downloaded.")
+          "trial(s) are to be downloaded")
 
   # only count?
   if (only.count) {
@@ -1050,7 +1048,7 @@ ctrLoadQueryIntoDbCtgov <- function(
   if (as.integer(tmp) > 10000L) {
     stop("These are ", tmp, " (more than 10,000) trials, this may be ",
          "unintended. Downloading more than 10,000 trials is not supported ",
-         "by the register. Consider correcting or splitting queries.")
+         "by the register; consider correcting or splitting queries")
   }
 
   ## check database connection
@@ -1060,7 +1058,14 @@ ctrLoadQueryIntoDbCtgov <- function(
   message("Checking helper binaries: ", appendLF = FALSE)
   if (!checkBinary(c("php", "phpxml", "phpjson"))) stop(
     "ctrLoadQueryIntoDb() cannot continue. ", call. = FALSE)
-  message("done.")
+  message("done")
+
+  ## create empty temporary directory on localhost for
+  # downloading from register into temporary directy
+  tempDir <- tempfile(pattern = "ctrDATA")
+  dir.create(tempDir)
+  tempDir <- normalizePath(tempDir, mustWork = TRUE)
+  on.exit(unlink(tempDir, recursive = TRUE), add = TRUE)
 
   # prepare a file handle for temporary directory
   f <- paste0(tempDir, "/", "ctgov.zip")
@@ -1078,7 +1083,7 @@ ctrLoadQueryIntoDbCtgov <- function(
   # inform user
   if (!file.exists(f) || file.size(f) == 0L) {
     stop("No studies downloaded. Please check 'queryterm' or run ",
-         "again with verbose = TRUE.", call. = FALSE)
+         "again with verbose = TRUE", call. = FALSE)
   }
 
   ## extract all from downloaded zip file
@@ -1109,10 +1114,7 @@ ctrLoadQueryIntoDbCtgov <- function(
   }
 
   ## find out number of trials imported into database
-  message("= Imported or updated ", imported$n, " trial(s).")
-
-  # clean up temporary directory
-  if (!verbose) unlink(tempDir, recursive = TRUE)
+  message("= Imported or updated ", imported$n, " trial(s)")
 
   # return
   return(imported)
@@ -1126,8 +1128,9 @@ ctrLoadQueryIntoDbCtgov <- function(
 #' @inheritParams ctrLoadQueryIntoDb
 #'
 #' @keywords internal
+#' @noRd
 #'
-#' @importFrom httr content headers progress write_disk GET HEAD
+#' @importFrom httr content headers progress write_disk GET HEAD status_code
 #' @importFrom curl curl_fetch_multi multi_run new_pool
 #' @importFrom nodbi docdb_query docdb_update
 #'
@@ -1152,26 +1155,6 @@ ctrLoadQueryIntoDbEuctr <- function(
     "\\1query=\\2\\3",
     queryterm)
 
-  # create empty temporary directory on localhost for
-  # download from register into temporary directy
-  tempDir <- tempfile(pattern = "ctrDATA")
-  dir.create(tempDir)
-  tempDir <- normalizePath(tempDir, mustWork = TRUE)
-
-  # check results parameters
-  if (is.null(euctrresultspdfpath)) {
-    euctrresultspdfpath <- tempDir
-  }
-  if (euctrresults &&
-      (is.na(file.info(euctrresultspdfpath)[["isdir"]]) ||
-       !file.info(euctrresultspdfpath)[["isdir"]])) {
-    warning("Invalid directory specified for 'euctrresultspdfpath': ",
-            euctrresultspdfpath, call. = FALSE, immediate. = TRUE)
-    euctrresultspdfpath <- tempDir
-  }
-  # canonical directory path
-  euctrresultspdfpath <- normalizePath(euctrresultspdfpath, mustWork = TRUE)
-
   # inform user
   message("(1/3) Checking trials in EUCTR:")
 
@@ -1190,15 +1173,16 @@ ctrLoadQueryIntoDbEuctr <- function(
   #
   resultsEuPages <- try(httr::GET(url = q), silent = TRUE)
   #
-  if (inherits(resultsEuPages, "try-error")) {
+  if (inherits(resultsEuPages, "try-error") ||
+      httr::status_code(resultsEuPages) != 200L) {
     if (grepl("SSL certificate.*local issuer certificate", resultsEuPages)) {
       stop("Host ", queryEuRoot, " cannot be queried as expected, error:\n",
            trimws(resultsEuPages), "\nFor a potential workaround, check ",
            "https://github.com/rfhb/ctrdata/issues/19#issuecomment-820127139",
            call. = FALSE)
     } else {
-    stop("Host ", queryEuRoot, " does not respond as expected, error:\n",
-         resultsEuPages, call. = FALSE)
+    stop("Host ", queryEuRoot, " not working as expected, ",
+         "cannot continue: ", resultsEuPages[[1]], call. = FALSE)
     }
   }
   # - store options from request
@@ -1243,7 +1227,7 @@ ctrLoadQueryIntoDbEuctr <- function(
   # inform user
   message("Retrieved overview, multiple records of ",
           resultsEuNumTrials, " trial(s) from ",
-          resultsEuNumPages, " page(s) to be downloaded.")
+          resultsEuNumPages, " page(s) to be downloaded")
 
   # only count?
   if (only.count) {
@@ -1256,8 +1240,8 @@ ctrLoadQueryIntoDbEuctr <- function(
 
   # suggest chunking if large number of trials found
   if (as.integer(resultsEuNumTrials) > 10000L) {
-    stop("These are ", resultsEuNumTrials, " (more than 10,000) trials. ",
-         "Consider correcting or splitting into separate queries.")
+    stop("These are ", resultsEuNumTrials, " (more than 10,000) trials; ",
+         "consider correcting or splitting into separate queries")
   }
 
   ## check database connection
@@ -1269,7 +1253,28 @@ ctrLoadQueryIntoDbEuctr <- function(
     "ctrLoadQueryIntoDb() cannot continue. ", call. = FALSE)
   if (euctrresults && !checkBinary(c("php", "phpxml", "phpjson"))) stop(
     "ctrLoadQueryIntoDb() cannot continue. ", call. = FALSE)
-  message("done.")
+  message("done")
+
+  # create empty temporary directory on localhost for
+  # download from register into temporary directory
+  tempDir <- tempfile(pattern = "ctrDATA")
+  dir.create(tempDir)
+  tempDir <- normalizePath(tempDir, mustWork = TRUE)
+  if (!verbose) on.exit(unlink(tempDir, recursive = TRUE), add = TRUE)
+
+  # check results parameters
+  if (is.null(euctrresultspdfpath)) {
+    euctrresultspdfpath <- tempDir
+  }
+  if (euctrresults &&
+      (is.na(file.info(euctrresultspdfpath)[["isdir"]]) ||
+       !file.info(euctrresultspdfpath)[["isdir"]])) {
+    warning("Invalid directory specified for 'euctrresultspdfpath': ",
+            euctrresultspdfpath, call. = FALSE, immediate. = TRUE)
+    euctrresultspdfpath <- tempDir
+  }
+  # canonical directory path
+  euctrresultspdfpath <- normalizePath(euctrresultspdfpath, mustWork = TRUE)
 
   ## download all text files from pages
 
@@ -1381,7 +1386,7 @@ ctrLoadQueryIntoDbEuctr <- function(
          class(tmp), call. = FALSE)
   }
   if (tmp[["success"]] != resultsEuNumPages) {
-    stop("Download from EUCTR failed; incorrect number of records.",
+    stop("Download from EUCTR failed; incorrect number of records",
          call. = FALSE)
   }
 
@@ -1415,7 +1420,7 @@ ctrLoadQueryIntoDbEuctr <- function(
   ## inform user on final import outcome
   message("= Imported or updated ",
           imported$n, " records on ",
-          resultsEuNumTrials, " trial(s).")
+          resultsEuNumTrials, " trial(s)")
 
   ## results: load also euctr trials results if requested
   if (euctrresults) {
@@ -1571,9 +1576,6 @@ ctrLoadQueryIntoDbEuctr <- function(
           # switching off warning about final EOL missing
           fd <- file(description = fileName,
                      open = "rt", blocking = TRUE)
-
-          # initialise line counter
-          li <- 0L
 
           # iterate over lines in fileName
           while (TRUE) {
@@ -1775,19 +1777,19 @@ ctrLoadQueryIntoDbEuctr <- function(
     } else {
 
       message("(4/4) Results history: not retrieved ",
-              "(euctrresultshistory = FALSE).",
+              "(euctrresultshistory = FALSE)",
               appendLF = FALSE)
 
     } # if euctrresultshistory
 
     ## inform user on final import outcomes
     message("\n= Imported or updated results for ",
-            importedresults, " trials.")
+            importedresults, " trials")
 
     if (!is.null(importedresultshistory) &&
         importedresultshistory > 0L) {
     message("= Imported or updated results history for ",
-            importedresultshistory, " trials.")
+            importedresultshistory, " trials")
       }
     if (euctrresultspdfpath != tempDir) {
       message("= Results PDF files if any saved in '",
@@ -1795,13 +1797,6 @@ ctrLoadQueryIntoDbEuctr <- function(
     }
 
   } # if euctrresults
-
-
-  # clean up temporary directory
-  if (!verbose) {
-    unlink(tempDir,
-           recursive = TRUE)
-  }
 
   # return
   return(imported)
@@ -1814,9 +1809,10 @@ ctrLoadQueryIntoDbEuctr <- function(
 #' @inheritParams ctrLoadQueryIntoDb
 #'
 #' @keywords internal
+#' @noRd
 #'
 #' @importFrom jsonlite toJSON
-#' @importFrom httr content headers progress write_disk GET HEAD
+#' @importFrom httr content headers progress write_disk GET HEAD status_code
 #' @importFrom nodbi docdb_query
 #' @importFrom utils URLdecode
 #'
@@ -1833,12 +1829,6 @@ ctrLoadQueryIntoDbIsrctn <- function(
   con,
   verbose,
   queryupdateterm) {
-
-  ## create empty temporary directory on localhost for
-  # downloading from register into temporary directy
-  tempDir <- tempfile(pattern = "ctrDATA")
-  dir.create(tempDir)
-  tempDir <- normalizePath(tempDir, mustWork = TRUE)
 
   # ISRCTN translation to API v0.4 2021-02-04
   # - limit can be set to arbitrarily high number
@@ -1867,7 +1857,7 @@ ctrLoadQueryIntoDbIsrctn <- function(
     function(a) sub("^(.*?)[+](.*?)[:](.*)$", "\\2 \\1 \\3", a),
     character(1L), USE.NAMES = FALSE)
   apiterm <- paste0(apiterm, collapse = " AND ")
-  # - readd q if missing
+  # - add q again if missing
   if (!grepl("^q=", apiterm)) apiterm <- paste0("q=", apiterm)
   # - inform user
   if (verbose) message("DEBUG: apiterm is ", apiterm)
@@ -1879,12 +1869,14 @@ ctrLoadQueryIntoDbIsrctn <- function(
   isrctnfirstpageurl <- paste0(
     queryIsrctnRoot, queryIsrctnType2, apiterm, queryupdateterm)
   #
-  tmp <- xml2::read_xml(
-    x = utils::URLencode(isrctnfirstpageurl))
+  tmp <- try(suppressWarnings(
+    xml2::read_xml(
+      x = url(utils::URLencode(isrctnfirstpageurl)))),
+    silent = TRUE)
   #
   if (inherits(tmp, "try-error")) {
-    stop("Host ", queryIsrctnRoot, " does not respond, cannot continue.",
-         call. = FALSE)
+    stop("Host ", queryIsrctnRoot, " not working as expected, ",
+         "cannot continue: ", tmp[[1]], call. = FALSE)
   }
   #
   tmp <- xml2::xml_attr(tmp, "totalCount")
@@ -1911,7 +1903,7 @@ ctrLoadQueryIntoDbIsrctn <- function(
 
   # inform user
   message("Retrieved overview, records of ", tmp, " ",
-          "trial(s) are to be downloaded.")
+          "trial(s) are to be downloaded")
 
   # only count?
   if (only.count) {
@@ -1926,7 +1918,7 @@ ctrLoadQueryIntoDbIsrctn <- function(
   if (as.integer(tmp) > 10000L) {
     stop("These are ", tmp, " (more than 10,000) trials, this may be ",
          "unintended. Downloading more than 10,000 trials is not supported ",
-         "by the register. Consider correcting or splitting queries.")
+         "by the register; consider correcting or splitting queries")
   }
 
   ## check database connection
@@ -1936,7 +1928,14 @@ ctrLoadQueryIntoDbIsrctn <- function(
   message("Checking helper binaries: ", appendLF = FALSE)
   if (!checkBinary(c("php", "phpxml", "phpjson"))) stop(
     "ctrLoadQueryIntoDb() cannot continue. ", call. = FALSE)
-  message("done.")
+  message("done")
+
+  ## create empty temporary directory on localhost for
+  # downloading from register into temporary directy
+  tempDir <- tempfile(pattern = "ctrDATA")
+  dir.create(tempDir)
+  tempDir <- normalizePath(tempDir, mustWork = TRUE)
+  if (!verbose) on.exit(unlink(tempDir, recursive = TRUE), add = TRUE)
 
   # prepare a file handle for temporary directory
   f <- paste0(tempDir, "/", "isrctn.xml")
@@ -1958,7 +1957,7 @@ ctrLoadQueryIntoDbIsrctn <- function(
   # inform user
   if (!file.exists(f) || file.size(f) == 0L) {
     stop("No studies downloaded. Please check 'queryterm' or run ",
-         "again with verbose = TRUE.", call. = FALSE)
+         "again with verbose = TRUE", call. = FALSE)
   }
 
   ## run conversion
@@ -1986,10 +1985,7 @@ ctrLoadQueryIntoDbIsrctn <- function(
   }
 
   ## find out number of trials imported into database
-  message("= Imported or updated ", imported$n, " trial(s).")
-
-  # clean up temporary directory
-  if (!verbose) unlink(tempDir, recursive = TRUE)
+  message("= Imported or updated ", imported$n, " trial(s)")
 
   # return
   return(imported)
