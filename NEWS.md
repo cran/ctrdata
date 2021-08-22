@@ -1,3 +1,10 @@
+# ctrdata 1.7.1
+ - 2021-08-22
+ - fix DBI not needed in Imports anymore (CRAN Note)
+ - fix potential file name issue in conversion script
+ - fix dbFindFields() to never return _id (previously depended on database backend)
+ - changed tests (not on CRAN detection, register availability, additional tests)
+
 # ctrdata 1.7.0
  - 2021-07-24
  - much reduced database backend-specific code, using nodbi 0.4.3 (released 2021-07-23)

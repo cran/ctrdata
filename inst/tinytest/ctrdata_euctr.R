@@ -1,10 +1,21 @@
 ## RH 2019-09-28
 
 # check server
-if (httr::status_code(
-  httr::GET("https://www.clinicaltrialsregister.eu/ctr-search/search",
-             httr::timeout(5))) != 200L
+testUrl <- "https://www.clinicaltrialsregister.eu/ctr-search/search"
+testGet <- function() try(httr::GET(testUrl, httr::timeout(5)), silent = TRUE)
+testOnce <- testGet()
+
+if (inherits(testOnce, "try-error") &&
+    grepl("SSL certificate.*local issuer certificate", testOnce)) {
+  # message("Switching off certificate verification")
+  httr::set_config(httr::config(ssl_verifypeer = FALSE))
+  testOnce <- testGet()
+}
+
+if (httr::status_code(testOnce) != 200L
 ) exit_file("Reason: EUCTR not working")
+
+rm(testUrl, testGet, testOnce)
 
 #### ctrLoadQueryIntoDb ####
 
@@ -573,6 +584,8 @@ result <- suppressMessages(
       verbose = TRUE,
       stopifnodata = FALSE)
   ))
+tmpr <- names(result)
+tmpr <- tmpr[tmpr != "_id"]
 # determine all classes
 tmpc <- sapply(result, class,
                USE.NAMES = FALSE)
@@ -585,7 +598,7 @@ tmpc <- table(tmpc)
 #       558        10        19         3        79
 
 # tests
-expect_equal(length(tmpf), ncol(result))
+expect_equal(length(tmpf), length(tmpr))
 expect_true(tmpc[["character"]] > 45)
 expect_true(tmpc[["Date"]]      >  5)
 expect_true(tmpc[["logical"]]   > 50)
@@ -598,8 +611,11 @@ expect_true(tmpc[["logical"]]   > 50)
 # objects and terminal / no more nested
 # fields
 
+saveRDS(tmpf, "tmpf.rds")
+saveRDS(tmpr, "tmpr.rds")
+
 # clean up
-rm(tmpf, tmpc, result)
+rm(tmpf, tmpr, tmpc, result)
 
 
 #### ctrOpenSearchPagesInBrowser #####

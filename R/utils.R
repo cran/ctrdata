@@ -589,7 +589,7 @@ dbQueryHistory <- function(con,
 #'
 #' For fields in EUCTR (protocol- and results-related information),
 #' see also the register's documentation at
-#' \url{https://eudract.ema.europa.eu/}.
+#' \url{https://eudract.ema.europa.eu/result.html}.
 #'
 #' For fields in CTGOV (protocol-related information), see also
 #' the register's definitions at
@@ -750,8 +750,9 @@ dbFindFields <- function(namepart = "",
   fields <- keyslist[grepl(pattern = namepart, x = keyslist,
                            ignore.case = TRUE, perl = TRUE)]
 
-  # clean
-  fields <- fields[fields != ""]
+  # clean empty entries and exclude _id for consistency
+  # since different approaches above return _id or not
+  fields <- fields[fields != "_id" & fields != ""]
   if (!length(fields)) fields <- ""
 
   # return the match(es)
@@ -2409,14 +2410,12 @@ installCygwinWindowsTest <- function(verbose = FALSE) {
   #
   if (!inherits(tmpcygwin, "try-error") &
       (length(tmpcygwin) > 5L)) {
-    if (verbose) message("cygwin seems to work correctly.")
+    if (verbose) message("cygwin seems to work correctly")
     return(invisible(TRUE))
   } else {
-    message("cygwin is not available for this package, ",
-            "ctrLoadQueryIntoDb() will not work.\n",
-            "Consider calling ",
-            "ctrdata::installCygwinWindowsDoInstall() ",
-            "from within R.")
+    message(
+      "cygwin is not available, ctrLoadQueryIntoDb() will not work.\n",
+      "Consider calling ctrdata::installCygwinWindowsDoInstall()")
     return(invisible(FALSE))
   }
 }
