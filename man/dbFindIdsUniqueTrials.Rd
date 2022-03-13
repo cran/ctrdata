@@ -2,56 +2,57 @@
 % Please edit documentation in R/utils.R
 \name{dbFindIdsUniqueTrials}
 \alias{dbFindIdsUniqueTrials}
-\title{Deduplicate records to provide unique clinical trial identifiers}
+\title{Get identifiers of deduplicated trial records}
 \usage{
 dbFindIdsUniqueTrials(
   preferregister = c("EUCTR", "CTGOV", "ISRCTN"),
-  prefermemberstate = "GB",
+  prefermemberstate = "DE",
   include3rdcountrytrials = TRUE,
   con,
-  verbose = TRUE
+  verbose = FALSE
 )
 }
 \arguments{
-\item{preferregister}{A vector of the sequence of preference for registers
-from which to generate unique _id's, default
+\item{preferregister}{A vector of the order of preference for
+registers from which to generate unique _id's, default
 \code{c("EUCTR", "CTGOV", "ISRCTN")}}
 
 \item{prefermemberstate}{Code of single EU Member State for which records
-should returned. If not available, a record for GB or lacking this, any
-other record for the trial will be returned. For a list of codes of EU
-  Member States, please see vector \code{countriesEUCTR}. Alternatively,
-  "3RD" will lead to return a Third Country record of a trial, if available.}
+should returned. If not available, a record for DE or lacking this, any
+random Member State's record for the trial will be returned.
+For a list of codes of EU  Member States, please see vector
+\code{countriesEUCTR}. Specifying "3RD" will return the Third Country
+record of trials, where available.}
 
 \item{include3rdcountrytrials}{A logical value if trials should be retained
 that are conducted exclusively in third countries, that is, outside
-the European Union.}
+the European Union. Ignored if \code{prefermemberstate} is set to "3RD".}
 
-\item{con}{A \link[nodbi]{src} connection object, as obtained with
-nodbi::\link[nodbi]{src_mongo}() or nodbi::\link[nodbi]{src_sqlite}()}
+\item{con}{A connection object, see section
+`Databases` in \link{ctrdata-package}}
 
-\item{verbose}{If set to \code{TRUE}, prints out information about numbers
-of records found at subsequent steps when searching for duplicates}
+\item{verbose}{If set to \code{TRUE}, prints out which fields
+of the registers are used to find corresponding trial records}
 }
 \value{
-A vector with strings of keys ("_id" in the database) that
-  represent non-duplicate trials.
+A vector with strings of keys ("_id") of records in
+the collection that represent unique trials.
 }
 \description{
-If records for a clinical trial are found from more than one register, the
-record from EUCTR is returned. The function currently relies on CTGOV
-recording other identifiers such as the EudraCT number in the field "Other
-IDs".
+Records for a clinical trial can be loaded from more than one
+register into a collection. The function returns identifiers of
+records in the collection that were loaded from the
+register(s) preferred by the user. All registers are recording
+identifiers also from other registers, which is used by this
+function to provide a vector of identifiers of deduplicated trials.
 }
 \examples{
 
 \dontrun{
-db <- nodbi::src_sqlite(
-  collection = "my_collection"
-)
-dbFindIdsUniqueTrials(
-  con = db
-)
+dbc <- nodbi::src_sqlite(collection = "my_collection")
+
+dbFindIdsUniqueTrials(con = dbc)
+
 }
 
 }

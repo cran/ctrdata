@@ -1,14 +1,17 @@
 #!/bin/sh
 
-## ralf.herold@gmx.net - 2015-08-15
+## file: euctr2ndjson.sh
+## ralf.herold@gmx.net
 ## part of https://github.com/rfhb/ctrdata
-#
+## last edited: 2021-12-23
+## used for: ctgov
+
 # note line endings are to be kept by using in
 # .gitattributes for compatibility with cygwin:
 # *.sh  text eol=lf
 # *.php text eol=lf
-#
-# time euctr2json.sh:
+
+# time euctr2ndjson.sh:
 # 2015-08-15: real 2.4 s for 221 documents: ~ 11 ms per trial (MacBookPro2011)
 # 2016-04-20: real 1.2 s for 151 documents: ~  8 ms per trial (MacBookPro2011)
 # 2016-09-11: real 1.2 s for 151 documents: ~  8 ms per trial (MacBookPro2015)
@@ -17,17 +20,20 @@
 # 2021-04-18: total 5.7 s for 503 records: ~ 11 ms per trial (MacBookPro2015)
 # 2021-05-07: total 2.5 s for 366 records: ~ 7 ms per trial (MacBookPro2015)
 # 2021-08-03: total 2.6 s for 375 records: ~ 7 ms per trial (MacBookPro2015)
+# 2021-12-11: total 7.6 s for 1153 records: ~ 6.6 ms per trial (MacBookPro2015)
+# 2021-12-17: total 1.9 s for 280 records: ~ 6.8 ms per trial (MacBookPro2015)
 
 # notes to myself: sed cannot use + or other
 # alternatively install gnu-sed: > brew install gnu-sed
 # perl: The -p argument makes sure the code gets executed on
 # every line, and that the line gets printed out after that
 
+# chunk size is the number of trials per euctr page, currently 25
 for inFileName in "$1"/euctr_trials_*.txt; do
 
   [ -e "$inFileName" ] || continue
 
-  outFileName="`echo "$inFileName" | sed 's/txt$/json/'`"
+  outFileName="`echo "$inFileName" | sed 's/txt$/ndjson/'`"
 
 LC_CTYPE=C && LANG=C && perl <"$inFileName" -ne '
   # this section is faster with perl compared to sed
@@ -62,8 +68,6 @@ LC_CTYPE=C && LANG=C && perl <"$inFileName" -ne '
   # workarounds
   # - sponsor records were added but left empty -> create placeholder
   s/^(B\.1\.1 Name of Sponsor:)\s+$/$1 empty/g;
-  #  # - some third country records do not have a sponsor -> placeholder
-  #  s/^(B\. Sponsor Information)[\n ]+(D.\ IMP)/B.1.1 Name of Sponsor: empty\n\n$2/g;
 
   # - prepare array for meddra
   s/MedDRA Classification/E.1.2 MedDRA Classification: Yes/g;
@@ -155,6 +159,7 @@ sed \
 perl -pe 'BEGIN{undef $/;}
 
   # here we can do multi-line edits
+  # dot does not match newlines
 
   # delete comma from last line in record
   s/,\n\}\{/\}\nNEWRECORDIDENTIFIER\n\{/g ;
@@ -162,6 +167,8 @@ perl -pe 'BEGIN{undef $/;}
   # create array with imp(s)
   s/("d[0-9]+_.*"),\n"dimp": "([2-9]|[1-9][0-9])",/$1\}, \n\{ "_dimp": "$2",/g ;
   s/("d[0-9]+_.*"),\n"x9_enddmp.*/$1\}\n],/g ;
+  # if no array, remove remnant
+  s/"x9_enddmp": "TRUE",//g ;
 
   # create array with sponsor(s)
   s/,\n"b1_sponsor": "([2-9])",/}, \n\{ "_b1_sponsor": "$1",/g ;
@@ -212,13 +219,11 @@ perl -pe '
   s/\n//g ;
   s/NEWRECORDIDENTIFIER/\n/g ;
 
-  # add a final EOL with sed
-  ' | \
-sed \
-  -e '$a\' \
-> "$outFileName"
+  # add newline
+  eof && do{chomp; print "$_\n"; exit}
+  ' > "$outFileName"
 
 done
 
-## print total number of ndjson lines
-sed -n '$=' "$1"/euctr_trials_*.json
+## sum of ndjson lines across chunks
+sed -n '$=' "$1"/euctr_trials_*.ndjson

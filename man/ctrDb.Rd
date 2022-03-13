@@ -7,8 +7,8 @@
 ctrDb(con = nodbi::src_sqlite(collection = "ctrdata_auto_generated"))
 }
 \arguments{
-\item{con}{A \link[nodbi]{src} connection object, as obtained with
-nodbi::\link[nodbi]{src_mongo}() or nodbi::\link[nodbi]{src_sqlite}()}
+\item{con}{A connection object, see section
+`Databases` in \link{ctrdata-package}}
 }
 \value{
 Connection object as list, with collection

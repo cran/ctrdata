@@ -2,14 +2,15 @@
 
 #### SETUP ####
 source("setup_ctrdata.R")
-
-## database in memory
-dbc <- nodbi::src_sqlite(
-  collection = "inmemory"
-)
+if (!checkSqlite()) exit_file("Reason: no SQLite")
 
 ## test function
 tf <- function() {
+
+  ## database in memory
+  dbc <- nodbi::src_sqlite(
+    collection = "inmemory"
+  )
 
   # register clean-up
   on.exit(expr = {
@@ -18,11 +19,16 @@ tf <- function() {
       RSQLite::dbDisconnect(conn = dbc$con)
     },
     silent = TRUE)
-  })
+  }, add = TRUE)
 
   # do tests
 
   #### ctrLoadQueryIntoDb ####
+
+  # test
+  expect_error(
+      ctrLoadQueryIntoDb(),
+    "either 'queryterm' nor 'querytoupdate' specified")
 
   tmpdf <- iris[1:5, ]
   names(tmpdf) <- paste0("query-", names(tmpdf))
@@ -39,7 +45,7 @@ tf <- function() {
         queryterm = tmpdf,
         querytoupdate = 1L,
         con = dbc)),
-    "and 'querytoupdate' specified, which is inconsistent")
+    "only one of 'queryterm' and 'querytoupdate'")
   tmpdf["query-term"] <- as.character(tmpdf[["query-Species"]])
   # test
   expect_error(
@@ -131,7 +137,7 @@ tf <- function() {
         querytoupdate = 1L,
         only.count = TRUE,
         con = dbc)),
-    "'queryterm' and 'querytoupdate' specified.*cannot continue")
+    "only one of 'queryterm' and 'querytoupdate'")
 
   #### database ####
 
@@ -155,15 +161,50 @@ tf <- function() {
   expect_true(grepl("inmemory", dbc$collection))
 
   # sqlite but no collection specified
-  dbc <- nodbi::src_sqlite()
-  # test
-  expect_error(
-    suppressMessages(
-      suppressWarnings(
-        dbFindIdsUniqueTrials(
-          con = dbc))),
-    "parameter .* needs to specify the name of a table")
+  dbc <- try(nodbi::src_sqlite(), silent = TRUE)
+  # register clean-up
+  on.exit(expr = {
+    try({
+      RSQLite::dbRemoveTable(conn = dbc$con, name = dbc$collection)
+      RSQLite::dbDisconnect(conn = dbc$con)
+    },
+    silent = TRUE)
+  }, add = TRUE)
+  out <- inherits(dbc, c("src_sqlite", "docdb_src"))
+  if (out) {
+    # test
+    expect_error(
+      suppressMessages(
+        suppressWarnings(
+          dbFindIdsUniqueTrials(
+            con = dbc))),
+      "parameter .* table")
+    RSQLite::dbDisconnect(conn = dbc$con)
+  }
+  rm(dbc, out)
 
+  # postgres but no collection specified
+  dbc <- try(nodbi::src_postgres(), silent = TRUE)
+  # register clean-up
+  on.exit(expr = {
+    try({
+      RPostgres::dbRemoveTable(conn = dbc$con, name = dbc$collection)
+      RPostgres::dbDisconnect(conn = dbc$con)
+    },
+    silent = TRUE)
+  }, add = TRUE)
+  out <- inherits(dbc, c("src_postgres", "docdb_src"))
+  if (out) {
+    # test
+    expect_error(
+      suppressMessages(
+        suppressWarnings(
+          dbFindIdsUniqueTrials(
+            con = dbc))),
+      "pecify .* table")
+    RPostgres::dbDisconnect(conn = dbc$con)
+  }
+  rm(dbc, out)
 
   #### ctrGetQueryUrl ####
 
@@ -277,6 +318,31 @@ tf <- function() {
     suppressMessages(ctrGetQueryUrl(
       url = qt[[1]]))[[1]] == qt[[2]]},
     logical(1L))))
+
+  #### clipboard ####
+  if (Sys.info()[["sysname"]] != "Linux") {
+
+    clipr::write_clip(
+      queryurls[[1]][1],
+      allow_non_interactive = TRUE)
+    expect_message(
+      tmp <- ctrGetQueryUrl(),
+      "Found search query")
+    expect_true(is.data.frame(tmp))
+    expect_equal(tmp[["query-term"]], queryurls[[1]][2])
+    rm(tmp)
+
+    clipr::write_clip(
+      "NotARegisterUrl",
+      allow_non_interactive = TRUE)
+    expect_warning(
+      ctrGetQueryUrl(),
+      "no clinical trial register")
+
+  }
+
+  # clean up
+  rm(queryurls)
 
 } # tf test function
 tf()

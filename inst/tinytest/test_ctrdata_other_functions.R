@@ -3,20 +3,41 @@
 #### SETUP ####
 source("setup_ctrdata.R")
 
-df <- data.frame(
-  "var1" = 1:3,
-  "var2" = 2:4,
-  stringsAsFactors = FALSE)
-
-statusvalues <- list(
-  "Firstvalues" = c("12", "23"),
-  "Lastvalue"   = c("34"))
 
 #### binaries ####
 
 expect_message(
   ctrdata:::checkBinary(b = "notworking"),
   "nonexistingbinarytested not found")
+
+expect_error(
+  ctrdata:::checkCommand(),
+  "Empty argument: commandtest")
+
+
+#### cache ####
+
+expect_equal(
+  suppressMessages(
+    ctrdata:::ctrCache(
+      xname = "shouldNotExist",
+      verbose = TRUE
+    )), NULL)
+
+expect_equal(
+  suppressMessages(
+    ctrdata:::ctrCache(
+      xname = "shouldNotExist",
+      xvalue = iris,
+      verbose = TRUE
+    )), iris)
+
+expect_equal(
+  suppressMessages(
+    ctrdata:::ctrCache(
+      xname = "shouldNotExist",
+      verbose = TRUE
+    )), iris)
 
 
 #### environment ####
@@ -25,15 +46,41 @@ if (.Platform$OS.type != "windows") {
   expect_error(
     installCygwinWindowsDoInstall(),
     "only for MS Windows")
+  expect_message(
+    ctrdata:::installCygwinWindowsTest(),
+    "only for MS Windows")
 }
 if (.Platform$OS.type == "windows") {
   expect_message(
     installCygwinWindowsDoInstall(),
     "cygwin seems to work correctly")
+  expect_message(
+    installCygwinWindowsDoInstall(force = TRUE),
+    "cygwin seems to work correctly")
 }
 
 
+#### typeField ####
+
+df <- data.frame(
+  "var2" = 2:5,
+  "var1" = c(1, "2", "NA", NA),
+  stringsAsFactors = FALSE)
+
+expect_true(all(is.na(
+  ctrdata:::typeField(df[[2]])[3:4])))
+
+
 #### dfMergeTwoVariablesRelevel ####
+
+df <- data.frame(
+  "var1" = 1:3,
+  "var2" = 2:4,
+  stringsAsFactors = FALSE)
+
+statusvalues <- list(
+  "Firstvalues" = c("12", "23"),
+  "Lastvalue"   = c("34"))
 
 # test
 expect_error(
@@ -86,8 +133,8 @@ expect_warning(
 expect_warning(
   dfMergeTwoVariablesRelevel(
     df = df,
-    varnames = c("var1", "var2")),
-  "Some rows had values for both columns")
+    colnames = c("var1", "var2")),
+  "Some rows had values for both columns, used first")
 
 # test
 expect_error(
@@ -97,6 +144,15 @@ expect_error(
       colnames = c("var1", "var2"),
       levelslist = 1:2)),
   "Need list for parameter 'levelslist'")
+
+# test
+df <- data.frame(var1 = c("A", "B", "C", "D"),
+                 var2 = c("D", "E", "F", "G"))
+expect_warning(
+  dfMergeTwoVariablesRelevel(
+    df = df,
+    colnames = c("var1", "var2")),
+  "Some rows had values for both columns, concatenated")
 
 
 #### ctrGetQueryUrl ####
@@ -132,12 +188,6 @@ expect_equal(
       url = "cancer&status=completed",
       register = "EUCTR"))
 )
-
-# test
-expect_warning(
-  ctrGetQueryUrlFromBrowser(
-    url = "ThisDoesNotExist"),
-  "is deprecated")
 
 # test
 expect_warning(
@@ -228,21 +278,36 @@ expect_error(
   "Value specified for prefermemberstate does not match"
 )
 
-#### df mangling ####
+#### dfName2Value ####
 
 expect_error(
-  dfName2Value(
-    df = iris,
-    valuename = "something"),
+  suppressMessages(
+    dfName2Value(
+      df = iris,
+      valuename = "something")),
   "'df' does not seem to come from dfTrials2Long()")
 
 expect_error(
-  dfName2Value(
-    df = iris,
-    valuename = ""),
+  suppressMessages(
+    dfName2Value(
+      df = iris,
+      valuename = "")),
   "'valuename' must be specified")
 
-expect_error(
-  ctrdata:::typeField(
-    dfi = iris),
-  "Expect data frame with two columns, _id and a field")
+#### dfTrials2Long ####
+
+dF <- data.frame(
+  "_id" = paste0("NCT1234567", 1:5),
+  alpha1 = 1:5,
+  beta = 1:5,
+  gamma_1 = 1:5,
+  check.names = FALSE
+)
+dL <- dfTrials2Long(dF)
+
+# test
+expect_equal(nrow(dL), 15L)
+expect_equal(unique(dL[["name"]]), names(dF)[-1])
+
+# cleanup
+rm(dF, dL)

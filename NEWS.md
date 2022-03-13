@@ -1,12 +1,46 @@
+# ctrdata 1.9.0
+ - 2022-03-13
+ - chunked trial batches in ndjson files for accelerated database import
+ - if package dplyr is loaded, functions return a tibble instead of a data frame
+ - update and correct documentation
+ - dbFindFields() returns a vector of fields which now has as names the register in which a field occurs
+ - accelerated binary checks (cygwin / Windows)
+ - remove internet proxy mangling in order to use system configuration (e.g., transparent proxies used, or environment variable https_proxy specified by user)
+ - refactored internal caching
+ - correct dbGetFieldsIntoDf() for specific nested data structures
+ - correct dfTrials2Long() for specific fields
+ - correct dbFindIdsUniqueTrials() when only single trial in any register
+ - modify field typing to decode HTML entities
+ - type some fields as difftime, e.g. min_age in CTGOV
+ - speed up parts of dbGetFieldsIntoDf() and simplify more fields
+ - dbFindFields() returns names of all leaf and node fields
+ - improve and update documentation
+ - changed EU Member State to default to DE for dbFindIdsUniqueTrials()
+ - corrected installCygwinWindowsDoInstall() to properly update an installation (remove --prune-install)
+ - test all binaries after installCygwinWindowsDoInstall() and only cache successful binary testing
+ - correct typing required_header.download_date
+ - improve numbering in dfTrials2Long, covering nested items
+
+# ctrdata 1.8.0.9001
+ - 2021-12-11
+ - thorough documentation improvement
+ - simplified dbFindFields
+ - cleaned up testing binaries
+ - cleaned up heper scripts
+ - removed ctrGetQueryUrlFromBrowser(), long deprecated
+ 
+# ctrdata 1.8.0.9000
+ - 2021-11-22
+ - uses nodbi 0.6.0
+ - can use PostgreSQL as backend
+ - include PostgreSQL in Github Actions
+ 
 # ctrdata 1.8.0
  - 2021-11-18
  - changes to match nodbi 0.5.0 
  - simplifying database operations (user-visible functions: 
    ctrLoadQueryIntoDb, dbFindIdsUniqueTrials, dbGetFieldsIntoDf), 
    without changes to API
- - dbGetFieldsIntoDf: a field that is a list containing a data frame
-   is returned as a data frame for RSQLite and as a list for MongoDB
-   database backends, by intention to simplify return values
 
 # ctrdata 1.7.1.9000
  - 2021-08-23

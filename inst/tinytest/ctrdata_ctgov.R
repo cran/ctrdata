@@ -1,11 +1,5 @@
 ## RH 2019-09-28
 
-# check server
-if (httr::status_code(
-  httr::GET("https://clinicaltrials.gov/ct2/search",
-            httr::timeout(5))) != 200L
-) exit_file("Reason: CTGOV not working")
-
 #### ctrLoadQueryIntoDb ####
 
 # test
@@ -15,6 +9,29 @@ expect_equal(
       queryterm = "2010-024264-18",
       register = "CTGOV",
       only.count = TRUE))[["n"]], 1L)
+
+# test
+nodbi::docdb_create(
+  src = dbc,
+  key = dbc$collection,
+  value = data.frame()
+)
+expect_error(
+  suppressWarnings(
+    suppressMessages(
+      ctrLoadQueryIntoDb(
+        querytoupdate = "last",
+        con = dbc))),
+  "no previous queries")
+
+# test
+expect_message(
+  suppressWarnings(
+    ctrLoadQueryIntoDb(
+      queryterm = "SHOULDNOTEXISTATALL",
+      register = "CTGOV",
+      con = dbc)),
+  "no.*trials found")
 
 # test
 expect_message(
@@ -64,7 +81,7 @@ expect_message(
       querytoupdate = "last",
       verbose = TRUE,
       con = dbc)),
-  "No trials or number of trials could not be determined")
+  "no.*trials found")
 
 # test
 expect_error(
@@ -72,7 +89,7 @@ expect_error(
     ctrLoadQueryIntoDb(
       querytoupdate = 999L,
       con = dbc)),
-  "'querytoupdate': specified number not found")
+  "'querytoupdate': specified query number.*not found")
 
 # new query
 q <- paste0("https://clinicaltrials.gov/ct2/results?",
@@ -108,6 +125,7 @@ expect_message(
   tmpTest <- suppressWarnings(
     ctrLoadQueryIntoDb(
       querytoupdate = "last",
+      verbose = TRUE,
       con = dbc)),
   "Imported or updated")
 
@@ -139,13 +157,18 @@ result <- suppressMessages(
   suppressWarnings(
     dbGetFieldsIntoDf(
       fields = c(
+        "primary_outcome.measure",
+        "start_date",
         "clinical_results.baseline.analyzed_list.analyzed.count_list.count",
         "clinical_results.baseline.group_list.group",
         "clinical_results.baseline.analyzed_list.analyzed.units",
         "clinical_results.outcome_list.outcome",
+        "clinical_results",
         "study_design_info.allocation",
+        "eligibility.maximum_age",
         "location.facility.name",
-        "location"),
+        "location"
+        ),
       con = dbc)
   ))
 
@@ -161,6 +184,18 @@ expect_true("character" == class(result[[
   "study_design_info.allocation"]]))
 
 # test
+expect_true("character" == class(result[[
+  "primary_outcome.measure"]]))
+
+# test
+expect_true("Date" == class(result[[
+  "start_date"]]))
+
+# test
+expect_true("difftime" == class(result[[
+  "eligibility.maximum_age"]]))
+
+# test
 expect_true(
   any(grepl(" / ", result[["location.facility.name"]])))
 expect_true(
@@ -170,6 +205,17 @@ expect_true(
 # test
 expect_true("list" == class(result[[
   "clinical_results.baseline.group_list.group"]]))
+
+# test
+tmpTest <- c(
+  "clinical_results.baseline", "clinical_results.outcome_list.outcome",
+  "clinical_results.reported_events", "clinical_results.participant_flow",
+  "clinical_results.point_of_contact", "clinical_results.certain_agreements"
+  # not in the downloaded but in other trials:
+  # "clinical_results.limitations_and_caveats"
+  )
+expect_true(
+  length(setdiff(tmpTest, names(result))) == 0L)
 
 # test
 expect_true(
@@ -201,15 +247,16 @@ expect_true(
 
 # select value from
 # measure in where
-df2 <- dfName2Value(
-  df = df,
-  valuename = paste0(
-    "clinical_results.*category_list.category.measurement_list.measurement.value|",
-    "clinical_results.outcome_list.outcome.measure.units"
-  ),
-  wherename = "clinical_results.outcome_list.outcome.measure.title",
-  wherevalue = "duration of response"
-)
+df2 <- suppressMessages(
+  dfName2Value(
+    df = df,
+    valuename = paste0(
+      "clinical_results.*category_list.category.measurement_list.measurement.value|",
+      "clinical_results.outcome_list.outcome.measure.units"
+    ),
+    wherename = "clinical_results.outcome_list.outcome.measure.title",
+    wherevalue = "duration of response"
+  ))
 
 # test
 expect_true(
@@ -218,7 +265,7 @@ expect_true(
 
 # test
 expect_true(
-  all(grepl("^0.5", df2[["identifier"]][ df2[["_id"]] == "NCT01471782" ]))
+  all(grepl("5", df2[["identifier"]][ df2[["_id"]] == "NCT01471782" ]))
 )
 
 # test
@@ -232,3 +279,79 @@ expect_error(
         annotation.mode = "WRONG",
         con = dbc))),
   "'annotation.mode' incorrect")
+
+#### dbFindFields ####
+
+# test
+expect_equal(
+  suppressMessages(
+    suppressWarnings(
+      dbFindFields(
+        namepart = "thisdoesnotexist",
+        con = dbc))),
+  "")
+
+# get all field names
+tmpf <- suppressMessages(
+  suppressWarnings(
+    dbFindFields(
+      namepart = ".*",
+      con = dbc)))
+
+# get all data
+result <- suppressMessages(
+  suppressWarnings(
+    dbGetFieldsIntoDf(
+      fields = tmpf,
+      con = dbc,
+      verbose = FALSE,
+      stopifnodata = FALSE)
+  ))
+
+# develop
+# print(length(names(result)))
+
+# test
+expect_true(
+  length(names(result)) > 150L)
+
+# determine all classes
+tmpr <- names(result)
+tmpr <- tmpr[tmpr != "_id"]
+tmpc <- sapply(result, class, USE.NAMES = FALSE)
+tmpc <- unlist(tmpc)
+tmpc <- table(tmpc)
+
+# develop
+#
+# print(tmpc)
+#
+# 2022-02-20
+#
+# tinytest::run_test_file("inst/tinytest/test_ctrdata_mongo_local_ctgov.R") # 155
+# Downloading: 8.3 kB     tmpcov.R    0 tests
+# character data.frame       Date   difftime    integer       list    logical
+# 116          4          7          1          2         82          5
+# test_ctrdata_mongo_local_ctgov.R   34 tests OK 12.2s
+# All ok, 34 results (12.2s)
+# > tinytest::run_test_file("inst/tinytest/test_ctrdata_mongo_remote_rw_ctgov.R") # 155
+# Downloading: 8.3 kB     tmpc_ctgov.R    0 tests
+# character data.frame       Date   difftime    integer       list    logical
+# 116          4          7          1          2         82          5
+# test_ctrdata_mongo_remote_rw_ctgov.R   34 tests OK 41.7s
+# All ok, 34 results (41.7s)
+# > tinytest::run_test_file("inst/tinytest/test_ctrdata_postgres_ctgov.R") # 155
+# Downloading: 8.3 kB     tmpcR.    0 tests
+# character      Date  difftime   integer      list   logical
+# 138         7         1         2        73        14
+# test_ctrdata_postgres_ctgov.R.   34 tests OK 22.7s
+# All ok, 34 results (22.7s)
+# > tinytest::run_test_file("inst/tinytest/test_ctrdata_sqlite_ctgov.R") # 155
+# Downloading: 8.3 kB     tmpc..    0 tests
+# character      Date  difftime   integer      list   logical
+# 134         7         1         2        59        32
+# test_ctrdata_sqlite_ctgov.R...   34 tests OK 21.8s
+# All ok, 34 results (21.8s)
+
+# clean up
+rm(df, df2, tmpf, result)

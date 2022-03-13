@@ -2,8 +2,7 @@
 % Please edit documentation in R/utils.R
 \name{ctrGetQueryUrl}
 \alias{ctrGetQueryUrl}
-\title{Extract query parameters and register name from input or from
-clipboard into which the URL of a register search was copied}
+\title{Get query details}
 \usage{
 ctrGetQueryUrl(url = "", register = "")
 }
@@ -17,31 +16,33 @@ a suitable URL. Can also contain a query term such as from
 "CTGOV") in case url is a query term}
 }
 \value{
-A string of query parameters that can be used to retrieve data
-from the register.
-
-A data frame with column names query term and register name
-that can directly be used in \link{ctrLoadQueryIntoDb} and in
-\link{ctrOpenSearchPagesInBrowser}
+A data frame (or tibble, if \code{dplyr} is loaded)
+with column names `query-term` and `query-register`.
+The data frame (or tibble) can be passed as such as parameter
+`query-term` to \link{ctrLoadQueryIntoDb} and as parameter
+`url` to \link{ctrOpenSearchPagesInBrowser}.
 }
 \description{
-Extract query parameters and register name from input or from
-clipboard into which the URL of a register search was copied
+Extracts query parameters and register name from parameter `url` or
+from the clipboard, into which the URL of a register search was copied.
 }
 \examples{
 
 \dontrun{
-db <- nodbi::src_sqlite(
-  collection = "my_collection"
-)
+
+dbc <- nodbi::src_sqlite(collection = "my_collection")
 
 # user now copies into the clipboard the URL from
 # the address bar of the browser that shows results
 # from a query in one of the trial registers
+#
+# information about all trials found with this query
+# is now loaded into the database collection
 ctrLoadQueryIntoDb(
-  ctrGetQueryUrl(),
-  con = db
+  queryterm = ctrGetQueryUrl(),
+  con = dbc
 )
+
 }
 
 }

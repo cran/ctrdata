@@ -9,47 +9,56 @@ dbFindFields(namepart = "", con, verbose = FALSE)
 \arguments{
 \item{namepart}{A plain string (can include a regular expression,
 including Perl-style) to be searched for among all field names
-(keys) in the database.}
+(keys) in the collection. Use `".*` to find all fields.}
 
-\item{con}{A \link[nodbi]{src} connection object, as obtained with
-nodbi::\link[nodbi]{src_mongo}() or nodbi::\link[nodbi]{src_sqlite}()}
+\item{con}{A connection object, see section
+`Databases` in \link{ctrdata-package}}
 
 \item{verbose}{If \code{TRUE}, prints additional information
 (default \code{FALSE}).}
 }
 \value{
-Vector of names of found field(s) in alphabetical
-order (that is, not by register or field frequency)
+Vector of strings with full names of field(s) found,
+in alphabetical order by register. This is a named vector
+where the names of the vector are the register names for
+the respective fields.
 }
 \description{
 Given part of the name of a field of interest to the user, this
-function returns the full field names as found in the database.
+function returns the full field names used in records that were
+previously loaded into a collection
+(using \link{ctrLoadQueryIntoDb}). The field names can be fed
+into function \link{dbGetFieldsIntoDf} to extract the data
+from the collection into a data frame.
+In addition to the full names of leaf fields (e.g.,
+\code{clinical_results.outcome_list.outcome.measure.class_list.class.title})
+this function also returns names of node fields (e.g.,
+\code{clinical_results}). Data in node fields is typically complex
+(multiply nested) and can be converted into individual data
+elements by function \link{dfTrials2Long}, possibly followed
+by function \link{dfName2Value}.
 }
 \details{
 For fields in EUCTR (protocol- and results-related information),
-see also the register's documentation at
 \url{https://eudract.ema.europa.eu/result.html}.
 
-For fields in CTGOV (protocol-related information), see also
-the register's definitions at
+For fields in CTGOV (protocol-related information), see
 \url{https://prsinfo.clinicaltrials.gov/definitions.html}.
 
-Note: Generating a list of fields with this function may take
-some time, and may involve running a mapreduce function if using
-a MongoDB server. If the user is not not authorized to run
-such a function, random documents are sampled to generate a
-list of fields.
+For fields in ISRCTN (protocol-related information), see
+\url{https://www.isrctn.com/page/definitions}.
+
+Note: Only when `dbFindFields` is first called after
+\link{ctrLoadQueryIntoDb}, it will take a moment.
 }
 \examples{
 
 \dontrun{
-db <- nodbi::src_sqlite(
-  collection = "my_collection"
-)
-dbFindFields(
-  nampepart = "date",
-  con = db
-)
+
+dbc <- nodbi::src_sqlite(collection = "my_collection")
+
+dbFindFields(namepart = "date", con = dbc)
+
 }
 
 }

@@ -2,13 +2,13 @@
 % Please edit documentation in R/utils.R
 \name{ctrOpenSearchPagesInBrowser}
 \alias{ctrOpenSearchPagesInBrowser}
-\title{Open advanced search pages of register(s) or execute search in browser}
+\title{Open stored query or register search page}
 \usage{
 ctrOpenSearchPagesInBrowser(url = "", register = "", copyright = FALSE, ...)
 }
 \arguments{
 \item{url}{of search results page to show in the browser.
-May be the output of \link{ctrGetQueryUrl} or from \link{dbQueryHistory}.}
+Can be the return value of \link{ctrGetQueryUrl} or \link{dbQueryHistory}.}
 
 \item{register}{Register(s) to open. Either "EUCTR" or "CTGOV" or a vector of
 both. Default is to open both registers' advanced search pages. To open the
@@ -21,28 +21,23 @@ register(s).}
 \item{...}{May include the deprecated \code{input} parameter.}
 }
 \value{
-Is always true, invisibly.
+Always \code{TRUE}, invisibly.
 }
 \description{
-Open advanced search pages of register(s) or execute search in browser
+Open advanced search pages of register(s), or execute search in browser
 }
 \examples{
 \dontrun{
-ctrOpenSearchPagesInBrowser(
- "https://www.clinicaltrialsregister.eu/ctr-search/search?query=cancer")
 
-# for this example, the clipboard has to
-# contain the URL from a search in a register
-ctrOpenSearchPagesInBrowser(
- ctrGetQueryUrl())
+# Check copyrights before using registers
+ctrOpenSearchPagesInBrowser(copyright = TRUE)
 
-# open the last query that was
-# loaded into the database
-db <- nodbi::src_sqlite(
+# open last query loaded into the collection
+dbc <- nodbi::src_sqlite(
   collection = "previously_created"
 )
 ctrOpenSearchPagesInBrowser(
-  dbQueryHistory(con = db))
-}
+  dbQueryHistory(con = dbc))
 
+}
 }

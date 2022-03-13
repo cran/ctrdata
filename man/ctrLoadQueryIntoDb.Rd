@@ -2,13 +2,12 @@
 % Please edit documentation in R/main.R
 \name{ctrLoadQueryIntoDb}
 \alias{ctrLoadQueryIntoDb}
-\title{Retrieve or update information on clinical trials from register
-and store in database}
+\title{Load and store register trial information}
 \usage{
 ctrLoadQueryIntoDb(
-  queryterm = "",
+  queryterm = NULL,
   register = "",
-  querytoupdate = 0L,
+  querytoupdate = NULL,
   forcetoupdate = FALSE,
   euctrresults = FALSE,
   euctrresultshistory = FALSE,
@@ -77,45 +76,55 @@ number of trial records found in the register for the query.
 Does not load trial information into the database.
 Default is \code{FALSE}.}
 
-\item{con}{A \link[nodbi]{src} connection object, as obtained with
-nodbi::\link[nodbi]{src_mongo}() or nodbi::\link[nodbi]{src_sqlite}()}
+\item{con}{A connection object, see section
+`Databases` in \link{ctrdata-package}}
 
 \item{verbose}{Printing additional information if set to
 \code{TRUE}; default is \code{FALSE}.}
 }
 \value{
-A list with elements "n" (the number of trials that
-were newly imported or updated with this function call),
-"ids" (a vector of the _id[s] of these trials) and the
-"queryterm" used, with several attributes set
-(database connection details and a data frame of
-the query history in this database).
+A list with elements
+`n` (number of trial records newly imported or updated),
+`success` (a vector of _id's of successfully loaded records),
+`failed` (a vector of identifiers of records that failed to load)
+and `queryterm` (the query term used).
+The returned list has several attributes (including database and
+collection name, as well as the query history of this database
+collection) to facilitate documentation.
 }
 \description{
-This is the main function of package \link{ctrdata} for accessing
-registers. Note that re-rerunning this function adds or updates
-trial records in a database, even if from different queries or
-different registers. Updating means that the previously stored
-record is overwritten; see \code{annotation.text} for persisting
-user comments added to a record.
+Retrieves or updates information on clinical trials from registers
+and stores it in a collection in a database.
+This is the main function of \link{ctrdata-package} for accessing
+registers and loading trial information into a database collection,
+even if from different queries or different registers.
+The query details are stored in the database collection and can
+be accessed using \link{dbQueryHistory}.
+A previous query can be re-run, which replaces or adds trial
+records. However, user annotations of trial records are kept.
 }
 \examples{
 \dontrun{
-db <- nodbi::src_sqlite(
-  collection = "test"
-)
-# Retrieve protocol-related information on a
-# single trial identified by EudraCT number
+dbc <- nodbi::src_sqlite(collection = "my_collection")
+
+# Retrieve protocol- and results-related information
+# on a single trial identified by its EU number
 ctrLoadQueryIntoDb(
-  queryterm = "2013-001291-38", con = db
+  queryterm = "2013-001291-38",
+  register = "EUCTR",
+  euctrresults = TRUE,
+  con = dbc
 )
-# Retrieve protocol-related information on
-# ongoing interventional cancer trials in children
+
+# Retrieve all information on about 2,000 ongoing
+# interventional cancer trials involving children
+# into the same collection as used before
 ctrLoadQueryIntoDb(
   queryterm = "cancer&recr=Open&type=Intr&age=0",
   register = "CTGOV",
-  con = db
+  con = dbc
 )
+
 }
 
 }

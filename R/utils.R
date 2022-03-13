@@ -1,7 +1,10 @@
 ### ctrdata package
 ### utility functions
 
-## variable definitions
+#### variable definitions ####
+#
+# prototype return structure
+emptyReturn <- list(n = 0L, success = NULL, failed = NULL)
 #
 # EUCTR definitions
 countriesEUCTR <- c(
@@ -21,12 +24,223 @@ regIsrctn <- "[1-9][0-9]{7}"
 #
 # register list
 registerList <- c("EUCTR", "CTGOV", "ISRCTN")
+#
+# mapping field names to typing function for typeField()
+typeVars <- list(
+  #
+  # dates
+  #
+  # - ctrdata intern
+  "record_last_import" = "ctrDateCtr",
+  #
+  # - EUCTR
+  "n_date_of_competent_authority_decision" = "ctrDate",
+  "n_date_of_ethics_committee_opinion"     = "ctrDate",
+  "p_date_of_the_global_end_of_the_trial"  = "ctrDate",
+  "firstreceived_results_date"             = "ctrDate",
+  "x6_date_on_which_this_record_was_first_entered_in_the_eudract_database" = "ctrDate",
+  "trialInformation.primaryCompletionDate" = "ctrDate",
+  "trialInformation.analysisStageDate"     = "ctrDateTime",
+  "trialInformation.globalEndOfTrialDate"  = "ctrDateTime",
+  "trialInformation.recruitmentStartDate"  = "ctrDateTime",
+  #
+  # - CTGOV
+  "completion_date"          = "ctrDateUs",
+  "last_update_posted"       = "ctrDateUs",
+  "last_update_submitted_qc" = "ctrDateUs",
+  "last_update_submitted"    = "ctrDateUs",
+  "primary_completion_date"  = "ctrDateUs",
+  "results_first_posted"     = "ctrDateUs",
+  "start_date"               = "ctrDateUs",
+  "study_first_posted"       = "ctrDateUs",
+  "verification_date"        = "ctrDateUs",
+  "required_header.download_date" = "ctrDateUs",
+  "eligibility.minimum_age" = "ctrDifftime",
+  "eligibility.maximum_age" = "ctrDifftime",
+  #
+  # - ISRCTN
+  "participants.recruitmentStart" = "ctrDateTime",
+  "participants.recruitmentEnd"   = "ctrDateTime",
+  "trialDesign.overallStartDate"  = "ctrDateTime",
+  "trialDesign.overallEndDate"    = "ctrDateTime",
+  #
+  #
+  # factors / logical
+  #
+  # - EUCTR Yes / No / Information not present in EudraCT
+  "a7_trial_is_part_of_a_paediatric_investigation_plan" = "ctrYesNo",
+  "dimp.d21_imp_to_be_used_in_the_trial_has_a_marketing_authorisation" = "ctrYesNo",
+  "e13_condition_being_studied_is_a_rare_disease" = "ctrYesNo",
+  "e23_trial_contains_a_substudy" = "ctrYesNo",
+  #
+  "e61_diagnosis"         = "ctrYesNo",
+  "e62_prophylaxis"       = "ctrYesNo",
+  "e63_therapy"           = "ctrYesNo",
+  "e64_safety"            = "ctrYesNo",
+  "e65_efficacy"          = "ctrYesNo",
+  "e66_pharmacokinetic"   = "ctrYesNo",
+  "e67_pharmacodynamic"   = "ctrYesNo",
+  "e68_bioequivalence"    = "ctrYesNo",
+  "e69_dose_response"     = "ctrYesNo",
+  "e610_pharmacogenetic"  = "ctrYesNo",
+  "e611_pharmacogenomic"  = "ctrYesNo",
+  "e612_pharmacoeconomic" = "ctrYesNo",
+  "e613_others"           = "ctrYesNo",
+  #
+  "e71_human_pharmacology_phase_i"         = "ctrYesNo",
+  "e711_first_administration_to_humans"    = "ctrYesNo",
+  "e712_bioequivalence_study"              = "ctrYesNo",
+  "e713_other"                             = "ctrYesNo",
+  "e72_therapeutic_exploratory_phase_ii"   = "ctrYesNo",
+  "e73_therapeutic_confirmatory_phase_iii" = "ctrYesNo",
+  "e74_therapeutic_use_phase_iv"           = "ctrYesNo",
+  #
+  "e81_controlled"      = "ctrYesNo",
+  "e811_randomised"     = "ctrYesNo",
+  "e812_open"           = "ctrYesNo",
+  "e813_single_blind"   = "ctrYesNo",
+  "e814_double_blind"   = "ctrYesNo",
+  "e815_parallel_group" = "ctrYesNo",
+  "e816_cross_over"     = "ctrYesNo",
+  "e817_other"          = "ctrYesNo",
+  #
+  "e83_the_trial_involves_single_site_in_the_member_state_concerned"    = "ctrYesNo",
+  "e84_the_trial_involves_multiple_sites_in_the_member_state_concerned" = "ctrYesNo",
+  "e85_the_trial_involves_multiple_member_states"                       = "ctrYesNo",
+  "e861_trial_being_conducted_both_within_and_outside_the_eea"          = "ctrYesNo",
+  "e862_trial_being_conducted_completely_outside_of_the_eea"            = "ctrYesNo",
+  "e87_trial_has_a_data_monitoring_committee"                           = "ctrYesNo",
+  #
+  "f11_trial_has_subjects_under_18"            = "ctrYesNo",
+  "f111_in_utero"                              = "ctrYesNo",
+  "f112_preterm_newborn_infants_up_to_gestational_age__37_weeks" = "ctrYesNo",
+  "f113_newborns_027_days"                     = "ctrYesNo",
+  "f114_infants_and_toddlers_28_days23_months" = "ctrYesNo",
+  "f115_children_211years"                     = "ctrYesNo",
+  "f116_adolescents_1217_years"                = "ctrYesNo",
+  "f12_adults_1864_years"                      = "ctrYesNo",
+  "f13_elderly_65_years"                       = "ctrYesNo",
+  "f21_female"                                 = "ctrYesNo",
+  "f22_male"                                   = "ctrYesNo",
+  "f31_healthy_volunteers"                     = "ctrYesNo",
+  "f32_patients"                               = "ctrYesNo",
+  "f33_specific_vulnerable_populations"        = "ctrYesNo",
+  "f331_women_of_childbearing_potential_not_using_contraception_" = "ctrYesNo",
+  "f332_women_of_childbearing_potential_using_contraception"      = "ctrYesNo",
+  "f333_pregnant_women"      = "ctrYesNo",
+  "f334_nursing_women"       = "ctrYesNo",
+  "f335_emergency_situation" = "ctrYesNo",
+  "f336_subjects_incapable_of_giving_consent_personally" = "ctrYesNo",
+  #
+  "trialInformation.analysisForPrimaryCompletion" = "ctrFalseTrue",
+  "trialInformation.partOfPIP"                 = "ctrFalseTrue",
+  "trialInformation.art45Related"              = "ctrFalseTrue",
+  "trialInformation.art46Related"              = "ctrFalseTrue",
+  "trialInformation.longTermFollowUpPlanned"   = "ctrFalseTrue",
+  "trialInformation.idmcInvolvement"           = "ctrFalseTrue",
+  "trialInformation.isGlobalEndOfTrialReached" = "ctrFalseTrue",
+  "trialInformation.globalEndOfTrialPremature" = "ctrFalseTrue",
+  #
+  # - CTGOV
+  "has_expanded_access"            = "ctrYesNo",
+  "oversight_info.has_dmc"         = "ctrYesNo",
+  "eligibility.healthy_volunteers" = "ctrYesNo",
+  #
+  # - ISRCTN
+  "trialDescription.acknowledgment" = "ctrFalseTrue",
+  "results.biomedRelated"           = "ctrFalseTrue",
+  #
+  # numbers
+  #
+  # - EUCTR
+  "e824_number_of_treatment_arms_in_the_trial"  = "ctrInt",
+  "e841_number_of_sites_anticipated_in_member_state_concerned" = "ctrInt",
+  "e851_number_of_sites_anticipated_in_the_eea" = "ctrInt",
+  "e891_in_the_member_state_concerned_years"    = "ctrInt",
+  "e891_in_the_member_state_concerned_months"   = "ctrInt",
+  "e891_in_the_member_state_concerned_days"     = "ctrInt",
+  "e892_in_all_countries_concerned_by_the_trial_years"  = "ctrInt",
+  "e892_in_all_countries_concerned_by_the_trial_months" = "ctrInt",
+  "e892_in_all_countries_concerned_by_the_trial_days"   = "ctrInt",
+  "f11_number_of_subjects_for_this_age_range"   = "ctrInt",
+  "f1111_number_of_subjects_for_this_age_range" = "ctrInt",
+  "f1121_number_of_subjects_for_this_age_range" = "ctrInt",
+  "f1131_number_of_subjects_for_this_age_range" = "ctrInt",
+  "f1141_number_of_subjects_for_this_age_range" = "ctrInt",
+  "f1151_number_of_subjects_for_this_age_range" = "ctrInt",
+  "f1161_number_of_subjects_for_this_age_range" = "ctrInt",
+  "f121_number_of_subjects_for_this_age_range"  = "ctrInt",
+  "f131_number_of_subjects_for_this_age_range"  = "ctrInt",
+  "f41_in_the_member_state"          = "ctrInt",
+  "f421_in_the_eea"                  = "ctrInt",
+  "f422_in_the_whole_clinical_trial" = "ctrInt",
+  #
+  "trialInformation.populationAgeGroup.inUtero"               = "ctrInt",
+  "trialInformation.populationAgeGroup.pretermNewbornInfants" = "ctrInt",
+  "trialInformation.populationAgeGroup.newborns"              = "ctrInt",
+  "trialInformation.populationAgeGroup.infantsAndToddlers"    = "ctrInt",
+  "trialInformation.populationAgeGroup.children"              = "ctrInt",
+  "trialInformation.populationAgeGroup.adolescents"           = "ctrInt",
+  "trialInformation.populationAgeGroup.adults"                = "ctrInt",
+  "trialInformation.populationAgeGroup.elderly65To84"         = "ctrInt",
+  "trialInformation.populationAgeGroup.elderlyOver85"         = "ctrInt",
+  #
+  # - CTGOV
+  "number_of_arms" = "ctrInt",
+  "enrollment"     = "ctrInt",
+  #
+  # - ISRCTN
+  "participants.targetEnrolment"     = "ctrInt",
+  "participants.totalFinalEnrolment" = "ctrInt"
+  #
+)
+
+
+
+#### functions ####
+
+#' Check, write, read cache object for ctrdata
+#'
+#' @param xname name of variable to read or write
+#'
+#' @param xvalue value of variable to write
+#'
+#' @param verbose set to `TRUE` to print debug info
+#'
+#' @keywords internal
+#' @noRd
+#'
+#' @return value of variable or `NULL` if variable does not exist
+#'
+ctrCache <- function(xname, xvalue = NULL, verbose = FALSE) {
+
+  # hidden environment .ctrdataenv created in onload.R
+
+  # write or overwrite and exit early
+  if (!is.null(xvalue)) {
+    assign(x = xname, value = xvalue, envir = .ctrdataenv)
+    if (verbose) message(" wrote ", xname, " to cache ")
+    return(xvalue)
+  }
+
+  # check and read any value for xname variable
+  if (verbose) message(" accessing cache...", appendLF = FALSE)
+  if (exists(x = xname, envir = .ctrdataenv)) {
+    tmp <- try(get(x = xname, envir = .ctrdataenv), silent = TRUE)
+    if (inherits(tmp, "try-error")) return(NULL)
+    if (verbose) message("\b\b\b, returning ", xname, " ", appendLF = FALSE)
+    return(tmp)
+  }
+
+  # default
+  return(NULL)
+}
 
 
 #' Check and prepare nodbi connection object for ctrdata
 #'
-#' @param con A \link[nodbi]{src} connection object, as obtained with
-#'  nodbi::\link[nodbi]{src_mongo}() or nodbi::\link[nodbi]{src_sqlite}()
+#' @param con A connection object, see section
+#' `Databases` in \link{ctrdata-package}
 #'
 #' @keywords internal
 #'
@@ -40,13 +254,33 @@ ctrDb <- function(
   con = nodbi::src_sqlite(
     collection = "ctrdata_auto_generated")) {
 
+  ## postgres
+  if (inherits(con, "src_postgres")) {
+
+    if (is.null(con$collection)) {
+      stop("Specify 'collection' with a table name, using ",
+           "<nodbi src_postgres object>[[\"collection\"]] <- \"test\"), ",
+           "for package ctrdata to work.",
+           call. = FALSE)
+    }
+
+    # add database as element under root
+    con <- c(con,
+             "db" = con$dbname,
+             "ctrDb" = TRUE)
+
+    ## return
+    return(structure(con,
+                     class = c("src_postgres", "docdb_src")))
+  }
+
   ## sqlite
   if (inherits(con, "src_sqlite")) {
 
     if (is.null(con$collection)) {
-      stop("In src_sqlite(), a parameter 'collection' needs to specify ",
-           "the name of a table, such as src_sqlite(collection = 'test'), ",
-           "for package ctrdata to work with other nosql databases.",
+      stop("Specify parameter 'collection' with a table name, ",
+           "such as nodbi::src_sqlite(collection = 'test'), ",
+           "for package ctrdata to work.",
            call. = FALSE)
     }
 
@@ -101,16 +335,18 @@ ctrDb <- function(
 
   ## unprepared for other nodbi adapters so far
   stop("Please specify in parameter 'con' a database connection. ",
-       "crdata supports so far only src_mongo() and src_sqlite().",
+       "crdata supports src_mongo(), src_sqlite() and src_postgres().",
        call. = FALSE)
 
 } # end ctrDb
 
 
-#' Open advanced search pages of register(s) or execute search in browser
+#' Open stored query or register search page
+#'
+#' Open advanced search pages of register(s), or execute search in browser
 #'
 #' @param url of search results page to show in the browser.
-#'   May be the output of \link{ctrGetQueryUrl} or from \link{dbQueryHistory}.
+#'   Can be the return value of \link{ctrGetQueryUrl} or \link{dbQueryHistory}.
 #'
 #' @param register Register(s) to open. Either "EUCTR" or "CTGOV" or a vector of
 #'   both. Default is to open both registers' advanced search pages. To open the
@@ -124,27 +360,22 @@ ctrDb <- function(
 #'
 #' @export
 #'
-#' @return Is always true, invisibly.
+#' @return Always \code{TRUE}, invisibly.
 #'
 #' @examples
 #' \dontrun{
-#' ctrOpenSearchPagesInBrowser(
-#'  "https://www.clinicaltrialsregister.eu/ctr-search/search?query=cancer")
 #'
-#' # for this example, the clipboard has to
-#' # contain the URL from a search in a register
-#' ctrOpenSearchPagesInBrowser(
-#'  ctrGetQueryUrl())
+#' # Check copyrights before using registers
+#' ctrOpenSearchPagesInBrowser(copyright = TRUE)
 #'
-#' # open the last query that was
-#' # loaded into the database
-#' db <- nodbi::src_sqlite(
+#' # open last query loaded into the collection
+#' dbc <- nodbi::src_sqlite(
 #'   collection = "previously_created"
 #' )
 #' ctrOpenSearchPagesInBrowser(
-#'   dbQueryHistory(con = db))
-#' }
+#'   dbQueryHistory(con = dbc))
 #'
+#' }
 ctrOpenSearchPagesInBrowser <- function(
   url = "",
   register = "",
@@ -192,8 +423,8 @@ ctrOpenSearchPagesInBrowser <- function(
     nr <- nrow(url)
     if (nr > 1L) warning("Using last query",
                          call. = FALSE, immediate. = TRUE)
-    register  <- url[nr, "query-register"]
-    url <- url[nr, "query-term"]
+    register  <- url[nr, "query-register", drop = TRUE]
+    url <- url[nr, "query-term", drop = TRUE]
   }
 
   # - open from url and register
@@ -213,8 +444,10 @@ ctrOpenSearchPagesInBrowser <- function(
 # end ctrOpenSearchPagesInBrowser
 
 
-#' Extract query parameters and register name from input or from
-#' clipboard into which the URL of a register search was copied
+#' Get query details
+#'
+#' Extracts query parameters and register name from parameter `url` or
+#' from the clipboard, into which the URL of a register search was copied.
 #'
 #' @param url URL such as from the browser address bar.
 #' If not specified, clipboard contents will be checked for
@@ -224,32 +457,35 @@ ctrOpenSearchPagesInBrowser <- function(
 #' @param register Optional name of register (i.e., "EUCTR" or
 #' "CTGOV") in case url is a query term
 #'
-#' @return A string of query parameters that can be used to retrieve data
-#' from the register.
-#'
 #' @export
 #'
-#' @return A data frame with column names query term and register name
-#' that can directly be used in \link{ctrLoadQueryIntoDb} and in
-#' \link{ctrOpenSearchPagesInBrowser}
+#' @return A data frame (or tibble, if \code{dplyr} is loaded)
+#' with column names `query-term` and `query-register`.
+#' The data frame (or tibble) can be passed as such as parameter
+#' `query-term` to \link{ctrLoadQueryIntoDb} and as parameter
+#' `url` to \link{ctrOpenSearchPagesInBrowser}.
+#'
+#' @importFrom clipr read_clip
+#' @importFrom dplyr as_tibble
 #'
 #' @examples
 #'
 #' \dontrun{
-#' db <- nodbi::src_sqlite(
-#'   collection = "my_collection"
-#' )
+#'
+#' dbc <- nodbi::src_sqlite(collection = "my_collection")
 #'
 #' # user now copies into the clipboard the URL from
 #' # the address bar of the browser that shows results
 #' # from a query in one of the trial registers
+#' #
+#' # information about all trials found with this query
+#' # is now loaded into the database collection
 #' ctrLoadQueryIntoDb(
-#'   ctrGetQueryUrl(),
-#'   con = db
+#'   queryterm = ctrGetQueryUrl(),
+#'   con = dbc
 #' )
-#' }
 #'
-#' @importFrom clipr read_clip
+#' }
 #'
 ctrGetQueryUrl <- function(
   url = "",
@@ -302,11 +538,13 @@ ctrGetQueryUrl <- function(
   outdf <- function(qt, reg) {
     qt <- utils::URLdecode(qt)
     message("* Found search query from ", reg, ": ", qt)
-    data.frame(
+    out <- data.frame(
       `query-term` = qt,
       `query-register` = reg,
       check.names = FALSE,
       stringsAsFactors = FALSE)
+    if (any("dplyr" == .packages())) out <- dplyr::as_tibble(out)
+    return(out)
   }
   # identify query term per register
   #
@@ -342,6 +580,8 @@ ctrGetQueryUrl <- function(
               "search results, click 'Return to List' in browser and use ",
               "this as 'url'.")
     }
+    # expert search page
+    queryterm <- sub(".*/ct2/results/refine[?](.*)", "\\1", queryterm)
     # search results page
     queryterm <- sub(".*/ct2/results[?](.*)", "\\1", queryterm)
     # other results page
@@ -352,7 +592,6 @@ ctrGetQueryUrl <- function(
     queryterm <- sub("&[a-z_0-9]+=$", "", queryterm)
     # correct naked terms
     queryterm <- sub(
-      # "(^|&|[&]?\\w+=\\w+&)(\\w+|[NCT0-9-]+)($|&\\w+=\\w+)",
       "(^|&|[&]?\\w+=\\w+&)(\\w+|[a-zA-z0-9+-.:]+)($|&\\w+=\\w+)",
       "\\1term=\\2\\3", queryterm)
     #
@@ -385,58 +624,12 @@ ctrGetQueryUrl <- function(
 # end ctrGetQueryUrl
 
 
-#' Import from clipboard the URL of a search in one of the registers
-#'
-#' @inheritParams ctrGetQueryUrl
-#'
-#' @return A string of query parameters that can be used to retrieve data
-#' from the register.
-#'
-#' @export
-#'
-#' @return A data frame with column names query term and register name
-#' that can directly be used in \link{ctrLoadQueryIntoDb} and in
-#' \link{ctrOpenSearchPagesInBrowser}
-#'
-#' @examples
-#'
-#' \dontrun{
-#' db <- nodbi::src_sqlite(
-#'   collection = "my_collection"
-#' )
-#'
-#' # user now copies into the clipboard the URL from
-#' # the address bar of the browser that shows results
-#' # from a query in one of the trial registers
-#' ctrLoadQueryIntoDb(
-#'   ctrGetQueryUrlFromBrowser(),
-#'   con = db
-#' )
-#' }
-#'
-#' @importFrom clipr read_clip
-#'
-ctrGetQueryUrlFromBrowser <- function(
-  url = "",
-  register = "") {
-
-  # deprecate
-  .Deprecated(new = "ctrGetQueryUrl")
-
-  # defer call
-  ctrGetQueryUrl(url = url, register = register)
-
-}
-# end ctrGetQueryUrlFromBrowser
-
-
 #' Find synonyms of an active substance
 #'
 #' An active substance can be identified by a recommended international
-#' nonproprietary name, a trade or product name, or a company code(s).
-#'
-#' At this time, this function uses the register ClinicalTrials.Gov to
-#' detect which substances were also searched for.
+#' nonproprietary name (INN), a trade or product name, or a company code(s).
+#' Retrieves the substances which are searched for by the register
+#' 'ClinicalTrials.Gov' for a given active substance.
 #'
 #' @param activesubstance An active substance, in an atomic character vector
 #'
@@ -451,9 +644,10 @@ ctrGetQueryUrlFromBrowser <- function(
 #' @examples
 #'
 #' \dontrun{
-#' ctrFindActiveSubstanceSynonyms(
-#'   activesubstance = "imatinib"
-#' )
+#'
+#' ctrFindActiveSubstanceSynonyms(activesubstance = "imatinib")
+#' # [1] "imatinib"  "gleevec"   "sti 571"   "glivec"    "CGP 57148" "st1571"
+#'
 #' }
 #'
 ctrFindActiveSubstanceSynonyms <- function(activesubstance = "") {
@@ -469,9 +663,6 @@ ctrFindActiveSubstanceSynonyms <- function(activesubstance = "") {
 
   # initialise output variable
   as <- activesubstance
-
-  # check and set proxy if needed to access internet
-  setProxy()
 
   # getting synonyms
   ctgovfirstpageurl <-
@@ -499,32 +690,33 @@ ctrFindActiveSubstanceSynonyms <- function(activesubstance = "") {
 # end ctrFindActiveSubstanceSynonyms
 
 
-#' Show the history of queries that were loaded into a database
+#' Show history of queries loaded into a database collection
 #'
 #' @inheritParams ctrDb
 #'
-#' @return A data frame with columns: query-timestamp, query-register,
-#'  query-records (note: this is the number of records loaded when last
+#' @return A data frame (or tibble, if \code{dplyr} is loaded)
+#'  with columns: `query-timestamp`, `query-register`,
+#'  `query-records` (note: this is the number of records loaded when last
 #'  executing \link{ctrLoadQueryIntoDb}, not the total record number) and
-#'  query-term, and with one row for each \link{ctrLoadQueryIntoDb}
-#'  loading trial records in this collection.
+#'  `query-term`, with one row for each time \link{ctrLoadQueryIntoDb}
+#'  loaded trial records into this collection.
 #'
 #' @param verbose If \code{TRUE}, prints additional information
 #' (default \code{FALSE}).
 #'
 #' @importFrom nodbi docdb_query
+#' @importFrom dplyr as_tibble
 #'
 #' @export
 #'
 #' @examples
 #'
 #' \dontrun{
-#' db <- nodbi::src_sqlite(
-#'   collection = "my_collection"
-#' )
-#' dbQueryHistory(
-#'   con = db
-#' )
+#'
+#' dbc <- nodbi::src_sqlite(collection = "my_collection")
+#'
+#' dbQueryHistory(con = dbc)
+#'
 #' }
 #'
 dbQueryHistory <- function(con, verbose = FALSE) {
@@ -574,6 +766,7 @@ dbQueryHistory <- function(con, verbose = FALSE) {
   }
 
   # return
+  if (any("dplyr" == .packages())) return(dplyr::as_tibble(hist))
   return(hist)
 
 }
@@ -583,25 +776,34 @@ dbQueryHistory <- function(con, verbose = FALSE) {
 #' Find names of fields in the database collection
 #'
 #' Given part of the name of a field of interest to the user, this
-#' function returns the full field names as found in the database.
+#' function returns the full field names used in records that were
+#' previously loaded into a collection
+#' (using \link{ctrLoadQueryIntoDb}). The field names can be fed
+#' into function \link{dbGetFieldsIntoDf} to extract the data
+#' from the collection into a data frame.
+#' In addition to the full names of leaf fields (e.g.,
+#' \code{clinical_results.outcome_list.outcome.measure.class_list.class.title})
+#' this function also returns names of node fields (e.g.,
+#' \code{clinical_results}). Data in node fields is typically complex
+#' (multiply nested) and can be converted into individual data
+#' elements by function \link{dfTrials2Long}, possibly followed
+#' by function \link{dfName2Value}.
 #'
 #' For fields in EUCTR (protocol- and results-related information),
-#' see also the register's documentation at
 #' \url{https://eudract.ema.europa.eu/result.html}.
 #'
-#' For fields in CTGOV (protocol-related information), see also
-#' the register's definitions at
+#' For fields in CTGOV (protocol-related information), see
 #' \url{https://prsinfo.clinicaltrials.gov/definitions.html}.
 #'
-#' Note: Generating a list of fields with this function may take
-#' some time, and may involve running a mapreduce function if using
-#' a MongoDB server. If the user is not not authorized to run
-#' such a function, random documents are sampled to generate a
-#' list of fields.
+#' For fields in ISRCTN (protocol-related information), see
+#' \url{https://www.isrctn.com/page/definitions}.
+#'
+#' Note: Only when `dbFindFields` is first called after
+#' \link{ctrLoadQueryIntoDb}, it will take a moment.
 #'
 #' @param namepart A plain string (can include a regular expression,
 #' including Perl-style) to be searched for among all field names
-#' (keys) in the database.
+#' (keys) in the collection. Use `".*` to find all fields.
 #'
 #' @param verbose If \code{TRUE}, prints additional information
 #' (default \code{FALSE}).
@@ -610,21 +812,21 @@ dbQueryHistory <- function(con, verbose = FALSE) {
 #'
 #' @inheritParams ctrDb
 #'
-#' @return Vector of names of found field(s) in alphabetical
-#' order (that is, not by register or field frequency)
+#' @return Vector of strings with full names of field(s) found,
+#' in alphabetical order by register. This is a named vector
+#' where the names of the vector are the register names for
+#' the respective fields.
 #'
 #' @export
 #'
 #' @examples
 #'
 #' \dontrun{
-#' db <- nodbi::src_sqlite(
-#'   collection = "my_collection"
-#' )
-#' dbFindFields(
-#'   nampepart = "date",
-#'   con = db
-#' )
+#'
+#' dbc <- nodbi::src_sqlite(collection = "my_collection")
+#'
+#' dbFindFields(namepart = "date", con = dbc)
+#'
 #' }
 #'
 dbFindFields <- function(namepart = "",
@@ -639,169 +841,171 @@ dbFindFields <- function(namepart = "",
   ## check database connection
   if (is.null(con$ctrDb)) con <- ctrDb(con = con)
 
-  ## check if cache for list of keys in collection exists,
-  # otherwise create new environment as session cache
-  if (!exists(".dbffenv")) {
-    .dbffenv <- new.env(parent = emptyenv())
-  }
-
   ## check if cache environment has entry for the database
-  if (exists(x = paste0(con$db, "/", con$collection),
-             envir = .dbffenv)) {
+  keyslist <- ctrCache(xname = paste0("keyslist_", con$db, "/", con$collection),
+                       verbose = verbose)
 
-    # if true, get keys list from cache
-    keyslist <- get(x = paste0(con$db, "/", con$collection),
-                    envir = .dbffenv)
+  ## get cache reference value
+  cacheRef <- as.character(rev(unlist(try(nodbi::docdb_query(
+    src = con, key = con$collection, query = '{"_id": "meta-info"}',
+    fields = '{"queries.query-timestamp": 1}'), silent = TRUE)))[1])
 
-    # informing user
-    message("Using cache of fields.")
+  ## invalidate cache
+  cacheOutdated <- is.null(keyslist) || (cacheRef != ctrCache(
+    xname = paste0("keyslist_", con$db, "/", con$collection, "_timestamp"),
+    verbose = verbose))
 
-  } else {
+  ## get keyslist
+  if (cacheOutdated) {
 
     # inform user
-    message("Finding fields in database (may take some time)")
+    message("Finding fields in database collection (may take some time)")
 
-    ## using storage backend- specific methods, since
-    ## no canonical way was found yet to retrieve
-    ## field / key names
-
-    ## - method for mongodb
-    if (inherits(con, "src_mongo")) {
-
-      # try mapreduce to get all keys
-      keyslist <- try({
-        con$con$mapreduce(
-          map = "function() {
-      obj = this;
-      return searchInObj(obj, '');
-      function searchInObj(obj, pth) {
-         for(var key in obj) {
-            if(typeof obj[key] == 'object' && obj[key] !== null) {
-               if(pth != '') {pth = pth + '.'}
-                  searchInObj(obj[key], pth + key);
-            }else{
-               key = pth + '.' + key;
-               key = key.replace(/[.][0-9]+[.]/g, '.');
-               key = key.replace(/[.][0-9]+$/, '');
-               key = key.replace(/[.][.]+/g, '.');
-               key = key.replace(/[.]$/g, '');
-               key = key.replace(/^[.]/, '');
-               emit(key, 1);
-      }}}}",
-      reduce = "function(id, counts) {return Array.sum(counts)}"
-      # extract and keep only "_id" = first column, with keys
-        )[["_id"]]},
-      silent = TRUE)
-
-      # if mapreduce does not work or is not permitted, revert to guessing
-      if (inherits(keyslist, "try-error")) {
-
-        warning("Mongo server returned: ", as.character(keyslist),
-                "Using alternative method (extracting keys from ",
-                "sample documents, may be incomplete).",
-                call. = FALSE, immediate. = TRUE)
-
-        # get 2 random documents, one for each register EUCTR and CTGOV,
-        # if in collection, and retrieve keys from documents
-        keyslist <- c(
-          "", # avoid empty vector
-          names(con$con$find(
-            query = '{"_id": { "$regex": "^NCT[0-9]{8}", "$options": ""} }',
-            limit = 1L)),
-          names(con$con$find(
-            query = '{"_id": { "$regex": "^[0-9]{4}-[0-9]{6}", "$options": ""} }',
-            limit = 1L)))
-
-      } # end if error with mapreduce
-    } # end if src_mongo
-
-    ## - method for sqlite
-    if (inherits(con, "src_sqlite")) {
-
-      # uses special function parameter for
-      # src_sqlite query method: listfields
-      keyslist <- c("", # avoid empty vector
-                    nodbi::docdb_query(
-                      src = con,
-                      key = con$collection,
-                      query = "",
-                      listfields = TRUE))
-
+    # helpder function
+    getNodes <- function(fn) {
+      nodesList <- strsplit(fn, split = ".", fixed = TRUE)
+      nodesList <- sapply(nodesList, function(i) {
+        i <- i[-length(i)]
+        sapply(
+          seq_along(i),
+          function(ii) paste0(i[1:ii], collapse = "."), USE.NAMES = FALSE)
+      }, USE.NAMES = FALSE)
+      return(unique(unlist(nodesList)))
     }
+
+    # helper function
+    normNames <- function(df) {
+      out <- names(unlist(df))
+      if (!length(out)) return("")
+      out <- ifelse(
+        # exception for euctr protocol and results fields
+        test = grepl("65To84|Over85|under_18", out),
+        yes = out,
+        no = sub("[0-9]+$", "", out))
+      out <- c(out, getNodes(out))
+      return(sort(unique(out)))
+    }
+
+    # get all ids
+    allIds <- nodbi::docdb_query(
+      src = con, key = con$collection,
+      fields = '{"_id": 1}', query = '{}')[["_id"]]
+
+    # queries to be used
+    queries <- list(
+      "EUCTR" = c(
+        '{"trialInformation.analysisStage.value": {"$regex": ".+"}}',
+        paste0('{"_id": "', rev(allIds[grepl(regEuctr, allIds)])[1], '"}')),
+      "CTGOV" = c(
+        '{"results_first_submitted": {"$regex": ".+"}}',
+        paste0('{"_id": "', rev(allIds[grepl(regCtgov, allIds)])[1], '"}')),
+      "ISRCTN" = c(
+        '{"results.publicationStage": "Results"}',
+        paste0('{"_id": "', rev(allIds[grepl(regIsrctn, allIds)])[1], '"}'))
+    )
+
+    # get names
+    keyslist <- NULL
+    for (q in seq_along(queries)) {
+      # first use queries for records with results
+      keysAdd <- normNames(nodbi::docdb_query(
+        src = con, key = con$collection,
+        query = queries[[q]][1], limit = 1L))
+      # give keys name of register
+      names(keysAdd) <- rep(names(queries)[q], length(keysAdd))
+      keyslist <- c(keyslist, keysAdd)
+      # second query for highest = latest _id
+      keysAdd <- normNames(nodbi::docdb_query(
+        src = con, key = con$collection,
+        query = queries[[q]][2], limit = 1L))
+      # give keys name of register
+      names(keysAdd) <- rep(names(queries)[q], length(keysAdd))
+      keyslist <- c(keyslist, keysAdd)
+    }
+
+    # clean empty entries and exclude _id for consistency
+    # since different approaches above return _id or not
+    keyslist <- keyslist[!duplicated(keyslist)]
+    keyslist <- keyslist[keyslist != "_id" & keyslist != ""]
 
     ## store keyslist to environment (cache)
     if (length(keyslist) > 1) {
-      assign(x = paste0(con$db, "/", con$collection),
-             value = keyslist,
-             envir = .dbffenv)
+      ctrCache(
+        xname = paste0("keyslist_", con$db, "/", con$collection),
+        xvalue = keyslist, verbose = verbose)
+      ctrCache(
+        xname = paste0("keyslist_", con$db, "/", con$collection, "_timestamp"),
+        xvalue = cacheRef, verbose = verbose)
       message("Field names cached for this session.")
     }
 
-  } # end get cached list or generate new list
+  } else {
+
+    message("Using cache of fields.")
+
+  } # generate keyslist
 
   ## inform user of unexpected situation
   if ((length(keyslist) == 0) || all(keyslist == "")) {
     warning("No keys could be extracted, please check database ",
-            "and contents: ", con$db, "/", con$collection, call. = FALSE)
+            "and collection: ", con$db, "/", con$collection, call. = FALSE)
   }
 
   ## now do the actual search and find for key name parts
   fields <- keyslist[grepl(pattern = namepart, x = keyslist,
                            ignore.case = TRUE, perl = TRUE)]
 
-  # clean empty entries and exclude _id for consistency
-  # since different approaches above return _id or not
-  fields <- fields[fields != "_id" & fields != ""]
+  # return value if no fields found
   if (!length(fields)) fields <- ""
 
   # return the match(es)
-  return(sort(fields))
+  return(fields)
 
 } # end dbFindFields
 
 
-#' Deduplicate records to provide unique clinical trial identifiers
+#' Get identifiers of deduplicated trial records
 #'
-#' If records for a clinical trial are found from more than one register, the
-#' record from EUCTR is returned. The function currently relies on CTGOV
-#' recording other identifiers such as the EudraCT number in the field "Other
-#' IDs".
+#' Records for a clinical trial can be loaded from more than one
+#' register into a collection. The function returns identifiers of
+#' records in the collection that were loaded from the
+#' register(s) preferred by the user. All registers are recording
+#' identifiers also from other registers, which is used by this
+#' function to provide a vector of identifiers of deduplicated trials.
 #'
-#' @param preferregister A vector of the sequence of preference for registers
-#' from which to generate unique _id's, default
+#' @param preferregister A vector of the order of preference for
+#' registers from which to generate unique _id's, default
 #' \code{c("EUCTR", "CTGOV", "ISRCTN")}
 #'
 #' @inheritParams dfFindUniqueEuctrRecord
 #'
-#' @param verbose If set to \code{TRUE}, prints out information about numbers
-#' of records found at subsequent steps when searching for duplicates
+#' @param verbose If set to \code{TRUE}, prints out which fields
+#'  of the registers are used to find corresponding trial records
 #'
 #' @importFrom nodbi docdb_query
 #'
 #' @inheritParams ctrDb
 #'
-#' @return A vector with strings of keys ("_id" in the database) that
-#'   represent non-duplicate trials.
+#' @return A vector with strings of keys ("_id") of records in
+#' the collection that represent unique trials.
 #'
 #' @export
 #'
 #' @examples
 #'
 #' \dontrun{
-#' db <- nodbi::src_sqlite(
-#'   collection = "my_collection"
-#' )
-#' dbFindIdsUniqueTrials(
-#'   con = db
-#' )
+#' dbc <- nodbi::src_sqlite(collection = "my_collection")
+#'
+#' dbFindIdsUniqueTrials(con = dbc)
+#'
 #' }
 #'
 dbFindIdsUniqueTrials <- function(
   preferregister = c("EUCTR", "CTGOV", "ISRCTN"),
-  prefermemberstate = "GB",
+  prefermemberstate = "DE",
   include3rdcountrytrials = TRUE,
   con,
-  verbose = TRUE) {
+  verbose = FALSE) {
 
   # parameter checks
   if (!all(preferregister %in% registerList)) {
@@ -824,7 +1028,6 @@ dbFindIdsUniqueTrials <- function(
 
   # inform user
   message("Searching for duplicate trials... ")
-  message(" - Getting trial ids...", appendLF = FALSE)
 
   # fields for database query
   fields <- c(
@@ -843,23 +1046,57 @@ dbFindIdsUniqueTrials <- function(
     "isrctn"
   )
 
-  # get identifiers
-  listofIds <- try(suppressMessages(suppressWarnings(
-    dbGetFieldsIntoDf(
-      fields = fields,
-      con = con,
-      verbose = FALSE,
-      stopifnodata = FALSE)
-  )),
-  silent = TRUE
-  )
+  # check if cache environment has entry for the database
+  listofIds <- ctrCache(
+    xname = paste0("listofids_", con$db, "/", con$collection),
+                   verbose = FALSE)
 
-  # error check
-  if (inherits(listofIds, "try-error") ||
-      !length(listofIds) || !nrow(listofIds)) {
-    stop("No records found, check collection '", con$collection, "'",
-         call. = FALSE)
-  }
+  # get cache reference value
+  cacheRef <- as.character(rev(unlist(try(nodbi::docdb_query(
+    src = con, key = con$collection, query = '{"_id": "meta-info"}',
+    fields = '{"queries.query-timestamp": 1}'), silent = TRUE)))[1])
+
+  # cache validity
+  cacheOutdated <- is.null(listofIds) || (cacheRef != ctrCache(
+    xname = paste0("listofids_", con$db, "/", con$collection, "_timestamp"),
+    verbose = FALSE))
+
+  # inform user
+  message(" - Getting trial ids...", appendLF = FALSE)
+
+  # cache outdated
+  if (cacheOutdated) {
+
+    # inform user
+    message("\b\b\b (may take some time)...", appendLF = FALSE)
+
+    # get identifiers
+    listofIds <- try(suppressMessages(suppressWarnings(
+      dbGetFieldsIntoDf(
+        fields = fields,
+        con = con,
+        verbose = FALSE,
+        stopifnodata = FALSE)
+    )),
+    silent = TRUE
+    )
+
+    # error check
+    if (inherits(listofIds, "try-error") ||
+        !length(listofIds) || !nrow(listofIds)) {
+      stop("No records found, check collection '", con$collection, "'",
+           call. = FALSE)
+    }
+
+    # write cache entries
+    ctrCache(
+      xname = paste0("listofids_", con$db, "/", con$collection),
+      xvalue = listofIds, verbose = FALSE)
+    ctrCache(
+      xname = paste0("listofids_", con$db, "/", con$collection, "_timestamp"),
+      xvalue = cacheRef, verbose = FALSE)
+
+  } # if outdated
 
   # inform user
   message("\b\b\b, ", nrow(listofIds), " found in collection")
@@ -892,6 +1129,9 @@ dbFindIdsUniqueTrials <- function(
     "isrctn",
     "externalRefs.protocolSerialNumber"
   )
+  if (verbose) message(
+    "\nFields used for finding corresponding register records of trials: ",
+    "\n\n", paste0(fields, collapse = ", "), "\n")
 
   # add any missing columns
   missFields <- setdiff(fields, names(listofIds))
@@ -906,7 +1146,7 @@ dbFindIdsUniqueTrials <- function(
   listofIds <- listofIds[, fields, drop = FALSE]
 
   # rename columns for content mangling, needs to
-  # correspond to columns and sequence in fields
+  # correspond to columns and sequence in "fields"
   # for mapping identifiers across registers
   names(listofIds) <- c(
     "_id", "ctrname",
@@ -993,6 +1233,8 @@ dbFindIdsUniqueTrials <- function(
         tmp[, colsToCheck, drop = FALSE],
         outSet[, colsToCheck, drop = FALSE]
       )
+      # mangle dupes for marginal cases, e.g. one record
+      if (length(dim(dupes)) == 1L) dupes <- t(dupes)
       # keep uniques
       tmp <- tmp[rowSums(dupes) == 0L, , drop = FALSE]
       rm(dupes)
@@ -1026,9 +1268,7 @@ dbFindIdsUniqueTrials <- function(
   attributes(listofIds) <- attribsids[grepl("^ctrdata-", names(attribsids))]
 
   # avoid returning list() if none found
-  if (length(listofIds) == 0) {
-    listofIds <- character()
-  }
+  if (length(listofIds) == 0) listofIds <- character()
 
   # inform user
   message(" - Keeping ", paste0(countIds, collapse = " / "), " records",
@@ -1038,84 +1278,75 @@ dbFindIdsUniqueTrials <- function(
     " records in collection \"", con$collection, "\"")
 
   # return
-  return(listofIds)
+  return(sort(listofIds))
 
 }
 # end dbFindIdsUniqueTrials
 
 
-#' Create data frame by extracting specified fields from database collection
+#' Create data frame of specified fields from database collection
 #'
-#' With this convenience function, fields in the database are retrieved
-#' into an R data frame. Note that fields within the record of a trial
-#' can be hierarchical and structured, that is, nested.
+#' Fields in the collection are retrieved into a data frame (or tibble).
+#' Note that fields within the record of a trial can be hierarchical
+#' and structured, that is, nested.
+#' Names of fields can be found with \link{dbFindFields}.
+#' The function uses the field names to appropriately type the values
+#' that it returns, harmonising original values (e.g. "Information not present
+#' in EudraCT" becomes `NA`, "Yes" becomes `TRUE`, "false" becomes `FALSE`,
+#' date strings become class Date, number strings become numbers).
+#' The function attempts so simplify the structure of some nested data and
+#' may concatenate multiple strings in a field using " / " (see below);
+#' for complex nested data, use function \link{dfTrials2Long} followed by
+#' \link{dfName2Value} to extract the desired nested variable(s).
 #'
-#' With both src_sqlite and src_mongo, the function returns a list of data
-#' for a field that includes nested content; use function
-#' \link{dfTrials2Long} followed by \link{dfName2Value} to
-#' extract desired nested variables.
-#'
-#' For more sophisticated data retrieval from the database, see vignette
-#' examples and other packages to query mongodb such as mongolite.
-#'
-#' @param fields Vector of one or more strings, with names of the sought fields.
+#' @param fields Vector of one or more strings, with names of sought fields.
 #' See function \link{dbFindFields} for how to find names of fields.
-#' Regular expressions are possible. "item.subitem" notation is supported.
+#' "item.subitem" notation is supported.
 #'
-#' @param stopifnodata Stops with an error (\code{TRUE}, default) or with
+#' @param stopifnodata Stops with an error (detaul \code{TRUE}) or with
 #' a warning (\code{FALSE}) if the sought field is empty in all,
 #' or not available in any of the records in the database collection.
 #'
 #' @param verbose Printing additional information if set to \code{TRUE};
-#' default is \code{FALSE}.
+#' (default \code{FALSE}).
 #'
 #' @inheritParams ctrDb
 #'
-#' @return A data frame with columns corresponding to the sought fields.
-#' Note: a column for the record _id will always be included.
+#' @return A data frame (or tibble, if \code{dplyr} is loaded)
+#' with columns corresponding to the sought fields.
+#' A column for the record `_id` will always be included.
 #' Each column can be either a simple data type (numeric, character, date)
-#' or a list (see example below): For complicated lists, use function
+#' or a list. For complicated lists, use function
 #' \link{dfTrials2Long} followed by function \link{dfName2Value} to
 #' extract values for nested variables.
 #' The maximum number of rows of the returned data frame is equal to,
-#' or less than the number of records of trials in the database.
+#' or less than the number of records of trials in the database
+#' collection.
 #'
 #' @importFrom nodbi docdb_query
 #' @importFrom stats na.omit
+#' @importFrom dplyr as_tibble
 #'
 #' @export
 #'
 #' @examples
 #'
 #' \dontrun{
-#' db <- nodbi::src_sqlite(
-#'   collection = "my_collection"
-#' )
+#'
+#' dbc <- nodbi::src_sqlite(collection = "my_collection")
 #'
 #' # access fields that are nested within another field
-#' # and can have multiple values with the other field
+#' # and can have multiple values with the nested field
 #' dbGetFieldsIntoDf(
 #'   "b1_sponsor.b31_and_b32_status_of_the_sponsor",
-#'   con = db
-#' )[1,]
-#' #                 _id b1_sponsor.b31_and_b32_status_of_the_sponsor
-#' # 1 2004-000015-25-GB                  Non-commercial / Commercial
+#'   con = dbc
+#' )
 #'
-#' # access fields that include a list of values
-#' # which are printed as comma separated values
-#' dbGetFieldsIntoDf(
-#'   "keyword",
-#'   con = db
-#' )[1,]
-#'
-#' #           _id                                 keyword
-#' # 1 NCT00129259 T1D, type 1 diabetes, juvenile diabetes
-#'
-#' str(.Last.value)
-#' # 'data.frame':	1 obs. of  2 variables:
-#' # $ _id    : chr "NCT00129259"
-#' # $ keyword:List of 1
-#' # ..$ : chr  "T1D" "type 1 diabetes" "juvenile diabetes"
+#' # access fields that include a list of values which
+#' # (if they are strings) are concatenated with a slash
+#' dbGetFieldsIntoDf("keyword", con = dbc)[1,]
+#' #           _id                                   keyword
+#' # 1 NCT00129259 T1D / type 1 diabetes / juvenile diabetes
 #'
 #' }
 #'
@@ -1153,10 +1384,17 @@ dbGetFieldsIntoDf <- function(fields = "",
     key = con$collection,
     query = '{}',
     fields = paste0('{"_id": 1}'))
+
+  # early exit if no records
+  if (!nrow(dft)) stop(
+    "No data found in collection \"", con$collection, "\"", call. = FALSE)
+
+  # continue with data frame of _id's
   dft <- dft[dft[["_id"]] != "meta-info", "_id", drop = FALSE]
 
   # initialise output
   nFields <- length(fields)
+  accumNames <- NULL
 
   # iterate over fields so that we can
   # use a custom function to merge results
@@ -1165,10 +1403,11 @@ dbGetFieldsIntoDf <- function(fields = "",
     function(i) {
       #
       item <- fields[i]
-      message("     \r", i, appendLF = FALSE)
+
+      # user info
+      message(ifelse(i > 1L, "\n", ""), item, "... ", appendLF = FALSE)
       #
       query <- '{"_id": {"$ne": "meta-info"}}'
-      if (verbose) message("DEBUG: field: ", item)
       #
       tmpItem <- try({
 
@@ -1178,6 +1417,7 @@ dbGetFieldsIntoDf <- function(fields = "",
           key = con$collection,
           query = query,
           fields = paste0('{"_id": 1, "', item, '": 1}'))
+        message("\b\b\b\b   \b\b\b ", appendLF = FALSE)
 
         # leave try() early if no results
         if (!nrow(dfi) || ncol(dfi) == 1L) simpleError(message = "")
@@ -1185,16 +1425,27 @@ dbGetFieldsIntoDf <- function(fields = "",
         # remove any rows without index variable
         dfi <- dfi[!is.na(dfi[["_id"]]), , drop = FALSE]
 
+        # simplify and replace NULL with NA
+        dfi[[2]][!sapply(dfi[[2]], length)] <- NA
+
         # simplify by extracting recursively any requested subitem
         itemSegments <- strsplit(item, "[.]")[[1]]
         itemSegments <- setdiff(itemSegments, names(dfi))
         for (iS in itemSegments) {
-          if ((length(names(dfi[[2]])) == 1L) && (iS == names(dfi[[2]]))) {
+          message(". ", appendLF = FALSE)
+          if ((length(names(dfi[[2]])) == 1L) &&
+              (iS == names(dfi[[2]]))) {
             dfi[[2]] <- dfi[[2]][[iS]]
           } else {
-            tn <- sapply(dfi[[2]], names)
-            if (length(unique(tn)) == 1L && (iS == tn[1]))
-              dfi[[2]] <- sapply(dfi[[2]], "[[", 1)
+            # e.g. for "primary_outcome.measure" from MongoDB
+            tn <- unlist(sapply(dfi[[2]], names))
+            if (length(unique(tn)) == 1L && (iS == tn[1])) {
+              dfi[[2]] <- lapply(dfi[[2]], "[[", iS)
+            } else {
+              # no more predictable simplification possible:
+              # break to leave for loop over itemSegments
+              break
+            }
           }
         }
 
@@ -1202,6 +1453,7 @@ dbGetFieldsIntoDf <- function(fields = "",
         if (length(unique(names(dfi[[2]]))) > 1L) {
           item <- paste0(item, ".", names(dfi[[2]]))
           dfi <- cbind("_id" = dfi[["_id"]], as.data.frame(dfi[[2]]))
+          message(". ", appendLF = FALSE)
           emptyCols <- sapply(dfi, function(c) all(is.na(c)))
           emptyCols <- seq_along(emptyCols)[emptyCols]
           if (length(emptyCols)) dfi <- dfi[, -emptyCols, drop = FALSE]
@@ -1217,33 +1469,81 @@ dbGetFieldsIntoDf <- function(fields = "",
         # simplify by processing columns
         for (c in seq_len(ncol(dfi))[-1]) {
 
-          # special case: column is one-column data frame
-          if (is.data.frame(dfi[[c]]) && (ncol(dfi[[c]]) == 1L) &&
-              (nrow(dfi[[c]]) == nrow(dfi))) dfi[[c]] <-
-              dfi[[c]][, 1, drop = TRUE]
+          # inform user
+          if (c > 2L) message(". ", appendLF = FALSE)
 
-          # simplify at row level, replaces NULL with NA
-          if (!is.data.frame(dfi[[c]]) &&
-              !any(sapply(dfi[[c]], class) == "data.frame")) {
-            dfi[[c]] <- sapply(dfi[[c]], function(i) {
-              l <- length(i)
-              if (l == 0L) i <- NA
-              if (l == 1L) i <- i[1]
-              if (l >= 2L) {
-                if (all(sapply(i, is.character))) {
-                  i } else {i <- list(i) }}
-              i}, USE.NAMES = FALSE, simplify = TRUE)}
-
-          # simplify vectors in cells by collapsing
-          # (compatibility with previous version)
-          if (all(sapply(dfi[[c]], function(r) is.na(r)[1] | is.character(r))) &&
-              any(sapply(dfi[[c]], function(r) length(r) > 1L))) {
-            dfi[[c]] <- sapply(dfi[[c]], function(i) paste0(i, collapse = " / "))
+          # data frames with single rows are lists
+          # turn such lists back into data frames
+          # e.g. location.facility but not location
+          # thus check names per row, data frame should
+          # have more than one column name
+          tmpDfs <- sapply(dfi[[c]], class) == "data.frame"
+          tmpLst <- sapply(dfi[[c]], class) == "list"
+          tmpLen <- sapply(dfi[[c]][ !sapply(dfi[[c]], is.null) ], length)
+          if (any(tmpDfs) && any(tmpLst) &&
+              all(tmpLen > 1L) && length(unique(tmpLen)) == 1L) {
+            dfi[[c]][tmpLst] <- lapply(
+              dfi[[c]][tmpLst], function(i) data.frame(
+                do.call(rbind, i), check.names = FALSE))
           }
 
-          # type results
-          if (typeof(dfi[[c]]) == "character") dfi[[c]] <-
-              typeField(dfi[, c(1, c), drop = FALSE])[, 2, drop = TRUE]
+          # special case: column is one-column data frame
+          if (is.data.frame(dfi[[c]]) && (ncol(dfi[[c]]) == 1L) &&
+              (nrow(dfi[[c]]) == nrow(dfi))) {
+            tn <- names(dfi[[c]])
+            dfi[[c]] <- dfi[[c]][, 1, drop = TRUE]
+            names(dfi)[c] <- paste0(names(dfi)[c], ".", tn)
+          }
+
+          # mangle column if not simply character
+          if (typeof(dfi[[c]]) != "character") {
+
+            # simplify and replace NULL with NA
+            dfi[[c]][!sapply(dfi[[c]], length)] <- NA
+
+            # simplify column with one-column data frames or
+            # one-item list e.g. "primary_outcome.measure"
+            if (!is.data.frame(dfi[[c]]) &&
+                all(sapply(dfi[[c]], function(r)
+                  (length(unlist(r)) <= 1L) ||
+                  (is.data.frame(r) && ncol(r) == 1L && nrow(r) > 0L)
+                ))) {
+              dfi[[c]] <- sapply(
+                dfi[[c]], function(i) if (length(i)) i[[1]] else NA,
+                USE.NAMES = FALSE, simplify = TRUE)
+            }
+
+            # concatenate data if any rows are of type character
+            # and if there is no more complex structure
+            # (thus, vector of types is not a named vector)
+            rowName <- sapply(dfi[[c]], function(i) is.null(names(i)))
+            rowName2 <- sapply(names(rowName), function(i) is.null(i))
+            rowType <- sapply(
+              dfi[[c]], function(i) typeof(unlist(i, recursive = FALSE)))
+            #
+            if (all(rowName) & all(rowName2) &
+                length(unique(rowName)) <= 1L &
+                any(rowType == "character")) {
+              #
+              dfi[[c]] <- sapply(dfi[[c]], function(i)
+                if (length(i) > 1L) {
+                  rowI <- paste0(i[!is.na(i)], collapse = " / ")
+                  if (nchar(rowI)) rowI else NA
+                  } else if (length(i) && !is.na(i)) i else NA)
+            }
+
+            # list of one-element lists such as dates
+            if (any(sapply(dfi[[c]], class) == "Date")) {
+              dfi[[c]] <- unlist(dfi[[c]], recursive = FALSE, use.names = FALSE)
+              dfi[[c]] <- as.Date(dfi[[c]], origin = "1970-01-01")
+            }
+
+          } # if typeof
+
+          # type after if typeof
+          if (typeof(dfi[[c]]) == "character") {
+            dfi[[c]] <- typeField(dfi[[c]], names(dfi)[c])
+          }
 
           # add a column into copy of NA template
           dfo[[c]] <- switch(
@@ -1258,37 +1558,65 @@ dbGetFieldsIntoDf <- function(fields = "",
             NA
           )
 
-        } # for process
+        } # for processing columns
 
-        # add NA where dfi has no data to avoid NULL when merge'ing
+        # add NA where dfi has no data to avoid NULL when
+        # merging with Reduce below, which otherwise raises
+        #  Error in `[<-.data.frame`(`*tmp*`, value, value = NA) :
+        #  new columns would leave holes after existing columns
         names(dfo) <- names(dfi)
-        dfi <- rbind(dfo[!(dfo[["_id"]] %in% dfi[["_id"]]), , drop = FALSE], dfi)
+        dfi <- suppressWarnings(
+          rbind(dfo[!(dfo[["_id"]] %in% dfi[["_id"]]), , drop = FALSE], dfi))
+        # suppressing the following which is related to adding a list into a
+        # column that has NAs from dfo; warning does not occur with reversing
+        # to dfi, dfo[] so that it seems acceptable to suppress warnings
+        # Warning messages:
+        # 1: In value[[jj]][ri] <- if (is.factor(xij)) as.vector(xij) else xij :
+        #   number of items to replace is not a multiple of replacement length
+        # 2: In names(value[[jj]])[ri] <- nm :
+        #   number of items to replace is not a multiple of replacement length
 
       },
       silent = TRUE) # tmpItem try
 
       # inform user
       if (inherits(tmpItem, "try-error") ||
-          !nrow(dfi) || (ncol(dfi) == 1L)) {
+          !nrow(dfi) || (ncol(dfi) == 1L) ||
+          is.null(dfi[[2]]) || all(is.na(dfi[[2]]))) {
 
         # try-error occurred or no data retrieved
         if (stopifnodata) {
-          stop("No data could be extracted for '", item,
-               "'. \nUse dbGetFieldsIntoDf(stopifnodata = ",
-               "FALSE) to ignore this. ", call. = FALSE)
+          if (inherits(tmpItem, "try-error")) message(
+            "\nProcessing error: '", trimws(tmpItem[[1]]), "'\nThank you ",
+            "for reporting it at https://github.com/rfhb/ctrdata/issues\n")
+          stop("No data could be extracted for ", paste0(item, collapse = ", "),
+               ". \nUse dbGetFieldsIntoDf(stopifnodata = FALSE) to ignore error.",
+               call. = FALSE)
         } else {
-          message("* No data: '", item, "'")
+          message("* no data or extraction error *")
           # create empty data set
           dfi <- cbind(dft, NA)
           names(dfi) <- c("_id", fields[i])
         } # stopifnodata
       } # if
 
-      # add to result
+      # add to result unless item was
+      # previously specified in fields
+      if (i > 1L) {
+        dna <- names(dfi)
+        dni <- intersect(dna, accumNames)
+        dnd <- setdiff(dna, accumNames)
+        if (length(dni)) {
+          message("(not included again: ",
+                  paste0(dni, collapse = ", "), ") ",
+                  appendLF = FALSE)
+          dfi <- dfi[, dnd, drop = FALSE]
+        }
+      }
+      accumNames <<- c(accumNames, names(dfi)[-1])
       dfi
 
     }) # end lapply
-  message("")
 
   # bring result lists into data frame, by record _id
   result <- Reduce(function(...) merge(..., all = TRUE, by = "_id"), result)
@@ -1299,11 +1627,9 @@ dbGetFieldsIntoDf <- function(fields = "",
   # remove rows with only NAs; try because
   # is.na may fail for complex cells
   onlyNas <- try({apply(result[, -1, drop = FALSE], 1,
-                  function(r) all(is.na(r)))}, silent = TRUE)
-  if (!inherits(onlyNas, "try-error")) {
+                        function(r) all(is.na(r)))}, silent = TRUE)
+  if (!inherits(onlyNas, "try-error") && any(onlyNas)) {
     result <- result[!onlyNas, , drop = FALSE]
-  } else {
-    message("Could not remove rows with only NAs")
   }
 
   # inform user
@@ -1313,44 +1639,59 @@ dbGetFieldsIntoDf <- function(fields = "",
     return(NULL)
   }
 
-  # sort, add meta data and return
-  return(
-    addMetaData(
-      result[order(result[["_id"]]), , drop = FALSE],
-      con = con))
+  # sort, add meta data
+  result <- addMetaData(
+    result[order(result[["_id"]]), , drop = FALSE],
+    con = con)
+
+  # return
+  if (any("dplyr" == .packages())) return(dplyr::as_tibble(result))
+  return(result)
+
 }
 # end dbGetFieldsIntoDf
 
 
-#' Extract information of interest (e.g., endpoint)
-#' from long data frame of protocol- or result-related
-#' trial information as returned by \link{dfTrials2Long}
+#' Get value for variable of interest
 #'
-#' @param df A data frame with four columns (_id,
-#'  identifier, name, value) as returned by
+#' Get information of interest (e.g., endpoint)
+#' from long data frame of protocol- or result-related
+#' trial information as returned by \link{dfTrials2Long}.
+#' Parameters `valuename`, `wherename` and `wherevalue` are matched
+#' using Perl regular expressions and ignoring case.
+#'
+#' @param df A data frame (or tibble) with four columns (`_id`,
+#'  `identifier`, `name`, `value`) as returned by
 #'  \link{dfTrials2Long}
 #'
-#' @param valuename A character string for the name of the variable
-#'  from which to extract information for the variable of interest
+#' @param valuename A character string for the name of the field
+#' that holds the value for the variable of interest
+#' (e.g., a summary measure such as "endPoints.*tendencyValue.value")
 #'
 #' @param wherename A character string to identify the variable
-#'  of interest
+#'  of interest (e.g., "endPoints.endPoint.title")
 #'
 #' @param wherevalue A character string with the value of interest
-#'  for the variable of interest
+#'  for the variable of interest (e.g., "duration of response")
 #'
-#' @return A data frame with columns _id, identifier,
-#'  name, value that only includes the values of interest,
-#'  where value are strings unless all value elements
-#'  are numbers.
+#' @return A data frame (or tibble, if \code{dplyr} is loaded)
+#'  with columns `_id`, `identifier`,
+#'  `name`, `value` that only includes the values of interest,
+#'  where values are strings unless all value elements
+#'  are numbers. The `ìdentifier` is generated by function
+#'  \link{dfTrials2Long} to identify matching elements, e.g.
+#'  endpoint descriptions and measurements.
+#'
+#' @importFrom dplyr as_tibble
 #'
 #' @export
+#'
 #' @examples
 #' \dontrun{
-#' db <- nodbi::src_sqlite(
-#'   collection = "my_collection"
-#' )
-#' df <- ctrdata::dbGetFieldsIntoDf(
+#'
+#' dbc <- nodbi::src_sqlite(collection = "my_collection")
+#'
+#' df <- dbGetFieldsIntoDf(
 #' fields = c(
 #'   # ctgov - typical results fields
 #'   "clinical_results.baseline.analyzed_list.analyzed.count_list.count",
@@ -1368,21 +1709,22 @@ dbGetFieldsIntoDf <- function(fields = "",
 #'   "adverseEvents.seriousAdverseEvents.seriousAdverseEvent"
 #'   ), con = dbc
 #' )
+#'
 #' # convert to long
-#' reslong <- ctrdata::dfTrials2Long(
-#'   df = df
-#' )
-#' # get values for endpoint of interest, duration of response
-#' ctrdata::dfValue2Name(
-#'   df = df,
+#' reslong <- dfTrials2Long(df = df)
+#'
+#' # get values for endpoint of interest, e.g. 'response'
+#' dfName2Value(
+#'   df = reslong,
 #'   valuename = paste0(
 #'     "endPoints.endPoint.*armReportingGroup.tendencyValues.tendencyValue.value|",
 #'     "clinical_results.*category.measurement_list.measurement.value|",
 #'     "clinical_results.*outcome.measure.units|endPoints.endPoint.unit"
 #'   ),
 #'   wherename = "clinical_results.*outcome.measure.title|endPoints.endPoint.title",
-#'   wherevalue = "duration of response"
+#'   wherevalue = "response"
 #' )
+#'
 #' }
 #'
 dfName2Value <- function(df, valuename = "",
@@ -1417,7 +1759,7 @@ dfName2Value <- function(df, valuename = "",
     # get where... indices per trial
     indexRows <- which(
       grepl(wherename, df[["name"]], perl = TRUE, ignore.case = TRUE) &
-        grepl(wherevalue, df[["value"]], perl = TRUE, ignore.case = TRUE))
+      grepl(wherevalue, df[["value"]], perl = TRUE, ignore.case = TRUE))
     if (!length(indexRows)) stop("No rows found for 'wherename' and 'wherevalue'")
 
     # get trial ids and identifiers for where...
@@ -1439,7 +1781,7 @@ dfName2Value <- function(df, valuename = "",
             indexVnames
           ))
         # return value
-        if (length(ids)) df[ids, ]
+        if (length(ids)) df[ids, , drop = FALSE]
       }
     )
 
@@ -1463,63 +1805,78 @@ dfName2Value <- function(df, valuename = "",
   # from duplicate where... criteria
   out <- unique(out)
 
+  # inform user
+  message("Returning values for ", length(unique(out[["_id"]])),
+          " out of ", length(unique(df[["_id"]])), " trials")
+
   # return
+  if (any("dplyr" == .packages())) return(dplyr::as_tibble(out))
   return(out)
 
 } # end dfName2Value
 
 
-#' Extract trial information into long format
+#' Convert data frame with trial records into long format
 #'
-#' The function works with procotol- and results-
-#' related information. It converts lists and other
-#' values into individual rows of a long data frame.
-#' From the resulting data frame, values of interest
-#' can then be selected (e.g. select an outcome
-#' and its analysis by the identifier of the measure
-#' which has "Hazard Ratio" in its name, see
-#' \link{dfName2Value}).
+#' The function works with procotol- and results- related information.
+#' It converts lists and other values that are in a data frame returned
+#' by \link{dbGetFieldsIntoDf} into individual rows of a long data frame.
+#' From the resulting data frame, values of interest can be selected
+#' using \link{dfName2Value}.
+#' The function is intended for fields with complex content, such as node
+#' field "\code{clinical_results}" from EUCTR, which \link{dbGetFieldsIntoDf}
+#' returns as a multiply nested list and for which this function then
+#' converts every observation of every (leaf) field into a row of its own.
 #'
-#' @param df Data frame with columns including
+#' @param df Data frame (or tibble) with columns including
 #'  the trial identifier (\code{_id}) and
 #'  one or more variables as obtained from
 #'  \link{dbGetFieldsIntoDf}
 #'
-#' @return A data frame with the four columns:
-#'  _id, identifier, name, value
+#' @return A data frame  (or tibble, if \code{dplyr} is loaded)
+#' with the four columns: `_id`, `identifier`, `name`, `value`
 #'
 #' @importFrom stringi stri_extract_all_charclass
 #' @importFrom stringi stri_extract_first
 #' @importFrom stringi stri_replace_first
+#' @importFrom dplyr as_tibble
+#' @importFrom xml2 xml_text read_html
 #'
 #' @export
 #'
 #' @examples
 #' \dontrun{
-#' db <- nodbi::src_sqlite(
-#'   collection = "my_collection"
-#' )
+#'
+#' dbc <- nodbi::src_sqlite(collection = "my_collection")
+#'
 #' df <- dbGetFieldsIntoDf(
-#'   fields = c(
-#'     "clinical_results.outcome_list.outcome"),
-#'   con = db
+#'   fields = c("clinical_results"),
+#'   con = dbc
 #' )
-#' dfTrials2Long(
-#'   df = df
-#' )
+#' head(dfTrials2Long(df = df))
+#'
 #' }
 dfTrials2Long <- function(df) {
 
+  # get names
+  dfn <- names(df)
+
   # check parameters
-  if (!any("_id" == names(df)) ||
+  if (!any("_id" == dfn) ||
       ncol(df) == 1L) stop(
         "Missing _id column or other variables in 'df'",
         call. = FALSE
       )
-  if (any(c("identifier", "name", "value") %in% names(df))) stop(
+  if (any(c("identifier", "name", "value") %in% dfn)) stop(
     "Unexpected columns; 'df' should not come from dfTrials2Long",
     call. = FALSE
   )
+
+  # make _id the first column
+  if (dfn[1] != "_id") {
+    dfn <- c("_id", dfn[dfn != "_id"])
+    df <- df[, dfn, drop = FALSE]
+  }
 
   # helper function
   flattenDf <- function(x) {
@@ -1527,73 +1884,92 @@ dfTrials2Long <- function(df) {
       x <- lapply(x, function(x) if (is.list(x)) x else list(x))
       x <- unlist(x, recursive = FALSE, use.names = TRUE)
     }
-    x
+    return(x)
   }
 
-  # to add a first row in the next step,
-  # columns that are not compatible with
-  # adding a row are converted to character
+  # columns that are not compatible with the
+  # later operations are converted to character
   conv <- sapply(df, class) == "Date"
   conv <- seq_len(ncol(df))[conv]
   for (c in conv) df[, c] <- as.character(df[, c, drop = TRUE])
 
-  # add a first row to df to hold item name
-  # which otherwise is not available in apply
-  df <- rbind(
-    names(df),
-    df)
-
   # iterative unnesting, by column
   out <- lapply(
-    df[, -match("_id", names(df)), drop = FALSE],
+    seq_len(ncol(df))[-1],
     function(cc) {
-      message(". ", appendLF = FALSE)
-      # get item name as added in first row
-      tn <- cc[[1]]
-      # and by element in column
-      lapply(cc[-1], function(c) {
-        x <- unlist(flattenDf(c))
-        if (!is.null(names(x))) tn <- names(x)
-        if (is.null(x)) x <- NA
-        data.frame(
-          "name" = tn,
-          "value" = x,
-          check.names = FALSE,
-          stringsAsFactors = FALSE,
-          row.names = NULL)
+      # get item
+      ci <- df[[cc]]
+      # get item name
+      tn <- dfn[cc]
+      # inform user
+      message(tn, rep(" ", 200L - nchar(tn)), "\r", appendLF = FALSE)
+      # handle case when column is data frame, turn into list by row
+      if (is.data.frame(ci)) ci <- split(ci, seq_len(nrow(ci)))
+      # and by cell in column
+      lapply(ci, function(c) {
+        if (is.data.frame(c)) {
+          # decompose
+          x <- unlist(flattenDf(c))
+          if (!is.null(names(x))) tn <- paste0(tn, ".", names(x))
+          if (is.null(x)) x <- NA
+          # compose
+          data.frame(
+            "name" = tn,
+            "value" = x,
+            check.names = FALSE,
+            stringsAsFactors = FALSE,
+            row.names = NULL)
+        } else {
+          # initialise
+          xx <- NULL
+          tnn <- NULL
+          # need to iterate since there may be repeats, e.g, 1, 2, 3.1, 3.2
+          sapply(seq_len(length(c)), function(i) {
+            # decompose
+            x <- unlist(flattenDf(c[i]))
+            if (!is.null(names(x))) tn <- paste0(tn, ".", i, ".", names(x))
+            if (is.null(x)) x <- NA
+            xx <<- c(xx, x)
+            tnn <<- c(tnn, tn)
+          }, USE.NAMES = FALSE)
+          # compose
+          data.frame(
+            "name" = tnn,
+            "value" = xx,
+            check.names = FALSE,
+            stringsAsFactors = FALSE,
+            row.names = NULL)
+        } # if is.data.frame
       })})
+  message(rep(" ", 200L), "\r", appendLF = FALSE)
 
   # add _id to list elements and
   # simplify into data frames
-  tmpNames <- df[-1, "_id", drop = TRUE]
   out <- lapply(
     out, function(e) {
       message(". ", appendLF = FALSE)
-      names(e) <- tmpNames
-      # duplicate e to force generating
-      # names in the later rbind step
-      do.call(rbind, c(e, e, stringsAsFactors = FALSE))
+      names(e) <- df[["_id"]]
+      do.call(rbind, c(e, stringsAsFactors = FALSE))
     })
-
-  # combine lists into data frame
   out <- do.call(rbind, c(out, stringsAsFactors = FALSE))
   message(". ", appendLF = FALSE)
 
   # remove rows where value is NA
   out <- out[!is.na(out[["value"]]), , drop = FALSE]
 
-  # process row.names such as "clinical_results.NCT00082758.73"
-  # to to obtain "clinical_results" as part of variable name
-  names <- stringi::stri_replace_first(
-    str = row.names(out), replacement = "",
-    regex = c(paste0(".(", regCtgov, "|", regEuctr, "-[3A-Z]+)[.0-9]*")))
+  # convert html entities
+  htmlEnt <- grepl("&[#a-zA-Z]+;", out[["value"]])
+  if (any(htmlEnt)) out[["value"]][htmlEnt] <-
+    sapply(out[["value"]][htmlEnt], function(i)
+      xml2::xml_text(xml2::read_html(charToRaw(i))), USE.NAMES = FALSE)
+  message(". ", appendLF = FALSE)
 
   # generate new data frame with target columns and order
   out <- data.frame(
     # process row.names to obtain trial id
     "_id" = stringi::stri_extract_first(
       str = row.names(out),
-      regex = c(paste0(regCtgov, "|", regEuctr, "-[3A-Z]+"))),
+      regex = c(paste0(regCtgov, "|", regIsrctn, "|", regEuctr, "-[3]?[A-Z]+"))),
     "identifier" = NA,
     "name" = out[["name"]],
     "value" = out[["value"]],
@@ -1602,25 +1978,28 @@ dfTrials2Long <- function(df) {
     stringsAsFactors = FALSE)
   message(". ", appendLF = FALSE)
 
-  # generate variable names from processed row names
-  # and name unless the same is as already in name
-  out[["name"]] <- ifelse(
-    out[["name"]] == names,
-    out[["name"]],
-    paste0(names, ".0.", out[["name"]]))
-
-  # name can have from 0 to about 6 number groups, get all
-  # and concatenate to oid-like string such as "1.2.2.1.4"
-  out[["identifier"]] <- vapply(
-    stringi::stri_extract_all_regex(out[["name"]], "[0-9]+([.]|$)"),
+  # name can include from 0 to about 6 number groups, get all
+  # and concatenate to oid-like string such as "1.2.3.4.5.6",
+  # e.g. "9.8.2" which should be extracted from the this name
+  # clinical...class9.analyzed...count8.@attributes.value2
+  #
+  # except where name is exactly one of dfn
+  onlyHere <- vapply(out[["name"]], function(i) !any(i == dfn),
+                     logical(1L), USE.NAMES = FALSE)
+  #
+  out[["identifier"]][onlyHere] <- vapply(
+    stringi::stri_extract_all_regex(out[["name"]][onlyHere], "[0-9]+([.]|$)"),
     function(i) paste0(gsub("[.]", "", i), collapse = "."), character(1L))
+  # defaults
   out[["identifier"]] [out[["identifier"]] == "NA"] <- "0"
+  out[["identifier"]] [is.na(out[["identifier"]])]  <- "0"
   message(". ", appendLF = FALSE)
-
+  #
   # remove numbers from variable name
-  out[["name"]] <- gsub(
-    "[0-9]+([.])|[0-9]+$|[.]?@attributes", "\\1", out[["name"]], perl = TRUE)
-
+  out[["name"]][onlyHere] <- gsub(
+    "[0-9]+([.])|[0-9]+$|[.]?@attributes", "\\1",
+    out[["name"]][onlyHere], perl = TRUE)
+  #
   # remove any double separators
   out[["name"]] <- gsub("[.]+", ".", out[["name"]], perl = TRUE)
 
@@ -1633,6 +2012,7 @@ dfTrials2Long <- function(df) {
           " unique names of variables")
 
   # output
+  if (any("dplyr" == .packages())) return(dplyr::as_tibble(out))
   return(out)
 
 } # end dfTrials2Long
@@ -1641,38 +2021,44 @@ dfTrials2Long <- function(df) {
 #' Extract named element(s) from list(s) into long-format
 #' data frame
 #'
+#' (Deprecated, use \link{dfTrials2Long} and \link{dfName2Value}!)
 #' The function uses a name (key) to extract an element
 #' from a list in a data.frame such as obtained with
 #' \link{dbGetFieldsIntoDf}. This helps to simplify
 #' working with nested lists and with complex structures.
 #'
-#' @param df A data frame
+#' @param df A data frame (or tibble)
+#'
 #' @param list.key A list of pairs of list names and
 #'  key names, where the list name corresponds to the
 #'  name of a column in \code{df} that holds a list and
 #'  the name of the key identifies the element to be
 #'  extracted. See example.
 #'
-#' @return A data frame in long format with columns
+#' @return A data frame (or tibble, if \code{dplyr} is loaded)
+#'  in long format with columns
 #'  name (identifying the full path in the data frame,
 #'  "<list>.<key>"), _id (of the trial record), value
 #'  (of name per _id), item (number of value of name
 #'  per _id).
+#'
+#' @importFrom dplyr as_tibble
 #'
 #' @export
 #'
 #' @examples
 #'
 #' \dontrun{
-#' db <- nodbi::src_sqlite(
-#'   collection = "my_collection"
-#' )
+#'
+#' dbc <- nodbi::src_sqlite(collection = "my_collection")
+#'
 #' df <- dbGetFieldsIntoDf(
 #'   fields = c(
 #'     "endPoints.endPoint",
 #'     "subjectDisposition.postAssignmentPeriods"),
-#'   con = db
+#'   con = dbc
 #' )
+#'
 #' dfListExtractKey(
 #'   df = df,
 #'   list.key = list(
@@ -1681,6 +2067,7 @@ dfTrials2Long <- function(df) {
 #'       c("subjectDisposition.postAssignmentPeriods",
 #'         "arms.arm.type.value")
 #' ))
+#'
 #' }
 #'
 dfListExtractKey <- function(
@@ -1758,30 +2145,43 @@ dfListExtractKey <- function(
 
   }, simplify = FALSE)
 
+  # result
+  out <- do.call(rbind, c(out, stringsAsFactors = FALSE, make.row.names = FALSE))
+
   # return
-  do.call(rbind, c(out, stringsAsFactors = FALSE, make.row.names = FALSE))
+  if (any("dplyr" == .packages())) return(dplyr::as_tibble(out))
+  return(out)
 
 } # end dfListExtractKey
 
 
-#' Merge two variables into one, optionally map values to new levels
+#' Merge two variables
+#'
+#' Merge two variables in a data frame such as returned by \link{dbGetFieldsIntoDf}
+#' into a new variable, and optionally also map its values to new levels.
 #'
 #' @param df A \link{data.frame} in which there are two variables (columns)
 #' to be merged into one.
+#'
 #' @param colnames A vector of length two with names of the two columns
 #' that hold the variables to be merged. See \link{colnames} for how to
 #' obtain the names of columns of a data frame.
+#'
 #' @param levelslist A list with one slice each for a new value to be
 #' used for a vector of old values (optional).
+#'
 #' @param ... for deprecated \code{varnames} parameter (will be removed)
 #'
 #' @return A vector of strings
+#'
+#' @importFrom dplyr as_tibble
 #'
 #' @export
 #'
 #' @examples
 #'
 #' \dontrun{
+#'
 #' statusvalues <- list(
 #'   "ongoing" = c("Recruiting", "Active", "Ongoing",
 #'                 "Active, not recruiting", "Enrolling by invitation"),
@@ -1790,9 +2190,10 @@ dfListExtractKey <- function(
 #'               "No longer available", "Not yet recruiting"))
 #'
 #' dfMergeTwoVariablesRelevel(
-#'   df = result,
-#'   colnames = c("Recruitment", "x5_trial_status"),
+#'   df = df,
+#'   colnames = c("overall_status", "x5_trial_status"),
 #'   levelslist = statusvalues)
+#'
 #' }
 #'
 dfMergeTwoVariablesRelevel <- function(
@@ -1815,48 +2216,52 @@ dfMergeTwoVariablesRelevel <- function(
   }
 
   # other checks
-  if (class(df) != "data.frame") {
+  if (!any(class(df) == "data.frame")) {
     stop("Need a data frame as input.", call. = FALSE)
   }
   if (length(colnames) != 2) {
     stop("Please provide exactly two column names.", call. = FALSE)
   }
+  # change to data frame because
+  # variable classes are compared
+  df <- as.data.frame(df)
 
   # find variables in data frame and merge
   tmp <- match(colnames, names(df))
   df <- df[, tmp, drop = FALSE]
 
   # bind as ...
-  if (class(df[, 1]) == class(df[, 2]) &&
-      class(df[, 1]) != "character") {
+  if (class(df[[1]]) == class(df[[2]]) &&
+      class(df[[1]]) != "character") {
     # check
-    if (nrow(na.omit(df[!vapply(df[, 1, drop = TRUE], is.null, logical(1L)) &
-                        !vapply(df[, 2, drop = TRUE], is.null, logical(1L)), ,
+    if (nrow(na.omit(df[!vapply(df[[1]], is.null, logical(1L)) &
+                        !vapply(df[[2]], is.null, logical(1L)), ,
                         drop = FALSE]))) {
       warning("Some rows had values for both columns, used first",
               noBreaks. = TRUE, immediate. = TRUE)
     }
     # values, with first having
     # priority over the second
-    tmp <- ifelse(is.na(tt <- df[, 1]), df[, 2], df[, 1])
+    tmp <- ifelse(is.na(tt <- df[[1]]), df[[2]], df[[1]])
   } else {
     # check
-    if (nrow(df[(!is.na(df[, 1]) & df[, 1] != "") &
-                (!is.na(df[, 2]) & df[, 2] != ""), , drop = FALSE])) {
+    if (nrow(df[(!is.na(df[[1]]) & df[[1]] != "") &
+                (!is.na(df[[2]]) & df[[2]] != ""), ,
+                drop = FALSE])) {
       warning("Some rows had values for both columns, concatenated",
               noBreaks. = TRUE, immediate. = TRUE)
     }
     # strings, concatenated
     tmp <- paste0(
-      ifelse(is.na(tt <- as.character(df[, 1])), "", tt),
-      ifelse(is.na(tt <- as.character(df[, 2])), "", tt))
+      ifelse(is.na(tt <- as.character(df[[1]])), "", tt), " / ",
+      ifelse(is.na(tt <- as.character(df[[2]])), "", tt))
   }
 
   # type where possible
-  if (class(df[, 1]) == class(df[, 2]) &&
-      class(df[, 1]) != "character") {
-    mode(tmp) <- mode(df[, 1])
-    class(tmp) <- class(df[, 1])
+  if (class(df[[1]]) == class(df[[2]]) &&
+      class(df[[1]]) != "character") {
+    mode(tmp) <- mode(df[[1]])
+    class(tmp) <- class(df[[1]])
   }
 
   # relevel if specified
@@ -1902,26 +2307,29 @@ dfMergeTwoVariablesRelevel <- function(
 # end dfMergeTwoVariablesRelevel
 
 
-#' Select single trial record from records of different EU Member States
+#' Select a single trial record from records of different EU Member States
 #'
 #' The EUCTR provides one record per trial per EU Member State in which the
 #' trial is conducted. For all trials conducted in more than one Member State,
 #' this function returns only one record per trial.
 #'
 #' Note: To deduplicate trials from different registers (EUCTR and CTGOV),
-#' please first use function \code{\link{dbFindIdsUniqueTrials}}.
+#' please first use function \link{dbFindIdsUniqueTrials}.
 #'
-#' @param df A data frame created from the database that includes the columns
-#'   "_id" and "a2_eudract_number", for example created with function
-#'   dbGetFieldsIntoDf(c("_id", "a2_eudract_number")).
+#' @param df A data frame created from the database collection that includes
+#'   the columns "_id" and "a2_eudract_number", for example created with
+#'   function dbGetFieldsIntoDf(c("_id", "a2_eudract_number")).
+#'
 #' @param prefermemberstate Code of single EU Member State for which records
-#' should returned. If not available, a record for GB or lacking this, any
-#' other record for the trial will be returned. For a list of codes of EU
-#'   Member States, please see vector \code{countriesEUCTR}. Alternatively,
-#'   "3RD" will lead to return a Third Country record of a trial, if available.
+#' should returned. If not available, a record for DE or lacking this, any
+#' random Member State's record for the trial will be returned.
+#' For a list of codes of EU  Member States, please see vector
+#' \code{countriesEUCTR}. Specifying "3RD" will return the Third Country
+#' record of trials, where available.
+#'
 #' @param include3rdcountrytrials A logical value if trials should be retained
-#'   that are conducted exclusively in third countries, that is, outside
-#'   the European Union.
+#' that are conducted exclusively in third countries, that is, outside
+#' the European Union. Ignored if \code{prefermemberstate} is set to "3RD".
 #'
 #' @return A data frame as subset of \code{df} corresponding to the sought
 #'   records.
@@ -1930,7 +2338,7 @@ dfMergeTwoVariablesRelevel <- function(
 #
 dfFindUniqueEuctrRecord <- function(
   df = NULL,
-  prefermemberstate = "GB",
+  prefermemberstate = "DE",
   include3rdcountrytrials = TRUE) {
 
   # check parameters
@@ -1939,7 +2347,7 @@ dfFindUniqueEuctrRecord <- function(
   }
   #
   if (is.null(df[["_id"]]) ||
-      is.null(df["a2_eudract_number"])) {
+      is.null(df[["a2_eudract_number"]])) {
     stop('Data frame does not include "_id"',
          ' and "a2_eudract_number" columns.',
          call. = FALSE)
@@ -1975,7 +2383,7 @@ dfFindUniqueEuctrRecord <- function(
   # as a first step, handle 3rd country trials e.g. 2010-022945-52-3RD
   # if retained, these trials would count as record for a trial
   if (!include3rdcountrytrials) {
-    df <- df[!grepl("-3RD", df[["_id"]]), ]
+    df <- df[!grepl("-3RD", df[["_id"]]), , drop = FALSE]
   }
 
   # count number of records by eudract number
@@ -2008,7 +2416,7 @@ dfFindUniqueEuctrRecord <- function(
       return(result)
     }
     #
-    if (sum(fnd <- grepl("GB", recordnames)) != 0) {
+    if (sum(fnd <- grepl("DE", recordnames)) != 0) {
       result <- recordnames[!fnd]
       return(result)
     }
@@ -2028,10 +2436,10 @@ dfFindUniqueEuctrRecord <- function(
   result <- unlist(result, use.names = FALSE)
 
   # eleminate the unwanted EUCTR records
-  df <- df[!(df[["_id"]] %in% result), ]
+  df <- df[!(df[["_id"]] %in% result), , drop = FALSE]
 
   # also eliminate the meta-info record
-  df <- df[!(df[["_id"]] == "meta-info"), ]
+  df <- df[!(df[["_id"]] == "meta-info"), , drop = FALSE]
 
   # inform user about changes to data frame
   if (length(nms) > (tmp <- length(result))) {
@@ -2050,205 +2458,130 @@ dfFindUniqueEuctrRecord <- function(
 
 #' Change type of field based on name of field
 #'
-#' @param dfi a data frame of columns _id, fieldname
+#' @param dv a vector of character strings
+#'
+#' @param fn a field name
+#'
+#' @return a typed vector, same length as dv
+#'
+#' @importFrom xml2 xml_text read_html
+#' @importFrom lubridate duration
 #'
 #' @keywords internal
 #' @noRd
 #'
-typeField <- function(dfi) {
+typeField <- function(dv, fn) {
 
-  # check
-  if (ncol(dfi) != 2L) {
-    stop("Expect data frame with two columns, _id and a field.",
-         call. = FALSE)
-  }
+  # early exit if dv is not character
+  if (!is.atomic(dv)) return(dv)
 
-  # clean up input
+  # early exit if dv is not character
+  if (class(dv) != "character") return(dv)
+
+  # clean up for all character vectors
   # - if NA as string, change to NA
-  dfi[grepl("^N/?A$|^ND$", dfi[, 2]), 2] <- NA
+  dv[grepl("^N/?A$|^ND$", dv)] <- NA
+  # - remove explanatory text before date
+  dv <- sub("^ClinicalTrials.gov processed this data on ", "", dv)
   # - give Month Year also a Day to work with as.Date
-  dfi[, 2] <- sub("^([a-zA-Z]+) ([0-9]{4})$", "\\1 15, \\2", dfi[, 2])
-  # - convert html entities
-  if (any(grepl("&[a-z]+;", dfi[, 2]))) dfi[, 2] <- sapply(
-    dfi[, 2], function(i) xml2::xml_text(xml2::read_html(charToRaw(i))))
+  dv <- sub("^([a-zA-Z]+) ([0-9]{4})$", "\\1 15, \\2", dv)
+  # - convert html entities because these had to
+  #   be left intact when converting to ndjson
+  htmlEnt <- grepl("&[#a-zA-Z]+;", dv)
+  if (any(htmlEnt)) dv[htmlEnt] <-
+    sapply(dv[htmlEnt], function(i)
+      xml2::xml_text(xml2::read_html(charToRaw(i))), USE.NAMES = FALSE)
+  # - convert newline
+  dv <- gsub("\r", "\n", dv)
+
+  # early exit if fn is not in typeVars
+  if (is.null(typeVars[[fn]])) return(dv)
 
   # for date time conversion
   lct <- Sys.getlocale("LC_TIME")
-  Sys.setlocale("LC_TIME", "C")
-  on.exit(Sys.setlocale("LC_TIME", lct))
 
   # main typing functions
-  ctrDate      <- function() as.Date(dfi[, 2], format = "%Y-%m-%d")
-  ctrDateUs    <- function() as.Date(dfi[, 2], format = "%b %e, %Y")
-  ctrDateCtr   <- function() as.Date(dfi[, 2], format = "%Y-%m-%d %H:%M:%S")
-  ctrDateTime  <- function() as.Date(dfi[, 2], format = "%Y-%m-%dT%H:%M:%S")
-  ctrYesNo     <- function() vapply(dfi[, 2], FUN = function(x) switch(x, "Yes" = TRUE, "No" = FALSE, NA), logical(1L))
-  ctrFalseTrue <- function() vapply(dfi[, 2], FUN = function(x) switch(x, "true" = TRUE, "false" = FALSE, NA), logical(1L))
-  ctrInt       <- function() vapply(dfi[, 2], FUN = function(x) as.integer(x = x), integer(1L))
+  ctrDate <- function() {
+    Sys.setlocale("LC_TIME", "C")
+    on.exit(Sys.setlocale("LC_TIME", lct), add = TRUE)
+    as.Date(dv, format = "%Y-%m-%d")
+  }
+  #
+  ctrDateUs <- function() {
+    Sys.setlocale("LC_TIME", "C")
+    on.exit(Sys.setlocale("LC_TIME", lct), add = TRUE)
+    as.Date(dv, format = "%b %e, %Y")
+  }
+  #
+  ctrDateCtr <- function() {
+    Sys.setlocale("LC_TIME", "C")
+    on.exit(Sys.setlocale("LC_TIME", lct), add = TRUE)
+    as.Date(dv, format = "%Y-%m-%d %H:%M:%S")
+  }
+  #
+  ctrDateTime <- function() {
+    Sys.setlocale("LC_TIME", "C")
+    on.exit(Sys.setlocale("LC_TIME", lct), add = TRUE)
+    as.Date(dv, format = "%Y-%m-%dT%H:%M:%S")
+  }
+  #
+  ctrYesNo <- function() {
+    vapply(dv, FUN = function(x)
+      switch(x, "Yes" = TRUE, "No" = FALSE, NA),
+      logical(1L), USE.NAMES = FALSE)
+  }
+  #
+  ctrFalseTrue <- function() {
+    vapply(dv, FUN = function(x)
+      switch(x, "true" = TRUE, "false" = FALSE, NA),
+      logical(1L), USE.NAMES = FALSE)
+  }
+  #
+  ctrInt       <- function() {
+    vapply(dv, FUN = function(x)
+      as.integer(x = x), integer(1L),
+      USE.NAMES = FALSE)
+  }
+  #
+  ctrDifftime   <- function() {
+    out <- sapply(dv, FUN = function(x) {
+      if (is.na(x)) {NA} else {
+        as.numeric(
+          lubridate::duration(
+            tolower(x)
+          ), units = "days")
+      }
+    }, USE.NAMES = FALSE)
+    as.difftime(out, units = "days")
+  }
 
-  # selective typing
-  tmp <- try({
-    switch(
-      EXPR = names(dfi)[2],
-      #
-      #
-      # dates
-      #
-      # - intern
-      "record_last_import" = ctrDateCtr(),
-      # - EUCTR
-      "n_date_of_ethics_committee_opinion"     = ctrDate(),
-      "n_date_of_competent_authority_decision" = ctrDate(),
-      "p_date_of_the_global_end_of_the_trial"  = ctrDate(),
-      "x6_date_on_which_this_record_was_first_entered_in_the_eudract_database" = ctrDate(),
-      "firstreceived_results_date"             = ctrDate(),
-      "trialInformation.primaryCompletionDate" = ctrDate(),
-      "trialInformation.globalEndOfTrialDate"  = ctrDateTime(),
-      "trialInformation.recruitmentStartDate"  = ctrDateTime(),
-      # - CTGOV
-      "start_date"              = ctrDateUs(),
-      "primary_completion_date" = ctrDateUs(),
-      "completion_date"         = ctrDateUs(),
-      "study_first_posted"      = ctrDateUs(),
-      "results_first_posted"    = ctrDateUs(),
-      "last_update_posted"      = ctrDateUs(),
-      # - ISRCTN
-      "participants.recruitmentStart" = ctrDateTime(),
-      "participants.recruitmentEnd"   = ctrDateTime(),
-      "trialDesign.overallStartDate"  = ctrDateTime(),
-      "trialDesign.overallEndDate"    = ctrDateTime(),
-      #
-      # factors
-      #
-      # - EUCTR Yes / No / Information not present in EudraCT
-      "d21_imp_to_be_used_in_the_trial_has_a_marketing_authorisation" = ctrYesNo(),
-      "e13_condition_being_studied_is_a_rare_disease" = ctrYesNo(),
-      #
-      "e61_diagnosis"         = ctrYesNo(),
-      "e62_prophylaxis"       = ctrYesNo(),
-      "e63_therapy"           = ctrYesNo(),
-      "e64_safety"            = ctrYesNo(),
-      "e65_efficacy"          = ctrYesNo(),
-      "e66_pharmacokinetic"   = ctrYesNo(),
-      "e67_pharmacodynamic"   = ctrYesNo(),
-      "e68_bioequivalence"    = ctrYesNo(),
-      "e69_dose_response"     = ctrYesNo(),
-      "e610_pharmacogenetic"  = ctrYesNo(),
-      "e611_pharmacogenomic"  = ctrYesNo(),
-      "e612_pharmacoeconomic" = ctrYesNo(),
-      "e613_others"           = ctrYesNo(),
-      #
-      "e71_human_pharmacology_phase_i"         = ctrYesNo(),
-      "e711_first_administration_to_humans"    = ctrYesNo(),
-      "e712_bioequivalence_study"              = ctrYesNo(),
-      "e713_other"                             = ctrYesNo(),
-      "e72_therapeutic_exploratory_phase_ii"   = ctrYesNo(),
-      "e73_therapeutic_confirmatory_phase_iii" = ctrYesNo(),
-      "e74_therapeutic_use_phase_iv"           = ctrYesNo(),
-      #
-      "e81_controlled"      = ctrYesNo(),
-      "e811_randomised"     = ctrYesNo(),
-      "e812_open"           = ctrYesNo(),
-      "e813_single_blind"   = ctrYesNo(),
-      "e814_double_blind"   = ctrYesNo(),
-      "e815_parallel_group" = ctrYesNo(),
-      "e816_cross_over"     = ctrYesNo(),
-      "e817_other"          = ctrYesNo(),
-      #
-      "e83_the_trial_involves_single_site_in_the_member_state_concerned"    = ctrYesNo(),
-      "e84_the_trial_involves_multiple_sites_in_the_member_state_concerned" = ctrYesNo(),
-      "e85_the_trial_involves_multiple_member_states"                       = ctrYesNo(),
-      "e861_trial_being_conducted_both_within_and_outside_the_eea"          = ctrYesNo(),
-      "e862_trial_being_conducted_completely_outside_of_the_eea"            = ctrYesNo(),
-      "e87_trial_has_a_data_monitoring_committee"                           = ctrYesNo(),
-      #
-      "f11_trial_has_subjects_under_18"            = ctrYesNo(),
-      "f111_in_utero"                              = ctrYesNo(),
-      "f112_preterm_newborn_infants_up_to_gestational_age__37_weeks" = ctrYesNo(),
-      "f113_newborns_027_days"                     = ctrYesNo(),
-      "f114_infants_and_toddlers_28_days23_months" = ctrYesNo(),
-      "f115_children_211years"                     = ctrYesNo(),
-      "f116_adolescents_1217_years"                = ctrYesNo(),
-      "f12_adults_1864_years"                      = ctrYesNo(),
-      "f13_elderly_65_years"                       = ctrYesNo(),
-      "f21_female"                                 = ctrYesNo(),
-      "f22_male"                                   = ctrYesNo(),
-      "f31_healthy_volunteers"                     = ctrYesNo(),
-      "f32_patients"                               = ctrYesNo(),
-      "f33_specific_vulnerable_populations"        = ctrYesNo(),
-      "f331_women_of_childbearing_potential_not_using_contraception_" = ctrYesNo(),
-      "f332_women_of_childbearing_potential_using_contraception"      = ctrYesNo(),
-      "f333_pregnant_women"      = ctrYesNo(),
-      "f334_nursing_women"       = ctrYesNo(),
-      "f335_emergency_situation" = ctrYesNo(),
-      "f336_subjects_incapable_of_giving_consent_personally" = ctrYesNo(),
-      #
-      # - CTGOV
-      "has_expanded_access"            = ctrYesNo(),
-      "oversight_info.has_dmc"         = ctrYesNo(),
-      "eligibility.healthy_volunteers" = ctrYesNo(),
-      #
-      # - ISRCTN
-      "trialDescription.acknowledgment" = ctrFalseTrue(),
-      "results.biomedRelated"           = ctrFalseTrue(),
-      #
-      # numbers
-      #
-      # - EUCTR
-      "e824_number_of_treatment_arms_in_the_trial" = ctrInt(),
-      "e891_in_the_member_state_concerned_years"   = ctrInt(),
-      "e891_in_the_member_state_concerned_months"  = ctrInt(),
-      "e891_in_the_member_state_concerned_days"    = ctrInt(),
-      "e892_in_all_countries_concerned_by_the_trial_years"  = ctrInt(),
-      "e892_in_all_countries_concerned_by_the_trial_months" = ctrInt(),
-      "e892_in_all_countries_concerned_by_the_trial_days"   = ctrInt(),
-      "e841_number_of_sites_anticipated_in_member_state_concerned" = ctrInt(),
-      "f11_number_of_subjects_for_this_age_range"   = ctrInt(),
-      "f1111_number_of_subjects_for_this_age_range" = ctrInt(),
-      "f1121_number_of_subjects_for_this_age_range" = ctrInt(),
-      "f1131_number_of_subjects_for_this_age_range" = ctrInt(),
-      "f1141_number_of_subjects_for_this_age_range" = ctrInt(),
-      "f1151_number_of_subjects_for_this_age_range" = ctrInt(),
-      "f1161_number_of_subjects_for_this_age_range" = ctrInt(),
-      "f121_number_of_subjects_for_this_age_range"  = ctrInt(),
-      "f131_number_of_subjects_for_this_age_range"  = ctrInt(),
-      "f41_in_the_member_state"          = ctrInt(),
-      "f421_in_the_eea"                  = ctrInt(),
-      "f422_in_the_whole_clinical_trial" = ctrInt(),
-      #
-      # - CTGOV
-      "number_of_arms" = ctrInt(),
-      "enrollment"     = ctrInt(),
-      #
-      # - ISRCTN
-      "participants.targetEnrolment"      = ctrInt(),
-      "participants.totalTarget"          = ctrInt(),
-      "participants.totalFinalEnrolment"  = ctrInt(),
-      "externalRefs.protocolSerialNumber" = ctrInt(),
-      #
-      # TODO results-related variables
-      "trialInformation.analysisForPrimaryCompletion" = ctrFalseTrue()
-      #
-    )
-  },
-  silent = TRUE)
+  ## apply typing
+  ldv <- length(dv)
+  if (any(grepl(" / ", dv))) {
 
-  # prepare output
-  if (!inherits(tmp, "try-error") &&
-      !is.null(unlist(tmp, use.names = FALSE))) {
+    # if any concatenations, apply typing per concatenated
+    # item and return list per item. note that dv has to be
+    # overwritten in outer environment for typeVars to work
+    out <- lapply(dv, function(r)  {
+      dv <<- strsplit(r, " / ", fixed = TRUE)[[1]]
+      try(do.call(typeVars[[fn]], list()), silent = TRUE)
+    })
 
-    # need to construct new data frame, because
-    # replacing columns with posixct does not work
-    dfn <- names(dfi)
-    dfi <- data.frame(dfi[["_id"]],
-                      tmp,
-                      stringsAsFactors = FALSE)
-    names(dfi) <- dfn
+  } else {
+
+    # apply typing function with its specified type
+    out <- try(do.call(typeVars[[fn]], list()), silent = TRUE)
 
   }
 
+  # error output
+  if (any(sapply(out, function(r) inherits(r, "try-error"))) ||
+      length(out) != ldv) {
+    out <- rep.int(x = NA, times = ldv)
+  }
+
   # return
-  return(dfi)
+  return(out)
 
 } # end typeField
 
@@ -2277,74 +2610,51 @@ addMetaData <- function(x, con) {
 } # end addMetaData
 
 
-#' Function to set proxy
+#' Install necessary helper apps (Windows only)
 #'
-#' @importFrom curl ie_proxy_info
-#'
-#' @keywords internal
-#' @noRd
-#'
-setProxy <- function() {
-
-  # only act if environment
-  # variable is not already set
-  if (Sys.getenv("https_proxy") == "") {
-
-    # works under windows only
-    p <- curl::ie_proxy_info()$Proxy
-
-    if (!is.null(p)) {
-
-      # used by httr and curl
-      Sys.setenv(https_proxy = p)
-
-    }
-  }
-} # end setproxy
-
-
-#' Convenience function to install a minimal cygwin environment under MS
-#' Windows, including perl, sed and php
-#'
+#' Convenience function to install a minimal Cygwin environment under MS
+#' Windows, including perl, sed and php.
 #' Alternatively and in case of difficulties, download and run the cygwin
 #' setup yourself as follows: \code{cygwinsetup.exe --no-admin --quiet-mode
 #' --verbose --upgrade-also --root c:/cygwin --site
-#' http://www.mirrorservice.org/sites/sourceware.org/pub/cygwin/ --packages
-#' perl,php-jsonc,php-simplexml}
+#' https://www.mirrorservice.org/sites/sourceware.org/pub/cygwin/ --packages
+#' perl,php-jsonc,php-simplexml}.
+#' These binaries are required only for function \link{ctrLoadQueryIntoDb}
+#' but not for any other function in this package.
 #'
 #' @export
 #'
-#' @param force Set to \code{TRUE} to force updating and overwriting an existing
+#' @param force Set to \code{TRUE} to update a Cygwin environment that
+#'   was previously installed with the function, or to overwrite any existing
 #'   installation in \code{c:\\cygwin}
+#'
 #' @param proxy Specify any proxy to be used for downloading via http, e.g.
-#'   "host_or_ip:port". \code{installCygwinWindowsDoInstall} may detect and use
-#'   the proxy configuration used in MS Windows to use an automatic proxy
-#'   configuration script. Authenticated proxies are not supported at this time.
+#'   `host_or_ip:port`; defaults to the environment variable `https_proxy`.
+#'   Set to `""` to not specify or to unset a proxy.
+#'
+#' @examples
+#'
+#' \dontrun{
+#'
+#' installCygwinWindowsDoInstall()
+#'
+#' }
 #'
 installCygwinWindowsDoInstall <- function(
-  force = FALSE,
-  proxy = "") {
+  force = FALSE, proxy = Sys.getenv("https_proxy")) {
 
   # checks
   if (.Platform$OS.type != "windows") {
-    stop(
-      "This function is only for MS Windows operating systems.",
-      call. = FALSE)
+    stop("This function is only for MS Windows operating systems.",
+         call. = FALSE)
   }
   #
   if (!force & dir.exists("c:\\cygwin")) {
     message("cygwin is already installed in c:\\cygwin. ",
-            "To re-install, use force = TRUE.")
+            "To update or re-install, use force = TRUE.")
     # exit function after testing
     return(installCygwinWindowsTest(verbose = TRUE))
   }
-
-  # define installation command
-  installcmd <- paste0(
-    "--no-admin --quiet-mode --upgrade-also --no-shortcuts --prune-install ",
-    "--root c:/cygwin ",
-    "--site http://www.mirrorservice.org/sites/sourceware.org/pub/cygwin/ ",
-    "--packages perl,php-simplexml,php-json")
 
   # create R session temporary directory
   tmpfile <- paste0(tempdir(), "/cygwin_inst")
@@ -2359,11 +2669,7 @@ installCygwinWindowsDoInstall <- function(
   tmpurl <- paste0("https://cygwin.org/", tmpurl)
 
   # inform user
-  message("Attempting cygwin download using ",
-          tmpurl, " ...")
-
-  # check and set proxy if needed to access internet
-  setProxy()
+  message("Attempting download of ", tmpurl, " ...")
 
   # download.file uses the proxy configured in the system
   tmpdl <- try({
@@ -2374,34 +2680,27 @@ installCygwinWindowsDoInstall <- function(
       mode = "wb")
   }, silent = TRUE)
 
+  # compose setup command
+  setupcmd <- paste0(
+    dstfile,
+    " --no-admin --quiet-mode --upgrade-also --no-shortcuts --root c:/cygwin",
+    " --site https://www.mirrorservice.org/sites/sourceware.org/pub/cygwin/",
+    " --packages perl,php-simplexml,php-json ",
+    " --local-package-dir ", tmpfile,
+    ifelse(nchar(proxy), " --proxy ", ""), proxy
+  )
+
   # check
   if (!file.exists(dstfile) ||
       file.size(dstfile) < (5 * 10 ^ 5) ||
       (inherits(tmpdl, "try-error"))) {
     stop("Failed, please download manually and install with:\n",
-         tmpurl, " ", installcmd,
-         call. = FALSE)
-  }
-
-  # proxy handling
-  if (proxy != "") {
-    # manual setting overriding
-    proxy <- paste0(" --proxy ", proxy)
-    message("Setting cygwin proxy install argument to: ",
-            proxy, ", based on provided parameter.")
-  } else {
-    # detect proxy
-    proxy <- curl::ie_proxy_info()$Proxy
-    if (!is.null(proxy)) {
-      message("Setting cygwin proxy install argument to: ",
-              proxy, ", based on system settings.")
-      proxy <- paste0(" --proxy ", proxy)
-    }
+         tmpurl, " ", setupcmd, call. = FALSE)
   }
 
   # execute cygwin setup command
-  system(paste0(dstfile, " ", installcmd,
-                " --local-package-dir ", tmpfile, " ", proxy))
+  message("Executing: ", setupcmd)
+  system(setupcmd)
 
   # return cygwin installation test
   return(installCygwinWindowsTest(verbose = TRUE))
@@ -2415,7 +2714,7 @@ installCygwinWindowsDoInstall <- function(
 #' @param verbose If \code{TRUE}, prints confirmatory
 #'  message (default \code{FALSE})
 #'
-#' @return Information if cygwin can be used, \code{TRUE}
+#' @return Information if Cygwin can be used, \code{TRUE}
 #'  or \code{FALSE}, or NULL if not under MS Windows
 #'
 #' @keywords internal
@@ -2429,26 +2728,14 @@ installCygwinWindowsTest <- function(verbose = FALSE) {
     return(invisible(NULL))
   }
   #
-  tmpcygwin <- try({
-    suppressWarnings(
-      system(
-        paste0("cmd.exe /c ",
-               rev(Sys.glob("c:\\cygw*\\bin\\bash.exe"))[1],
-               " --version"),
-        intern = TRUE,
-        ignore.stderr = TRUE
-      ))},
-    silent = TRUE)
-  #
-  if (!inherits(tmpcygwin, "try-error") &
-      (length(tmpcygwin) > 5L)) {
+  if (checkBinary()) {
     if (verbose) message("cygwin seems to work correctly")
     return(invisible(TRUE))
   } else {
-    message(
-      "cygwin is not available, ctrLoadQueryIntoDb() will not work.\n",
-      "Consider calling ctrdata::installCygwinWindowsDoInstall()")
-    return(invisible(FALSE))
+    stop(
+      "cygwin is not available, ctrLoadQueryIntoDb() will not work. ",
+      "Consider calling ctrdata::installCygwinWindowsDoInstall()",
+      call. = FALSE)
   }
 }
 # end installCygwinWindowsTest
@@ -2466,28 +2753,32 @@ installCygwinWindowsTest <- function(verbose = FALSE) {
 #' @param verbose Set to \code{TRUE} to see printed
 #' return value of \code{commandtest}
 #'
-#' @return A logical if executing commandtest
+#' @return Logical indicating if executing `commandtest`
 #' returned an error or not
 #'
 #' @keywords internal
 #' @noRd
 #
-installFindBinary <- function(commandtest = NULL, verbose = FALSE) {
-  #
+checkCommand <- function(commandtest = NULL, verbose = FALSE) {
+
+  # check
   if (is.null(commandtest)) {
     stop("Empty argument: commandtest",
          call. = FALSE)
   }
-  #
+
+  # only for windows, add cygwin shell
   if (.Platform$OS.type == "windows") {
-    commandtest <-
-      paste0(rev(Sys.glob("c:\\cygw*\\bin\\bash.exe"))[1],
-             " --login -c ",
-             shQuote(commandtest))
+    commandtest <- paste0(
+      rev(Sys.glob("c:\\cygw*\\bin\\bash.exe"))[1],
+      ' --noprofile --norc --noediting -c ',
+      shQuote(paste0(
+        "PATH=/usr/local/bin:/usr/bin; ",
+        commandtest)))
   }
-  #
-  if (verbose) print(commandtest)
-  #
+  if (verbose) message(commandtest)
+
+  # test command
   commandresult <- try(
     suppressWarnings(
       system(commandtest,
@@ -2497,44 +2788,37 @@ installFindBinary <- function(commandtest = NULL, verbose = FALSE) {
                       FALSE, TRUE))),
     silent = TRUE
   )
-  #
+
+  # evaluate command
   commandreturn <- ifelse(
     inherits(commandresult, "try-error") ||
       grepl("error|not found", tolower(paste(commandresult, collapse = " "))) ||
       (!is.null(attr(commandresult, "status")) &&
          (attr(commandresult, "status") != 0)),
     FALSE, TRUE)
-  #
-  if (!commandreturn) {
-    # warning(commandtest, " not found.",
-    #         call. = FALSE,
-    #         immediate. = FALSE)
-  } else {
-    if (interactive()) {
-      message(". ", appendLF = FALSE)
-    }
-  }
-  #
-  if (verbose) {
-    print(commandresult)
-  }
-  #
+
+  # user info
+  if (commandreturn && interactive()) message(". ", appendLF = FALSE)
+  if (verbose) print(commandresult)
+
+  # return
   return(commandreturn)
-  #
 }
-# end installFindBinary
+# end checkCommand
 
 
 #' checkBinary
 #'
 #' @param b Vector of pre-defined binaries to be tested
 #'
+#' @param verbose Set to \code{TRUE} for more information
+#'
 #' @keywords internal
 #' @noRd
 #'
 #' @return Logical, \code{TRUE} if all binaries ok
 #'
-checkBinary <- function(b = NULL) {
+checkBinary <- function(b = NULL, verbose = FALSE) {
 
   # check actions and user infos
   actionsInfos <- list(
@@ -2542,7 +2826,7 @@ checkBinary <- function(b = NULL) {
                      "nonexistingbinarytested not found"),
     "php" = c("php --version",
               "php not found, ctrLoadQueryIntoDb() will not work "),
-    "phpxml" = c("php -r 'simplexml_load_string(\"\");'",
+    "phpxml" = c("php -r 'simplexml_load_string(\"<br />\");'",
                  "php xml not found, ctrLoadQueryIntoDb() will not work "),
     "phpjson" = c("php -r 'json_encode(\"<foo>\");'",
                   "php json not found, ctrLoadQueryIntoDb() will not work "),
@@ -2551,11 +2835,6 @@ checkBinary <- function(b = NULL) {
     "perl" = c("perl -V:osname",
                "perl not found, ctrLoadQueryIntoDb() will not work ")
   )
-
-  # check private environment and create if not found
-  if (!exists(x = ".dbffenv", mode = "environment")) {
-    .dbffenv <- new.env(parent = emptyenv())
-  }
 
   # if input empty, just check all except test
   if (is.null(b)) b <- names(actionsInfos)[-1]
@@ -2568,19 +2847,18 @@ checkBinary <- function(b = NULL) {
     if (is.null(actionsInfo)) stop("Unknown binary to check: ", bi, call. = FALSE)
 
     # previously checked and successful?
-    checked <- exists(x = paste0("bin_check_", bi), envir = .dbffenv)
-    if (checked) checked <- get(x = paste0("bin_check_", bi), envir = .dbffenv)
-    if (checked) return(TRUE)
+    checked <- ctrCache(xname = paste0("bin_check_", bi))
+    if (!is.null(checked) && checked) return(TRUE)
 
     # continue to check binary
-    ok <- installFindBinary(commandtest = actionsInfo[1])
+    ok <- checkCommand(commandtest = actionsInfo[1], verbose = verbose)
     if (!ok) message("\n", actionsInfo[2], appendLF = FALSE)
 
-    # store check to private environment
-    assign(x = paste0("bin_check_", bi), value = ok, envir = .dbffenv)
+    # store check to private environment only if successful
+    if (ok) ctrCache(xname = paste0("bin_check_", bi), xvalue = ok)
 
     # return
-    ok
+    return(ok)
 
   })
 
@@ -2589,7 +2867,7 @@ checkBinary <- function(b = NULL) {
     "\nTo install command line binaries needed for the function ",
     "ctrLoadQueryIntoDb() of package ctrdata, see recommendations at ",
     "https://github.com/rfhb/ctrdata#",
-    "2-command-line-tools-perl-sed-cat-and-php-52-or-higher",
+    "2-command-line-tools-perl-sed-and-php-52-or-higher",
     "\nAfter installation, detach and load package ctrdata again, ",
     "or restart the R session.\n")
 

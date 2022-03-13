@@ -1,11 +1,7 @@
 ## RH 2021-04-25
 
-# check server
+# set server
 httr::set_config(httr::timeout(seconds = 60))
-
-if (httr::status_code(
-  httr::GET("https://www.isrctn.com/editAdvancedSearch")) != 200L
-) exit_file("Reason: ISRCTN not working")
 
 #### ctrLoadQueryIntoDb ####
 
@@ -18,17 +14,29 @@ expect_message(
 
 # test
 expect_error(
-  suppressMessages(
-    ctrLoadQueryIntoDb(
-      queryterm = "https://www.isrctn.com/search?q=")),
+  suppressWarnings(
+    suppressMessages(
+      ctrLoadQueryIntoDb(
+        queryterm = "https://www.isrctn.com/search?q=",
+        con = dbc))),
   "consider correcting or splitting queries")
+
+# test
+expect_message(
+  suppressWarnings(
+    ctrLoadQueryIntoDb(
+      queryterm = "SHOULDNOTEXISTATALL",
+      register = "ISRCTN",
+      con = dbc)),
+  "no.*trials")
 
 # test
 expect_message(
   tmpTest <- suppressWarnings(
     ctrLoadQueryIntoDb(
       queryterm = "neuroblastoma",
-      register = "ISRCTN", verbose = F,
+      register = "ISRCTN",
+      verbose = TRUE,
       con = dbc)),
   "Imported or updated ")
 
@@ -150,6 +158,7 @@ res <- suppressMessages(
   suppressWarnings(
     dbGetFieldsIntoDf(
       fields = c("annotation"),
+      verbose = TRUE,
       con = dbc)
   ))
 
@@ -168,6 +177,100 @@ expect_error(
         con = dbc))),
   "No data could be extracted for")
 
+# test
+expect_warning(
+  suppressMessages(
+    dbGetFieldsIntoDf(
+      fields = c("doesnotexist"),
+      stopifnodata = FALSE,
+      con = dbc)
+  ),
+  "No records with values for any specified field")
+
+# test
+suppressWarnings(
+  suppressMessages(
+    tmpDf <- dbGetFieldsIntoDf(
+      fields = c(
+        "participants.totalFinalEnrolment"
+        ),
+      stopifnodata = FALSE,
+      con = dbc)))
+#
+expect_equivalent(
+  sapply(tmpDf, typeof),
+  c("character", "integer")
+)
+
+
+#### dbFindFields ####
+
+# test
+expect_equal(
+  suppressMessages(
+    suppressWarnings(
+      dbFindFields(
+        namepart = "thisdoesnotexist",
+        con = dbc))),
+  "")
+
+# get all field names
+tmpf <- suppressMessages(
+  suppressWarnings(
+    dbFindFields(
+      namepart = ".*",
+      con = dbc)))
+
+# get all data
+result <- suppressMessages(
+  suppressWarnings(
+    dbGetFieldsIntoDf(
+      fields = tmpf,
+      con = dbc,
+      verbose = FALSE,
+      stopifnodata = FALSE)
+  ))
+
+# develop
+#print(length(names(result)))
+
+# test
+expect_true(
+  length(names(result)) > 40L)
+
+# determine all classes
+tmpr <- names(result)
+tmpr <- tmpr[tmpr != "_id"]
+tmpc <- sapply(result, class, USE.NAMES = FALSE)
+tmpc <- unlist(tmpc)
+tmpc <- table(tmpc)
+
+# develop
+#
+# print(tmpc)
+#
+# 2022-02-20
+#
+# > tinytest::run_test_file("inst/tinytest/test_ctrdata_postgres_isrctn.R") # 53
+# Downloading: 10 kB     tmpcn.R    0 tests
+# character      Date   integer      list   logical
+# 50         5         2         3         4
+# test_ctrdata_postgres_isrctn.R   26 tests OK 9.0s
+# All ok, 26 results (9.0s)
+# > tinytest::run_test_file("inst/tinytest/test_ctrdata_mongo_local_isrctn.R") # 55
+# Downloading: 10 kB     tmpcrctn.R    0 tests
+# character      Date   integer      list   logical
+# 51         5         2         1         4
+# test_ctrdata_mongo_local_isrctn.R   26 tests OK 4.1s
+# All ok, 26 results (4.1s)
+# > tinytest::run_test_file("inst/tinytest/test_ctrdata_sqlite_isrctn.R") # 55
+# Downloading: 10 kB     tmpcR..    0 tests
+# character      Date   integer      list   logical
+# 50         5         2         3         4
+# test_ctrdata_sqlite_isrctn.R..   26 tests OK 5.8s
+# All ok, 26 results (5.8s)
+
+rm(tmpf, result)
 
 #### dbFindIdsUniqueTrials ####
 
@@ -179,4 +282,3 @@ expect_message(
 # test
 expect_true(length(res) >= 5L)
 rm(res)
-

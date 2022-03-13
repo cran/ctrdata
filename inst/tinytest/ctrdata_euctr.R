@@ -1,22 +1,5 @@
 ## RH 2019-09-28
 
-# check server
-testUrl <- "https://www.clinicaltrialsregister.eu/ctr-search/search"
-testGet <- function() try(httr::GET(testUrl, httr::timeout(5)), silent = TRUE)
-testOnce <- testGet()
-
-if (inherits(testOnce, "try-error") &&
-    grepl("SSL certificate.*local issuer certificate", testOnce)) {
-  # message("Switching off certificate verification")
-  httr::set_config(httr::config(ssl_verifypeer = FALSE))
-  testOnce <- testGet()
-}
-
-if (httr::status_code(testOnce) != 200L
-) exit_file("Reason: EUCTR not working")
-
-rm(testUrl, testGet, testOnce)
-
 #### ctrLoadQueryIntoDb ####
 
 # test
@@ -25,8 +8,18 @@ expect_error(
     suppressMessages(
       ctrLoadQueryIntoDb(
         queryterm = "query=",
-        register = "EUCTR"))),
+        register = "EUCTR",
+        con = dbc))),
   "more than 10,000) trials")
+
+# test
+expect_message(
+  suppressWarnings(
+    ctrLoadQueryIntoDb(
+      queryterm = "SHOULDNOTEXISTATALL",
+      register = "EUCTR",
+      con = dbc)),
+  "no.*trials found")
 
 # test
 expect_true(
@@ -168,6 +161,7 @@ expect_message(
   tmpTest <- suppressWarnings(
     ctrLoadQueryIntoDb(
       querytoupdate = "last",
+      verbose = TRUE,
       con = dbc)),
   "(Imported or updated|First result page empty)")
 
@@ -175,7 +169,7 @@ expect_message(
 expect_true(tmpTest$n >= 0L)
 
 # test
-expect_true(is.character(tmpTest$success))
+expect_true(is.character(tmpTest$success) | is.null(tmpTest$success))
 rm(tmpTest, q, hist, json, date.from, date.to, date.today)
 
 #### ctrLoadQueryIntoDb results ####
@@ -184,9 +178,6 @@ rm(tmpTest, q, hist, json, date.from, date.to, date.today)
 q <- paste0("https://www.clinicaltrialsregister.eu/ctr-search/search?query=",
             "2013-003420-37+OR+2009-011454-17+OR+2006-005357-29")
 
-# temp folder
-tempD <- tempdir()
-
 # test
 expect_message(
   suppressWarnings(
@@ -194,10 +185,10 @@ expect_message(
       queryterm = q,
       euctrresults = TRUE,
       euctrresultshistory = TRUE,
-      euctrresultspdfpath = tempD,
+      euctrresultspdfpath = tempdir(),
       con = dbc)),
   "Imported or updated results for 3")
-rm(tempD, q)
+rm(q)
 
 
 # get results
@@ -206,20 +197,28 @@ result <- suppressMessages(
     dbGetFieldsIntoDf(
       fields = c(
         "a2_eudract_number",
-        "trialInformation.globalEndOfTrialDate",
         "p_date_of_the_global_end_of_the_trial",
-        "trialInformation.recruitmentStartDate",
         "x6_date_on_which_this_record_was_first_entered_in_the_eudract_database",
         "subjectDisposition.postAssignmentPeriods.postAssignmentPeriod.arms.arm",
-        "endPoints.endPoint",
+        "endPoints.endPoint.statisticalAnalyses",
+        "trialInformation.globalEndOfTrialDate",
         "trialInformation.analysisForPrimaryCompletion",
-        "e71_human_pharmacology_phase_i"
+        "trialInformation.sponsors",
+        "trialInformation",
+        "endPoints.endPoint",
+        "e71_human_pharmacology_phase_i",
+        "dimp.d21_imp_to_be_used_in_the_trial_has_a_marketing_authorisation",
+        "trialInformation",
+        "f11_trial_has_subjects_under_18",
+        "e824_number_of_treatment_arms_in_the_trial"
       ),
       con = dbc)
   ))
 
 # test
 expect_true(nrow(result) > 30L)
+expect_true(ncol(result) > 30L)
+expect_true(ncol(result) < 40L)
 
 # keep only one record for trial
 result2 <- suppressWarnings(suppressMessages(
@@ -251,6 +250,22 @@ expect_true("Date" == class(result[[
 # test
 expect_true("list" == class(result[[
   "endPoints.endPoint"]]))
+
+# test
+tmp <- result[["dimp.d21_imp_to_be_used_in_the_trial_has_a_marketing_authorisation"]]
+expect_true((class(tmp) == "list" & (length(unlist(tmp)) > length(tmp)) &
+               all(class(unlist(tmp)) == "logical")) | (class(tmp) == "logical"))
+
+# test
+expect_true("logical" == class(result[[
+  "f11_trial_has_subjects_under_18"]]))
+
+# test
+expect_true("integer" == class(result[[
+  "e824_number_of_treatment_arms_in_the_trial"]]))
+
+# cleanup
+rm(tmp)
 
 #### dfListExtractKey ####
 
@@ -308,22 +323,24 @@ expect_error(
 #### dfName2Value ####
 
 # extract
-df2 <- dfName2Value(
-  df = df,
-  valuename = "subjectDisposition.*postAssignmentPeriod.arms.arm.type.value"
-)
+df2 <- suppressMessages(
+  dfName2Value(
+    df = df,
+    valuename = "subjectDisposition.*postAssignmentPeriod.arms.arm.type.value"
+  ))
 # test
 expect_true(
   length(unique(df2[["_id"]])) >= 2L
 )
 
 # extract
-df2 <- dfName2Value(
-  df = df,
-  valuename = "subjectDisposition.*postAssignmentPeriod.arms.arm.type.value",
-  wherename = "endPoints.endPoint.title",
-  wherevalue = "percentage"
-)
+df2 <- suppressMessages(
+  dfName2Value(
+    df = df,
+    valuename = "subjectDisposition.*postAssignmentPeriod.arms.arm.type.value",
+    wherename = "endPoints.endPoint.title",
+    wherevalue = "percentage"
+  ))
 
 # test
 expect_true(
@@ -342,12 +359,13 @@ expect_true(all(
 )
 
 # extract
-df2 <- dfName2Value(
-  df = df,
-  valuename = "^endPoints.endPoint.statisticalAnalyses.statisticalAnalysis.statisticalHypothesisTest.value$",
-  wherename = "endPoints.endPoint.statisticalAnalyses.statisticalAnalysis.statisticalHypothesisTest.method.value",
-  wherevalue = "HYPOTHESIS_METHOD.*"
-)
+df2 <- suppressMessages(
+  dfName2Value(
+    df = df,
+    valuename = "^endPoints.endPoint.statisticalAnalyses.statisticalAnalysis.statisticalHypothesisTest.value$",
+    wherename = "endPoints.endPoint.statisticalAnalyses.statisticalAnalysis.statisticalHypothesisTest.method.value",
+    wherevalue = "HYPOTHESIS_METHOD.*"
+  ))
 
 # test
 expect_true(
@@ -356,18 +374,20 @@ expect_true(
 
 # test
 expect_error(
-  dfName2Value(
-    df = df,
-    valuename = "doesnotexist"),
+  suppressMessages(
+    dfName2Value(
+      df = df,
+      valuename = "doesnotexist")),
   "No rows found for 'valuename'")
 
 # test
 expect_error(
-  dfName2Value(
-    df = df,
-    valuename = "^endPoints.endPoint.statisticalAnalyses.statisticalAnalysis.statisticalHypothesisTest.value$",
-    wherename = "endPoints.endPoint.statisticalAnalyses.statisticalAnalysis.statisticalHypothesisTest.method.value",
-    wherevalue = "doesnotexist"),
+  suppressMessages(
+    dfName2Value(
+      df = df,
+      valuename = "^endPoints.endPoint.statisticalAnalyses.statisticalAnalysis.statisticalHypothesisTest.value$",
+      wherename = "endPoints.endPoint.statisticalAnalyses.statisticalAnalysis.statisticalHypothesisTest.method.value",
+      wherevalue = "doesnotexist")),
   "No rows found for 'wherename' and 'wherevalue'")
 
 # cleanup
@@ -464,6 +484,7 @@ trialsCtgov <- suppressMessages(
   suppressWarnings(
     dbFindIdsUniqueTrials(
       con = dbc,
+      verbose = TRUE,
       preferregister = "CTGOV")))
 
 trialsEuctr <- suppressMessages(
@@ -479,17 +500,17 @@ expect_equal(length(trialsCtgov), length(trialsEuctr))
 expect_true(
   all(c("NCT00001209", "NCT00001436", "NCT00187109", "NCT01516567") %in%
         trialsCtgov))
+
 # test
-expect_false(
-  any(c("2010-024264-18-GB") %in% trialsCtgov))
+expect_false(any(c("2010-024264-18-GB") %in% trialsCtgov))
 
 # test
 expect_true(
-  all(c("NCT00001209", "NCT00001436", "NCT00187109", "NCT01516567") %in%
-        trialsEuctr))
+  all(c("NCT00001209", "NCT00001436", "NCT00187109", "NCT01516567",
+        "2009-018077-31-DE") %in% trialsEuctr))
+
 # test
-expect_false(
-  any(c("NCT01471782") %in% trialsEuctr))
+expect_false(any(c("NCT01471782") %in% trialsEuctr))
 
 # clean up
 rm(trialsCtgov, trialsEuctr)
@@ -525,7 +546,17 @@ expect_warning(
       con = dbc,
       prefermemberstate = "3RD",
       include3rdcountrytrials = FALSE)),
-  "Preferred EUCTR version set to 3RD country trials")
+  "Preferred .* 3RD .* setting it to TRUE")
+
+# test
+expect_true(
+  length(
+    suppressWarnings(
+      suppressMessages(
+        dbFindIdsUniqueTrials(
+          con = dbc,
+          include3rdcountrytrials = FALSE)
+      ))) > 5L)
 
 # test, reusing the query string
 q <- paste0("https://www.clinicaltrialsregister.eu/ctr-search/search?query=",
@@ -569,6 +600,17 @@ expect_error(
 
 # test as many fields as possible for typing
 
+#### dbFindFields ####
+
+# test
+expect_equal(
+  suppressMessages(
+    suppressWarnings(
+      dbFindFields(
+        namepart = "thisdoesnotexist",
+        con = dbc))),
+  "")
+
 # get all field names
 tmpf <- suppressMessages(
   suppressWarnings(
@@ -585,46 +627,62 @@ result <- suppressMessages(
       stopifnodata = FALSE)
   ))
 #
+
+# develop
+# print(length(names(result)))
+
+# test
+expect_true(
+  length(names(result)) > 400L)
+
+
+# determine all classes
 tmpr <- names(result)
 tmpr <- tmpr[tmpr != "_id"]
-# determine all classes
-tmpc <- sapply(result, class,
-               USE.NAMES = FALSE)
+tmpc <- sapply(result, class, USE.NAMES = FALSE)
 tmpc <- unlist(tmpc)
 tmpc <- table(tmpc)
 
-# src_mongo:
-# tmpc
-# character      Date   integer      list   logical
-#       243        15        22       253       138
-# src_sqlite:
-# tmpc
-# character      Date   integer      list   logical
-#       411        18        22       538        77
-# mongo_remote_rw
-# tmpc
-# character      Date   integer      list   logical
-#        65        10         6         7        57
+# develop
+#
+# print(tmpc)
+#
+# 2022-02-20
+#
+# > tinytest::run_test_file("inst/tinytest/test_ctrdata_mongo_local_euctr.R") # 514
+# Downloading: 33 kB     tmpcctr.R    0 tests    . . . . .
+# character data.frame       Date   difftime    integer       list    logical
+# 381         18         16          2         24        212         77
+# test_ctrdata_mongo_local_euctr.R   72 tests OK 1.6s
+# All ok, 72 results (1.6s)
+# > tinytest::run_test_file("inst/tinytest/test_ctrdata_mongo_remote_rw_euctr.R") # 514
+# Downloading: 33 kB     tmpcw_euctr.R    0 tests
+# character data.frame       Date   difftime    integer       list    logical
+# 381         18         16          2         24        212         77
+# test_ctrdata_mongo_remote_rw_euctr.R   72 tests OK 3.1s
+# All ok, 72 results (3.1s)
+# > tinytest::run_test_file("inst/tinytest/test_ctrdata_postgres_euctr.R") # 428
+# Downloading: 33 kB     tmpc.R.    0 tests
+# character data.frame       Date   difftime    integer       list    logical
+# 408          9         15          2         29        137         80
+# test_ctrdata_postgres_euctr.R.   72 tests OK 1.7s
+# All ok, 72 results (1.7s)
+# > tinytest::run_test_file("inst/tinytest/test_ctrdata_sqlite_euctr.R") # 543
+# Downloading: 33 kB     tmpc...    0 tests
+# character      Date   integer      list   logical   numeric
+# 503        16        29       188        84         2
+# test_ctrdata_sqlite_euctr.R...   72 tests OK 4.6s
+# All ok, 72 results (4.6s)
 
-# tests note tmpr has more columns
-# because data frames are expanded
-expect_true(length(tmpf) <= length(tmpr))
-# expect_identical(tmpf, tmpr)
+
+# tests note tmpr may have fewer columns
+expect_true(length(tmpr) <= length(tmpf))
 # adapted to mongo remote server
-expect_true(tmpc[["character"]] > 50)
-expect_true(tmpc[["integer"]]   >  5)
-expect_true(tmpc[["Date"]]      >  5)
-expect_true(tmpc[["list"]]      >  5)
-expect_true(tmpc[["logical"]]   > 50)
-
-# TODO
-# not testing for lists, because
-# src_mongo returns only non-object
-# fields when searching for all fields
-# with dbFindFields(".*") whereas
-# src_sqlite returns names of both
-# objects and terminal / no more nested
-# fields
+expect_true(tmpc[["character"]] > 150)
+expect_true(tmpc[["Date"]]      >  10)
+expect_true(tmpc[["integer"]]   >   5)
+expect_true(tmpc[["list"]]      >  15)
+expect_true(tmpc[["logical"]]   >  50)
 
 # clean up
 rm(tmpf, tmpr, tmpc, result)
@@ -636,7 +694,7 @@ rm(tmpf, tmpr, tmpc, result)
 expect_equal(
   suppressWarnings(
     ctrOpenSearchPagesInBrowser(
-      dbQueryHistory(con = dbc)[1, ])),
-  # first query into the database
+      dbQueryHistory(con = dbc))),
+  # opens last query loaded into the database
   paste0("https://www.clinicaltrialsregister.eu/ctr-search/search?",
-         "query=2005-001267-63+OR+2008-003606-33"))
+         "query=2010-024264-18"))
