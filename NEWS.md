@@ -1,3 +1,10 @@
+# ctrdata 1.9.1
+ - 2022-04-24
+ - type e811... variables
+ - bugfix in dbGetFieldsIntoDf
+ - bugfix annotations mix up for some backends
+ - editorial update vignettes
+ 
 # ctrdata 1.9.0
  - 2022-03-13
  - chunked trial batches in ndjson files for accelerated database import

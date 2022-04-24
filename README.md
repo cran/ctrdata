@@ -18,13 +18,13 @@ aggregating and analysing this information; it can be used for the
 -   EU Clinical Trials Register (“EUCTR”,
     <https://www.clinicaltrialsregister.eu/>)
 -   ClinicalTrials.gov (“CTGOV”, <https://clinicaltrials.gov/>)
--   ISRCTN (<https://www.isrctn.com/>) 🔔new in v1.6.0
+-   ISRCTN (<https://www.isrctn.com/>)
 
 The motivation is to understand trends in design and conduct of trials,
 their availability for patients and their detailled results. `ctrdata`
 is a package for the [R](https://www.r-project.org/) system, but other
 systems and tools can be used with the databases created by it. This
-README was reviewed on 2022-03-13 for v1.8.0.9002.
+README was reviewed on 2022-04-24 for v1.9.1.
 
 Main features:
 
@@ -37,8 +37,8 @@ Main features:
 
 -   Retrieved (downloaded) trial information is transformed and stored
     in a document-centric database, for fast and offline access. Uses
-    `PostgreSQL` (🔔new in v1.8.0.9000), `RSQLite` or `MongoDB` as
-    databases, via R package `nodbi`: see section
+    `PostgreSQL` (🔔new in v1.9.0), `RSQLite` or `MongoDB` as databases,
+    via R package `nodbi`: see section
     [Databases](#databases-that-can-be-used-with-ctrdata) below. Easily
     re-run a previous query to update a database.
 
@@ -46,7 +46,7 @@ Main features:
     functions) or others systems. Unique (de-duplicated) trial records
     are identified across registers. `ctrdata` can merge and recode
     information (fields) and also provides easy access even to
-    deeply-nested fields (🔔 new in v1.4.0).
+    deeply-nested fields (new in v1.4.0).
 
 Remember to respect the registers’ terms and conditions (see
 `ctrOpenSearchPagesInBrowser(copyright = TRUE)`). Please cite this
@@ -81,7 +81,7 @@ package `ctrdata`:
 # Install CRAN version:
 install.packages("ctrdata")
 
-# Alternatively, install development version: 
+# Alternatively, install development version:
 install.packages("devtools")
 devtools::install_github("rfhb/ctrdata", build_vignettes = TRUE)
 ```
@@ -224,13 +224,13 @@ how to specify `PostgreSQL`, `RSQlite` or `MongoDB` as backend); then,
 trial information is retrieved and loaded into the collection:
 
 ``` r
-# Connect to (or newly create) an SQLite database 
+# Connect to (or newly create) an SQLite database
 # that is stored in a file on the local system:
 db <- nodbi::src_sqlite(
-  dbname = "some_database_name.sqlite_file", 
+  dbname = "some_database_name.sqlite_file",
   collection = "some_collection_name")
 
-# See section Databases below 
+# See section Databases below
 # for MongoDB as alternative
 
 # Retrieve trials from public register:
@@ -243,10 +243,10 @@ ctrLoadQueryIntoDb(
 # Checking helper binaries: done
 # Downloading trials (4 pages in parallel)...
 # Note: register server cannot compress data, transfer takes longer, about 0.4s per trial
-# Pages: 4 done, 0 ongoing   
+# Pages: 4 done, 0 ongoing
 # (2/3) Converting to JSON, 248 records converted
 # (3/3) Importing JSON records into database...
-# = Imported or updated 248 records on 66 trial(s)                
+# = Imported or updated 248 records on 66 trial(s)
 # * Updated history ("meta-info" in "some_collection_name")
 ```
 
@@ -264,15 +264,15 @@ development program (paediatric investigation plan, PIP):
 # Get all records that have values in the fields of interest:
 result <- dbGetFieldsIntoDf(
   fields = c(
-    "a7_trial_is_part_of_a_paediatric_investigation_plan", 
-    "p_end_of_trial_status", 
+    "a7_trial_is_part_of_a_paediatric_investigation_plan",
+    "p_end_of_trial_status",
     "a2_eudract_number"),
   con = db)
 
-# Find unique trial identifiers for trials that have nore than 
-# one record, for example for several EU Member States: 
+# Find unique trial identifiers for trials that have nore than
+# one record, for example for several EU Member States:
 uniqueids <- dbFindIdsUniqueTrials(con = db)
-# Searching for duplicate trials... 
+# Searching for duplicate trials...
 #  - Getting trial ids, 279 found in collection
 #  - Finding duplicates among registers' and sponsor ids...
 #  - 208 EUCTR _id were not preferred EU Member State record for 71 trials
@@ -281,14 +281,14 @@ uniqueids <- dbFindIdsUniqueTrials(con = db)
 
 # Keep only unique / de-duplicated records:
 result <- subset(
-  result, 
+  result,
   subset = `_id` %in% uniqueids
 )
 
 # Tabulate the selected clinical trial information:
-with(result, 
+with(result,
      table(
-       p_end_of_trial_status, 
+       p_end_of_trial_status,
        a7_trial_is_part_of_a_paediatric_investigation_plan))
 #                     a7_trial_is_part_of_a_paediatric_investigation_plan
 # p_end_of_trial_status      Information not present in EudraCT No Yes
@@ -307,17 +307,17 @@ with(result,
 ``` r
 # Retrieve trials from another register:
 ctrLoadQueryIntoDb(
-  queryterm = "cond=neuroblastoma&rslt=With&recrs=e&age=0&intr=Drug", 
+  queryterm = "cond=neuroblastoma&rslt=With&recrs=e&age=0&intr=Drug",
   register = "CTGOV",
   con = db)
 # * Found search query from CTGOV: cond=neuroblastoma&rslt=With&recrs=e&age=0&intr=Drug
 # (1/3) Checking trials in CTGOV:
 # Retrieved overview, records of 44 trial(s) are to be downloaded
 # Checking helper binaries: done
-# Downloading: 620 kB     
+# Downloading: 620 kB
 # (2/3) Converting to JSON, 44 records converted
 # (3/3) Importing JSON records into database...
-# = Imported or updated 43 trial(s)                              
+# = Imported or updated 43 trial(s)
 # * Updated history ("meta-info" in "some_collection_name")
 ```
 
@@ -335,10 +335,10 @@ ctrLoadQueryIntoDb(
 # (1/3) Checking trials in ISRCTN:
 # Retrieved overview, records of 9 trial(s) are to be downloaded
 # Checking helper binaries: done
-# Downloading: 90 kB       
+# Downloading: 90 kB
 # (2/3) Converting to JSON, 9 records converted
 # (3/3) Importing JSON records into database...
-# = Imported or updated 9 trial(s)                              
+# = Imported or updated 9 trial(s)
 # * Updated history ("meta-info" in "some_collection_name")
 ```
 
@@ -352,8 +352,8 @@ result <- dbGetFieldsIntoDf(
   fields = c(
     "clinical_results.baseline.analyzed_list.analyzed.count_list.count",
     "clinical_results.baseline.group_list.group",
-    "clinical_results.baseline.analyzed_list.analyzed.units", 
-    "study_design_info.allocation", 
+    "clinical_results.baseline.analyzed_list.analyzed.units",
+    "study_design_info.allocation",
     "location"),
   con = db)
 
@@ -362,20 +362,20 @@ result <- dfTrials2Long(df = result)
 # Total 6386 rows, 12 unique names of variables
 
 # [1.] get counts of subjects for all arms into data frame
-# This count is in the group where either its title or its 
+# This count is in the group where either its title or its
 # description starts with "Total"
 nsubj <- dfName2Value(
-  df = result, 
+  df = result,
   valuename = "clinical_results.baseline.analyzed_list.analyzed.count_list.count.value",
   wherename = paste0(
-    "clinical_results.baseline.group_list.group.title|", 
+    "clinical_results.baseline.group_list.group.title|",
     "clinical_results.baseline.group_list.group.description"),
   wherevalue = "^Total"
 )
 
 # [2.] count number of sites
 nsite <- dfName2Value(
-  df = result, 
+  df = result,
   # some ctgov records use
   # location.name, others use
   # location.facility.name
@@ -383,14 +383,14 @@ nsite <- dfName2Value(
 )
 # count
 nsite <- tapply(
-  X = nsite[["value"]], 
+  X = nsite[["value"]],
   INDEX = nsite[["_id"]],
   FUN = length,
   simplify = TRUE
 )
 nsite <- data.frame(
   "_id" = names(nsite),
-  nsite, 
+  nsite,
   check.names = FALSE,
   stringsAsFactors = FALSE,
   row.names = NULL
@@ -398,9 +398,9 @@ nsite <- data.frame(
 
 # [3.] randomised?
 ncon <- dfName2Value(
-  df = result, 
+  df = result,
   valuename = "study_design_info.allocation"
-) 
+)
 
 # merge sets
 nset <- merge(nsubj, nsite, by = "_id")
@@ -408,18 +408,18 @@ nset <- merge(nset, ncon, by = "_id")
 
 # Example plot
 library(ggplot2)
-ggplot(data = nset) + 
+ggplot(data = nset) +
   labs(title = "Neuroblastoma trials with results",
        subtitle = "clinicaltrials.gov") +
   geom_point(
     mapping = aes(
       x = nsite,
       y = value.x,
-      colour = value.y == "Randomized")) + 
-  scale_x_log10() + 
+      colour = value.y == "Randomized")) +
+  scale_x_log10() +
   scale_y_log10() +
-  xlab("Number of sites") + 
-  ylab("Total number of subjects") + 
+  xlab("Number of sites") +
+  ylab("Total number of subjects") +
   labs(colour = "Randomised?")
 ggsave(filename = "man/figures/README-ctrdata_results_neuroblastoma.png",
        width = 5, height = 3, units = "in")
