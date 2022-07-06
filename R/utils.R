@@ -644,10 +644,10 @@ ctrGetQueryUrl <- function(
 #' @param activesubstance An active substance, in an atomic character vector
 #'
 #' @return A character vector of the active substance (input parameter) and
-#'  synonyms, if any were found
+#'  synonyms, or NULL if active substance was not found and may be invalid
 #'
-#' @importFrom xml2 read_html
-#' @importFrom rvest html_node html_table
+#' @importFrom httr GET
+#' @importFrom rvest html_element html_table read_html
 #'
 #' @export
 #'
@@ -663,39 +663,54 @@ ctrGetQueryUrl <- function(
 ctrFindActiveSubstanceSynonyms <- function(activesubstance = "") {
 
   # check parameters
-  if ((length(activesubstance) != 1) ||
+  if ((length(activesubstance) != 1L) ||
       !is.character(activesubstance) ||
-      (nchar(activesubstance) == 0)) {
+      (nchar(activesubstance) == 0L)) {
     stop("ctrFindActiveSubstanceSynonyms(): ",
          "activesubstance should be a single string.",
          call. = FALSE)
   }
 
-  # initialise output variable
-  as <- activesubstance
-
-  # getting synonyms
+  # getting synonyms using httr since rvest::read_html
+  # does not close network connection in case of 404
   ctgovfirstpageurl <-
-    paste0("https://clinicaltrials.gov/ct2/results/details?term=",
-           activesubstance)
-  tmp <- xml2::read_html(x = utils::URLencode(ctgovfirstpageurl))
+    utils::URLencode(
+      paste0("https://clinicaltrials.gov/ct2/results/details?term=",
+             activesubstance))
+
+  # set user agent for httr and curl to inform registers
+  httr::set_config(httr::user_agent(
+    paste0("ctrdata/", utils::packageDescription("ctrdata")$Version)))
+
+  # get webpage
+  tmp <- try({
+    httr::GET(url = ctgovfirstpageurl)
+  }, silent = TRUE)
+
+  # check result
+  if (tmp[["status_code"]] == 404L) {
+    # 404 means active substance not found, thus early exit
+    message("Check active substance '", activesubstance, "', may not exist.")
+    return(NULL)
+  }
+
+  # make page content accessible to rvest
+  tmp <- rvest::read_html(httr::content(tmp, as = "text"))
 
   # extract from table "Terms and Synonyms Searched:"
-  tmp <- rvest::html_node(
-    tmp, xpath =
-      '//*[@id="searchdetail"]//table[1]')
+  tmp <- rvest::html_element(
+    tmp, xpath = '//*[@id="searchdetail"]//table[1]')
   tmp <- rvest::html_table(tmp, fill = TRUE)
-  asx <- tmp[[1]]
+  asx <- tmp[["Terms"]]
   asx <- asx[!grepl(
-    paste0("(more|synonyms|terms|", as, "|",
-           paste0(unlist(strsplit(as, " "), use.names = FALSE),
+    paste0("(more|synonyms|terms|", activesubstance, "|",
+           paste0(unlist(strsplit(activesubstance, " "), use.names = FALSE),
                   collapse = "|"), ")"), asx,
     ignore.case = TRUE)]
 
   # prepare and return output
-  as <- c(as, asx)
-  as <- unique(as)
-  return(as)
+  asx <- c(activesubstance, asx)
+  return(unique(asx))
 }
 # end ctrFindActiveSubstanceSynonyms
 
@@ -1366,7 +1381,7 @@ dbGetFieldsIntoDf <- function(fields = "",
 
   # check parameters
   if (!is.vector(fields) |
-      class(fields) != "character") {
+      !all(class(fields) %in% "character")) {
     stop("Input should be a vector of strings of field names.", call. = FALSE)
   }
 
@@ -2226,7 +2241,7 @@ dfMergeTwoVariablesRelevel <- function(
   }
 
   # other checks
-  if (!any(class(df) == "data.frame")) {
+  if (!inherits(df, "data.frame")) {
     stop("Need a data frame as input.", call. = FALSE)
   }
   if (length(colnames) != 2) {
@@ -2242,7 +2257,7 @@ dfMergeTwoVariablesRelevel <- function(
 
   # bind as ...
   if (class(df[[1]]) == class(df[[2]]) &&
-      class(df[[1]]) != "character") {
+      !all(class(df[[1]]) %in% "character")) {
     # check
     if (nrow(na.omit(df[!vapply(df[[1]], is.null, logical(1L)) &
                         !vapply(df[[2]], is.null, logical(1L)), ,
@@ -2271,7 +2286,7 @@ dfMergeTwoVariablesRelevel <- function(
 
   # type where possible
   if (class(df[[1]]) == class(df[[2]]) &&
-      class(df[[1]]) != "character") {
+      !all(class(df[[1]]) %in% "character")) {
     mode(tmp) <- mode(df[[1]])
     class(tmp) <- class(df[[1]])
   }
@@ -2280,7 +2295,7 @@ dfMergeTwoVariablesRelevel <- function(
   if (!is.null(levelslist)) {
 
     # check
-    if (class(levelslist) != "list") {
+    if (!all(class(levelslist) %in% "list")) {
       stop("Need list for parameter 'levelslist'.", call. = FALSE)
     }
 
@@ -2354,7 +2369,7 @@ dfFindUniqueEuctrRecord <- function(
   include3rdcountrytrials = TRUE) {
 
   # check parameters
-  if (class(df) != "data.frame") {
+  if (!all(class(df) %in% "data.frame")) {
     stop("Parameter df is not a data frame.", call. = FALSE)
   }
   #
@@ -2488,7 +2503,7 @@ typeField <- function(dv, fn) {
   if (!is.atomic(dv)) return(dv)
 
   # early exit if dv is not character
-  if (class(dv) != "character") return(dv)
+  if (!all(class(dv) %in% "character")) return(dv)
 
   # clean up for all character vectors
   # - if NA as string, change to NA

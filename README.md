@@ -24,7 +24,7 @@ The motivation is to understand trends in design and conduct of trials,
 their availability for patients and their detailled results. `ctrdata`
 is a package for the [R](https://www.r-project.org/) system, but other
 systems and tools can be used with the databases created by it. This
-README was reviewed on 2022-04-24 for v1.9.1.
+README was reviewed on 2022-07-01 for v1.10.0.
 
 Main features:
 
@@ -427,6 +427,27 @@ ggsave(filename = "man/figures/README-ctrdata_results_neuroblastoma.png",
 
 ![Neuroblastoma
 trials](https://raw.githubusercontent.com/rfhb/ctrdata/master/docs/dev/reference/figures/README-ctrdata_results_neuroblastoma.png)
+\* Retrieve protocols, statistical analysis plans and other documents
+into a local folder `./files/`
+
+``` r
+# eudract files are downloaded as part of results
+ctrLoadQueryIntoDb(
+  queryterm = q,
+  euctrresults = TRUE, 
+  euctrresultspdfpath = "./files/",
+  con = db)
+
+# ctgov files can separately be downloaded
+sapply(
+  unlist(strsplit(
+    dbGetFieldsIntoDf(
+      fields = "provided_document_section.provided_document.document_url",
+      con = db)[[2]], 
+    split = " / ")), 
+  function(f) download.file(
+    f, paste0("./files/", gsub("[/:]", "-", f))))
+```
 
 ## Meta
 
