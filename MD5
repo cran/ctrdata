@@ -1,14 +1,14 @@
-a2f856045cbe9cf8a7569827cbc5d721 *DESCRIPTION
+2b27673b53205b1f1c45215dcf543e7d *DESCRIPTION
 6d4347255a4f2af3a5f145b5c19307f6 *LICENSE
 2e710169ad1c74661c68af601e1ae293 *NAMESPACE
-9c8ba15297b80a7f8299f58b96a6ae08 *NEWS.md
+eb0c50d8f6dfbfeb77abc1267e491e4a *NEWS.md
 5a85eb596b88de4c41b8140af6d457ad *R/ctrdata-package.R
-087b95dcf28c88db4eb67f01be0445b3 *R/ctrdata-registers.R
+0e07444fdf4f28abe0ede877a7d8ba60 *R/ctrdata-registers.R
 f5d83af5b82abea51beb6db4d1078157 *R/main.R
 57fdb497e176b5665888214b18ff21d7 *R/onload.R
 34f4e1c24d8ae88be8c820e7a54fcff7 *R/utils.R
-41f2c48ac56910432c23cc1daf2b6827 *README.md
-ec20623564a0e83a71cfaa0f59e1663a *build/vignette.rds
+a555bf32e8541b16b2602ec316171a70 *README.md
+6fefda348dc9541c9ed943904c367b5c *build/vignette.rds
 b1413a29304e5a94c1acb5f8be6a3393 *exec/ctgov2ndjson.php
 0054d01236ddf75dc7588f148648e69b *exec/euctr2ndjson.sh
 9747582347d87444175595ce0c501824 *exec/euctr2ndjson_results.php
@@ -20,7 +20,7 @@ c87fdba4eb0dfb6309d24ca8cb079111 *inst/doc/ctrdata_retrieve.pdf
 ffc4de8cde56c7bc4c9c8a7f1c95a7d5 *inst/doc/ctrdata_summarise.pdf
 800187a9a24d151911e3e2184223bfd7 *inst/doc/ctrdata_summarise.pdf.asis
 88394b1ee3bb76cd749a324e1fbbf962 *inst/tinytest/ctrdata_ctgov.R
-e70f69062a8d55ea99c068348036535f *inst/tinytest/ctrdata_euctr.R
+5212de119fe7dbc8d7ee8f533ecfe721 *inst/tinytest/ctrdata_euctr.R
 f5304402723b4a5c525d74a252261fb2 *inst/tinytest/ctrdata_isrctn.R
 cb09d35d426e9ca2e644069f1e44da08 *inst/tinytest/more_test_ctrdata_mongo_remote_ro.R
 75c64db10550a6747a1f14f6894e551c *inst/tinytest/more_test_ctrdata_mongo_remote_rw_ctgov.R
@@ -34,7 +34,7 @@ f76ab7afc3ba65a75e6d59e380733a5a *inst/tinytest/test_ctrdata_ctrfindactivesubsta
 3a3ad09be0b63cecf77c766e4498c420 *inst/tinytest/test_ctrdata_mongo_local_ctgov.R
 f3c0792a01db8e6ffd5df0df242c24f8 *inst/tinytest/test_ctrdata_mongo_local_euctr.R
 ad79f76896e0efd0cdba54ebca98fe1c *inst/tinytest/test_ctrdata_mongo_local_isrctn.R
-c07ca8e62c940a5014a553ef1bc9a0b3 *inst/tinytest/test_ctrdata_other_functions.R
+bbb03a3dc8608db8c0b819cbf74a7dc7 *inst/tinytest/test_ctrdata_other_functions.R
 4f13cc1e2e3e6205e36d9e209aab063a *inst/tinytest/test_ctrdata_sqlite_ctgov.R
 92aa2aaabc9952ef64ecb9d248fe4a2a *inst/tinytest/test_ctrdata_sqlite_euctr.R
 530b8f5b66470f9a09104fec32a4165a *inst/tinytest/test_ctrdata_sqlite_isrctn.R
@@ -44,7 +44,7 @@ a4f77feda3cd0434695155d70ed6c758 *man/ctrFindActiveSubstanceSynonyms.Rd
 fdb8d2c5da504aa8e36d1bfdb0b0fe46 *man/ctrLoadQueryIntoDb.Rd
 91b330bd701ef5e39b23436357084475 *man/ctrOpenSearchPagesInBrowser.Rd
 aba3cbabd4237b3b08757b60a2ee0d6c *man/ctrdata-package.Rd
-0680175e22b2030e9bd7b7846c4bae74 *man/ctrdata-registers.Rd
+59de44c6369128fc2fc2d5d6953cf45d *man/ctrdata-registers.Rd
 afb653d8cf84967a94ed74fc48627ac1 *man/dbFindFields.Rd
 bbee229dc5ff72ddeeba888953fd70b8 *man/dbFindIdsUniqueTrials.Rd
 232d7ed0440425d0060fe34bfd6ac73e *man/dbGetFieldsIntoDf.Rd
