@@ -1,7 +1,7 @@
 Package: ctrdata
 Type: Package
 Title: Retrieve and Analyze Clinical Trials in Public Registers
-Version: 1.10.1
+Version: 1.10.2
 Imports: jsonlite, httr, curl, clipr, xml2, rvest, nodbi (>= 0.7.0),
         stringi, dplyr, lubridate
 SystemRequirements: sed, php, cat, perl
@@ -15,7 +15,7 @@ Description: A system for querying, retrieving and analyzing
         the 'ISRCTN' (<http://www.isrctn.com/>). 
         Trial information is downloaded, converted and stored in a database 
         ('PostgreSQL', 'SQLite' or 'MongoDB'; via package 'nodbi'). 
-        Functions are included to identify de-duplicated records, 
+        Functions are included to identify deduplicated records, 
         to easily find and extract variables (fields) of interest even 
         from complex nesting as used by the registers, and
         to update previous queries. 
@@ -31,8 +31,8 @@ Encoding: UTF-8
 Authors@R: person(given = "Ralf", family = "Herold", role = c("aut", "cre"),
         email = "ralf.herold@mailbox.org", comment = c(ORCID =
         "0000-0002-8148-6748"))
-Packaged: 2022-07-24 20:28:21 UTC; ralfherold
+Packaged: 2022-08-20 07:38:58 UTC; ralfherold
 Author: Ralf Herold [aut, cre] (<https://orcid.org/0000-0002-8148-6748>)
 Maintainer: Ralf Herold <ralf.herold@mailbox.org>
 Repository: CRAN
-Date/Publication: 2022-07-24 21:50:02 UTC
+Date/Publication: 2022-08-20 21:50:06 UTC

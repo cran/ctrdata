@@ -109,6 +109,7 @@ records. However, user annotations of trial records are kept.
 }
 \examples{
 \dontrun{
+
 dbc <- nodbi::src_sqlite(collection = "my_collection")
 
 # Retrieve protocol- and results-related information
@@ -126,6 +127,15 @@ ctrLoadQueryIntoDb(
 ctrLoadQueryIntoDb(
   queryterm = "cancer&recr=Open&type=Intr&age=0",
   register = "CTGOV",
+  con = dbc
+)
+
+# Retrieve all information on more than 40 trials
+# that are labelled as phase 3 and that mention
+# either neuroblastoma or lymphoma from ISRCTN,
+# into the same collection as used before
+ctrLoadQueryIntoDb(
+  queryterm = "https://www.isrctn.com/search?q=neuroblastoma+OR+lymphoma&filters=phase\%3APhase+III",
   con = dbc
 )
 

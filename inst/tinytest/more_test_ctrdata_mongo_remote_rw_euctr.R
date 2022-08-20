@@ -28,7 +28,7 @@ tf <- function() {
 
   # check server
   testUrl <- "https://www.clinicaltrialsregister.eu/ctr-search/search"
-  testGet <- function() try(httr::GET(testUrl, httr::timeout(5L)), silent = TRUE)
+  testGet <- function() try(httr::HEAD(testUrl, httr::timeout(10L)), silent = TRUE)
   testOnce <- testGet()
 
   if (inherits(testOnce, "try-error") &&
@@ -40,6 +40,9 @@ tf <- function() {
   if (inherits(testOnce, "try-error") ||
       httr::status_code(testOnce) != 200L
   ) return(exit_file("Reason: EUCTR not working"))
+
+  # clean up
+  rm(testUrl, testGet, testOnce)
 
   # do tests
   source("ctrdata_euctr.R", local = TRUE)

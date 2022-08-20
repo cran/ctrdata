@@ -373,19 +373,21 @@ ctrDb <- function(
 #' @return Always \code{TRUE}, invisibly.
 #'
 #' @examples
-#' \dontrun{
 #'
 #' # Check copyrights before using registers
 #' ctrOpenSearchPagesInBrowser(copyright = TRUE)
 #'
-#' # open last query loaded into the collection
+#' # open all queries loaded into demo collection
 #' dbc <- nodbi::src_sqlite(
-#'   collection = "previously_created"
-#' )
-#' ctrOpenSearchPagesInBrowser(
-#'   dbQueryHistory(con = dbc))
+#'    dbname = system.file("extdata", "demo.sqlite", package = "ctrdata"),
+#'    collection = "my_trials")
 #'
+#' dbh <- dbQueryHistory(con = dbc)
+#'
+#' for (r in seq_len(nrow(dbh))) {
+#'   ctrOpenSearchPagesInBrowser(dbh[r, ])
 #' }
+#'
 ctrOpenSearchPagesInBrowser <- function(
   url = "",
   register = "",
@@ -401,6 +403,11 @@ ctrOpenSearchPagesInBrowser <- function(
             call. = FALSE)
   }
 
+  ## in case a browser is not available
+  ctrOpenUrl <- function(u) {
+    try(utils::browseURL(u), silent = TRUE)
+  }
+
   ## check combination of arguments to select action
 
   # - open all registers if no parameter is specified
@@ -409,7 +416,7 @@ ctrOpenSearchPagesInBrowser <- function(
       c("https://www.clinicaltrialsregister.eu/ctr-search/search",
         "https://clinicaltrials.gov/ct2/search/advanced",
         "https://www.isrctn.com/editAdvancedSearch"),
-      function(u) utils::browseURL(u))
+      ctrOpenUrl)
   }
 
   # - open copyright or similar pages
@@ -418,7 +425,7 @@ ctrOpenSearchPagesInBrowser <- function(
       c("https://www.clinicaltrialsregister.eu/disclaimer.html",
         "https://clinicaltrials.gov/ct2/about-site/terms-conditions#Use",
         "https://www.isrctn.com/page/faqs#usingISRCTN"),
-      function(u) utils::browseURL(u))
+      ctrOpenUrl)
   }
 
   # - open from url, or query and register
@@ -444,11 +451,11 @@ ctrOpenSearchPagesInBrowser <- function(
       "EUCTR" = paste0("https://www.clinicaltrialsregister.eu/ctr-search/search?", url),
       "CTGOV" = paste0("https://clinicaltrials.gov/ct2/results?", url),
       "ISRCTN" = paste0("https://www.isrctn.com/search?", url))
-    utils::browseURL(url = url)
+    ctrOpenUrl(url)
     return(url)
   }
 
-  # return
+  # if not returned before
   invisible(NULL)
 }
 # end ctrOpenSearchPagesInBrowser
@@ -480,22 +487,20 @@ ctrOpenSearchPagesInBrowser <- function(
 #'
 #' @examples
 #'
-#' \dontrun{
-#'
-#' dbc <- nodbi::src_sqlite(collection = "my_collection")
-#'
-#' # user now copies into the clipboard the URL from
+#' # user copied into the clipboard the URL from
 #' # the address bar of the browser that shows results
 #' # from a query in one of the trial registers
-#' #
-#' # information about all trials found with this query
-#' # is now loaded into the database collection
-#' ctrLoadQueryIntoDb(
-#'   queryterm = ctrGetQueryUrl(),
-#'   con = dbc
-#' )
+#' try(ctrGetQueryUrl(), silent = TRUE)
 #'
-#' }
+#' # extract query parameters from search result URL
+#' # (URL was cut for the purpose of formatting only)
+#' ctrGetQueryUrl(
+#'   url = paste0("https://clinicaltrials.gov/ct2/results?",
+#'   "cond=&term=AREA%5BMaximumAge%5D+RANGE%5B0+days%2C+28+days%5D",
+#'   "&type=Intr&rslt=&age_v=&gndr=&intr=Drugs%2C+Investigational",
+#'   "&titles=&outc=&spons=&lead=&id=&cntry=&state=&city=&dist=",
+#'   "&locn=&phase=2&rsub=&strd_s=01%2F01%2F2015&strd_e=01%2F01%2F2016",
+#'   "&prcd_s=&prcd_e=&sfpd_s=&sfpd_e=&rfpd_s=&rfpd_e=&lupd_s=&lupd_e=&sort="))
 #'
 ctrGetQueryUrl <- function(
   url = "",
@@ -652,14 +657,12 @@ ctrGetQueryUrl <- function(
 #' @export
 #'
 #' @examples
-#'
 #' \dontrun{
 #'
 #' ctrFindActiveSubstanceSynonyms(activesubstance = "imatinib")
-#' # [1] "imatinib"  "gleevec"   "sti 571"   "glivec"    "CGP 57148" "st1571"
+#' # [1] "imatinib" "gleevec" "sti 571" "glivec" "CGP 57148" "st1571"
 #'
 #' }
-#'
 ctrFindActiveSubstanceSynonyms <- function(activesubstance = "") {
 
   # check parameters
@@ -736,13 +739,11 @@ ctrFindActiveSubstanceSynonyms <- function(activesubstance = "") {
 #'
 #' @examples
 #'
-#' \dontrun{
-#'
-#' dbc <- nodbi::src_sqlite(collection = "my_collection")
+#' dbc <- nodbi::src_sqlite(
+#'    dbname = system.file("extdata", "demo.sqlite", package = "ctrdata"),
+#'    collection = "my_trials")
 #'
 #' dbQueryHistory(con = dbc)
-#'
-#' }
 #'
 dbQueryHistory <- function(con, verbose = FALSE) {
 
@@ -846,13 +847,11 @@ dbQueryHistory <- function(con, verbose = FALSE) {
 #'
 #' @examples
 #'
-#' \dontrun{
-#'
-#' dbc <- nodbi::src_sqlite(collection = "my_collection")
+#' dbc <- nodbi::src_sqlite(
+#'    dbname = system.file("extdata", "demo.sqlite", package = "ctrdata"),
+#'    collection = "my_trials")
 #'
 #' dbFindFields(namepart = "date", con = dbc)
-#'
-#' }
 #'
 dbFindFields <- function(namepart = "",
                          con,
@@ -995,8 +994,12 @@ dbFindFields <- function(namepart = "",
 #' register into a collection. The function returns identifiers of
 #' records in the collection that were loaded from the
 #' register(s) preferred by the user. All registers are recording
-#' identifiers also from other registers, which is used by this
+#' identifiers also from other registers, which are used by this
 #' function to provide a vector of identifiers of deduplicated trials.
+#'
+#' Note that the content of records may differ between registers
+#' (and, for EUCTR, between records for different Member States).
+#' Such differences are not considered by this function.
 #'
 #' @param preferregister A vector of the order of preference for
 #' registers from which to generate unique _id's, default
@@ -1018,12 +1021,11 @@ dbFindFields <- function(namepart = "",
 #'
 #' @examples
 #'
-#' \dontrun{
-#' dbc <- nodbi::src_sqlite(collection = "my_collection")
+#' dbc <- nodbi::src_sqlite(
+#'    dbname = system.file("extdata", "demo.sqlite", package = "ctrdata"),
+#'    collection = "my_trials")
 #'
 #' dbFindIdsUniqueTrials(con = dbc)
-#'
-#' }
 #'
 dbFindIdsUniqueTrials <- function(
   preferregister = c("EUCTR", "CTGOV", "ISRCTN"),
@@ -1087,7 +1089,7 @@ dbFindIdsUniqueTrials <- function(
     verbose = FALSE))
 
   # inform user
-  message(" - Getting trial ids...", appendLF = FALSE)
+  message(" - Getting all trial identifiers...", appendLF = FALSE)
 
   # cache outdated
   if (cacheOutdated) {
@@ -1356,24 +1358,21 @@ dbFindIdsUniqueTrials <- function(
 #'
 #' @examples
 #'
-#' \dontrun{
+#' dbc <- nodbi::src_sqlite(
+#'    dbname = system.file("extdata", "demo.sqlite", package = "ctrdata"),
+#'    collection = "my_trials")
 #'
-#' dbc <- nodbi::src_sqlite(collection = "my_collection")
-#'
-#' # access fields that are nested within another field
+#' # get fields that are nested within another field
 #' # and can have multiple values with the nested field
 #' dbGetFieldsIntoDf(
-#'   "b1_sponsor.b31_and_b32_status_of_the_sponsor",
-#'   con = dbc
-#' )
+#'   fields = "b1_sponsor.b31_and_b32_status_of_the_sponsor",
+#'   con = dbc)
 #'
-#' # access fields that include a list of values which
-#' # (if they are strings) are concatenated with a slash
-#' dbGetFieldsIntoDf("keyword", con = dbc)[1,]
-#' #           _id                                   keyword
-#' # 1 NCT00129259 T1D / type 1 diabetes / juvenile diabetes
-#'
-#' }
+#' # fields that are lists of string values are
+#' # returned by concatenating values with a slash
+#' dbGetFieldsIntoDf(
+#'   fields = "keyword",
+#'   con = dbc)
 #'
 dbGetFieldsIntoDf <- function(fields = "",
                               con, verbose = FALSE,
@@ -1445,7 +1444,7 @@ dbGetFieldsIntoDf <- function(fields = "",
         message("\b\b\b\b   \b\b\b ", appendLF = FALSE)
 
         # leave try() early if no results
-        if (!nrow(dfi) || ncol(dfi) == 1L) simpleError(message = "")
+        if (!nrow(dfi) || ncol(dfi) == 1L) stop(simpleError("No data"))
 
         # remove any rows without index variable
         dfi <- dfi[!is.na(dfi[["_id"]]), , drop = FALSE]
@@ -1572,7 +1571,7 @@ dbGetFieldsIntoDf <- function(fields = "",
 
           # add a column into copy of NA template
           dfo[[c]] <- switch(
-            class(dfi[[c]]),
+            class(dfi[[c]])[1],
             "Date" = as.Date(NA),
             "numeric" = as.numeric(NA),
             "character" = as.character(NA),
@@ -1611,11 +1610,14 @@ dbGetFieldsIntoDf <- function(fields = "",
 
         # try-error occurred or no data retrieved
         if (stopifnodata) {
-          if (inherits(tmpItem, "try-error")) message(
-            "\nProcessing error: '", trimws(tmpItem[[1]]), "'\nThank you ",
-            "for reporting it at https://github.com/rfhb/ctrdata/issues\n")
-          stop("No data could be extracted for ", paste0(item, collapse = ", "),
-               ". \nUse dbGetFieldsIntoDf(stopifnodata = FALSE) to ignore error.",
+          if (inherits(tmpItem, "try-error") &&
+              !attr(tmpItem, "condition")["message"] == "No data") message(
+                "\nProcessing error: '", trimws(tmpItem[[1]]), "'\nThank you ",
+                "for reporting it at https://github.com/rfhb/ctrdata/issues")
+          message("")
+          stop("No data could be extracted for '", paste0(item, collapse = "', '"), "'.",
+               "\nUse dbGetFieldsIntoDf(..., stopifnodata = FALSE) to ignore the error.",
+               "\nUse dbFindFieldsIntoDf() to find fields that exist in the collection.",
                call. = FALSE)
         } else {
           message("* no data or extraction error *")
@@ -1682,75 +1684,77 @@ dbGetFieldsIntoDf <- function(fields = "",
 #' Get information of interest (e.g., endpoint)
 #' from long data frame of protocol- or result-related
 #' trial information as returned by \link{dfTrials2Long}.
-#' Parameters `valuename`, `wherename` and `wherevalue` are matched
-#' using Perl regular expressions and ignoring case.
+#' Parameters `valuename`, `wherename` and `wherevalue` are
+#' matched using Perl regular expressions and ignoring case.
 #'
 #' @param df A data frame (or tibble) with four columns (`_id`,
 #'  `identifier`, `name`, `value`) as returned by
 #'  \link{dfTrials2Long}
 #'
 #' @param valuename A character string for the name of the field
-#' that holds the value for the variable of interest
+#' that holds the value of the variable of interest
 #' (e.g., a summary measure such as "endPoints.*tendencyValue.value")
 #'
-#' @param wherename A character string to identify the variable
-#'  of interest (e.g., "endPoints.endPoint.title")
+#' @param wherename (optional) A character string to identify the
+#' variable of interest among those that repeatedly occur in a
+#' trial record (e.g., "endPoints.endPoint.title")
 #'
-#' @param wherevalue A character string with the value of interest
-#'  for the variable of interest (e.g., "duration of response")
+#' @param wherevalue (optional) A character string with the value of
+#' the variable identified by `wherename` (e.g., "response")
 #'
 #' @return A data frame (or tibble, if \code{dplyr} is loaded)
-#'  with columns `_id`, `identifier`,
-#'  `name`, `value` that only includes the values of interest,
-#'  where values are strings unless all value elements
+#' that includes the values of interest, with columns
+#' `_id`, `identifier`, `name`, `value` (and `where`, with the
+#'  contents of `wherevalue` found at `wherename`).
+#'  Contents of `value` are strings unless all its elements
 #'  are numbers. The `ìdentifier` is generated by function
 #'  \link{dfTrials2Long} to identify matching elements, e.g.
 #'  endpoint descriptions and measurements.
 #'
 #' @importFrom dplyr as_tibble
+#' @importFrom stringi stri_detect_regex
 #'
 #' @export
 #'
 #' @examples
-#' \dontrun{
 #'
-#' dbc <- nodbi::src_sqlite(collection = "my_collection")
+#' dbc <- nodbi::src_sqlite(
+#'    dbname = system.file("extdata", "demo.sqlite", package = "ctrdata"),
+#'    collection = "my_trials")
 #'
-#' df <- dbGetFieldsIntoDf(
-#' fields = c(
-#'   # ctgov - typical results fields
-#'   "clinical_results.baseline.analyzed_list.analyzed.count_list.count",
-#'   "clinical_results.baseline.group_list.group",
-#'   "clinical_results.baseline.analyzed_list.analyzed.units",
+#' dfwide <- dbGetFieldsIntoDf(
+#'  fields = c(
+#'   ## ctgov - typical results fields
+#'   # "clinical_results.baseline.analyzed_list.analyzed.count_list.count",
+#'   # "clinical_results.baseline.group_list.group",
+#'   # "clinical_results.baseline.analyzed_list.analyzed.units",
 #'   "clinical_results.outcome_list.outcome",
 #'   "study_design_info.allocation",
-#'   # euctr - typical results fields
-#'   "trialInformation.fullTitle",
-#'   "subjectDisposition.recruitmentDetails",
-#'   "baselineCharacteristics.baselineReportingGroups.baselineReportingGroup",
+#'   ## euctr - typical results fields
+#'   # "trialInformation.fullTitle",
+#'   # "baselineCharacteristics.baselineReportingGroups.baselineReportingGroup",
+#'   # "trialChanges.hasGlobalInterruptions",
+#'   # "subjectAnalysisSets",
+#'   # "adverseEvents.seriousAdverseEvents.seriousAdverseEvent",
 #'   "endPoints.endPoint",
-#'   "trialChanges.hasGlobalInterruptions",
-#'   "subjectAnalysisSets",
-#'   "adverseEvents.seriousAdverseEvents.seriousAdverseEvent"
-#'   ), con = dbc
-#' )
+#'   "subjectDisposition.recruitmentDetails"
+#'   ), con = dbc)
 #'
-#' # convert to long
-#' reslong <- dfTrials2Long(df = df)
+#' dflong <- dfTrials2Long(df = dfwide)
 #'
-#' # get values for endpoint of interest, e.g. 'response'
+#' ## get values for the endpoint 'response'
 #' dfName2Value(
-#'   df = reslong,
+#'   df = dflong,
 #'   valuename = paste0(
-#'     "endPoints.endPoint.*armReportingGroup.tendencyValues.tendencyValue.value|",
-#'     "clinical_results.*category.measurement_list.measurement.value|",
-#'     "clinical_results.*outcome.measure.units|endPoints.endPoint.unit"
+#'     "clinical_results.*measurement.value|",
+#'     "clinical_results.*outcome.measure.units|",
+#'     "endPoints.endPoint.*tendencyValue.value|",
+#'     "endPoints.endPoint.unit"
 #'   ),
-#'   wherename = "clinical_results.*outcome.measure.title|endPoints.endPoint.title",
-#'   wherevalue = "response"
-#' )
-#'
-#' }
+#'   wherename = paste0(
+#'     "clinical_results.*outcome.measure.title|",
+#'     "endPoints.endPoint.title"),
+#'   wherevalue = "response")
 #'
 dfName2Value <- function(df, valuename = "",
                          wherename = "", wherevalue = "") {
@@ -1788,25 +1792,43 @@ dfName2Value <- function(df, valuename = "",
     if (!length(indexRows)) stop("No rows found for 'wherename' and 'wherevalue'")
 
     # get trial ids and identifiers for where...
-    indexCases <- df[indexRows, c("_id", "identifier"), drop = FALSE]
+    indexCases <- df[indexRows, c("_id", "identifier", "value"), drop = FALSE]
+    # for merging column with wherevalue information
+    names(indexCases) <- c("_id", "identifier", "where")
 
     # get output iterate over trials
+    out <- list(nrow(indexCases))
     out <- apply(
       indexCases, 1,
       function(i) {
-        ids <- Reduce(
-          intersect, list(
-            # trial id
-            which(grepl(i[["_id"]], df[["_id"]], fixed = TRUE)),
+        ids <- intersect(
+          # trial id
+          which(i[["_id"]] == df[["_id"]]),
+          # indices of sought valuename
+          indexVnames
+        )
+        if (length(ids)) {
+          ids <- ids[
             # identifier to match starting from left and
             # do not match e.g. 22 for identifier 2
-            which(grepl(paste0("^", i[["identifier"]], "([.]|$)"),
-                        df[["identifier"]])),
-            # indices of sought valuename
-            indexVnames
-          ))
+            stringi::stri_detect_regex(
+              str = df[ids, "identifier", drop = TRUE],
+              pattern = paste0("^", i[["identifier"]], "([.]|$)")
+            )]
+        }
         # return value
-        if (length(ids)) df[ids, , drop = FALSE]
+        if (length(ids)) {
+          merge(
+            # select rows from input data frame
+            x = df[ids, , drop = FALSE],
+            # add column with wherevalue
+            y = indexCases[
+              indexCases[["_id"]] == i[["_id"]] &
+                indexCases[["identifier"]] == i[["identifier"]],
+              c("_id", "where"), drop = FALSE],
+            by = "_id"
+          )
+        }
       }
     )
 
@@ -1829,6 +1851,7 @@ dfName2Value <- function(df, valuename = "",
   # remove any duplicates such as
   # from duplicate where... criteria
   out <- unique(out)
+  row.names(out) <- NULL
 
   # inform user
   message("Returning values for ", length(unique(out[["_id"]])),
@@ -1861,26 +1884,24 @@ dfName2Value <- function(df, valuename = "",
 #' @return A data frame  (or tibble, if \code{dplyr} is loaded)
 #' with the four columns: `_id`, `identifier`, `name`, `value`
 #'
-#' @importFrom stringi stri_extract_all_charclass
-#' @importFrom stringi stri_extract_first
-#' @importFrom stringi stri_replace_first
+#' @importFrom stringi stri_extract_all_charclass stri_extract_first stri_replace_first
 #' @importFrom dplyr as_tibble
 #' @importFrom xml2 xml_text read_html
 #'
 #' @export
 #'
 #' @examples
-#' \dontrun{
 #'
-#' dbc <- nodbi::src_sqlite(collection = "my_collection")
+#' dbc <- nodbi::src_sqlite(
+#'    dbname = system.file("extdata", "demo.sqlite", package = "ctrdata"),
+#'    collection = "my_trials")
 #'
-#' df <- dbGetFieldsIntoDf(
-#'   fields = c("clinical_results"),
-#'   con = dbc
-#' )
-#' head(dfTrials2Long(df = df))
+#' dfwide <- dbGetFieldsIntoDf(
+#'   fields = "clinical_results.participant_flow",
+#'   con = dbc)
 #'
-#' }
+#' dfTrials2Long(df = dfwide)
+#'
 dfTrials2Long <- function(df) {
 
   # get names
@@ -2073,27 +2094,25 @@ dfTrials2Long <- function(df) {
 #'
 #' @examples
 #'
-#' \dontrun{
-#'
-#' dbc <- nodbi::src_sqlite(collection = "my_collection")
+#' dbc <- nodbi::src_sqlite(
+#'    dbname = system.file("extdata", "demo.sqlite", package = "ctrdata"),
+#'    collection = "my_trials")
 #'
 #' df <- dbGetFieldsIntoDf(
 #'   fields = c(
 #'     "endPoints.endPoint",
 #'     "subjectDisposition.postAssignmentPeriods"),
-#'   con = dbc
-#' )
+#'   con = dbc)
 #'
-#' dfListExtractKey(
-#'   df = df,
-#'   list.key = list(
-#'       c("endPoints.endPoint",
-#'         "^title"),
-#'       c("subjectDisposition.postAssignmentPeriods",
-#'         "arms.arm.type.value")
+#' suppressWarnings(
+#'   dfListExtractKey(
+#'     df = df,
+#'     list.key = list(
+#'         c("endPoints.endPoint",
+#'           "^title"),
+#'         c("subjectDisposition.postAssignmentPeriods",
+#'           "arms.arm.type.value"))
 #' ))
-#'
-#' }
 #'
 dfListExtractKey <- function(
   df,
@@ -2205,7 +2224,15 @@ dfListExtractKey <- function(
 #'
 #' @examples
 #'
-#' \dontrun{
+#' vars2merge <- c("overall_status", "x5_trial_status")
+#'
+#' dbc <- nodbi::src_sqlite(
+#'    dbname = system.file("extdata", "demo.sqlite", package = "ctrdata"),
+#'    collection = "my_trials")
+#'
+#' df <- dbGetFieldsIntoDf(
+#'   fields = vars2merge,
+#'   con = dbc)
 #'
 #' statusvalues <- list(
 #'   "ongoing" = c("Recruiting", "Active", "Ongoing",
@@ -2216,10 +2243,8 @@ dfListExtractKey <- function(
 #'
 #' dfMergeTwoVariablesRelevel(
 #'   df = df,
-#'   colnames = c("overall_status", "x5_trial_status"),
+#'   colnames = vars2merge,
 #'   levelslist = statusvalues)
-#'
-#' }
 #'
 dfMergeTwoVariablesRelevel <- function(
   df = NULL,
@@ -2369,7 +2394,7 @@ dfFindUniqueEuctrRecord <- function(
   include3rdcountrytrials = TRUE) {
 
   # check parameters
-  if (!all(class(df) %in% "data.frame")) {
+  if (!any(class(df) %in% "data.frame")) {
     stop("Parameter df is not a data frame.", call. = FALSE)
   }
   #
@@ -2672,13 +2697,12 @@ addMetaData <- function(x, con) {
 #'   Set to `""` to not specify or to unset a proxy.
 #'
 #' @examples
-#'
 #' \dontrun{
 #'
-#' installCygwinWindowsDoInstall()
+#'
+#' try(installCygwinWindowsDoInstall(), silent = TRUE)
 #'
 #' }
-#'
 installCygwinWindowsDoInstall <- function(
   force = FALSE, proxy = Sys.getenv("https_proxy")) {
 
