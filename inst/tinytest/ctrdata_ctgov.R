@@ -1,5 +1,8 @@
 ## RH 2019-09-28
 
+# set server
+httr::set_config(httr::timeout(seconds = 60))
+
 #### ctrLoadQueryIntoDb ####
 
 # test
@@ -59,6 +62,7 @@ expect_message(
       register = "CTGOV",
       con = dbc)),
   "Imported or updated 1 trial")
+
 
 # test
 expect_error(

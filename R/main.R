@@ -227,10 +227,14 @@ ctrLoadQueryIntoDb <- function(
     stop("'annotation.mode' incorrect", call. = FALSE)
   }
 
-  # initialise variable that is filled if an update is to be made
-  queryupdateterm <- ""
+  # set user agent for httr and curl to inform registers
+  httr::set_config(httr::user_agent(
+    paste0("ctrdata/", utils::packageDescription("ctrdata")$Version)))
 
   ## handle if we need to rerun previous query
+
+  # initialise variable that is filled if an update is to be made
+  queryupdateterm <- ""
 
   # rewrite parameters for running as update
   querytermoriginal <- queryterm
@@ -254,10 +258,6 @@ ctrLoadQueryIntoDb <- function(
     if (failed) return(invisible(emptyReturn))
     #
   } # if querytermtoupdate
-
-  # set user agent for httr and curl to inform registers
-  httr::set_config(httr::user_agent(
-    paste0("ctrdata/", utils::packageDescription("ctrdata")$Version)))
 
   ## system check
   if (!only.count) {
@@ -328,12 +328,18 @@ ctrLoadQueryIntoDb <- function(
     return(imported)
   }
 
-  # return some useful information or break
-  if (!exists("imported") ||
-      (imported$n == 0)) {
-    message("Function did not result in any trial information imports")
-    return(invisible(emptyReturn))
+  # add query parameters to database
+  if (imported$n > 0L || !is.null(querytoupdate)) {
+    dbCTRUpdateQueryHistory(register = register,
+                            queryterm = querytermoriginal,
+                            recordnumber = imported$n,
+                            con = con,
+                            verbose = verbose)
   }
+
+  # return some useful information or break
+  if (imported$n == 0L) message(
+    "Function did not result in any trial information imports")
 
   # inform user
   if (verbose) {
@@ -343,13 +349,6 @@ ctrLoadQueryIntoDb <- function(
             "\n'register'=", register,
             "\n'collection'=", con$collection)
   }
-
-  # add query parameters to database
-  dbCTRUpdateQueryHistory(register = register,
-                          queryterm = querytermoriginal,
-                          recordnumber = imported$n,
-                          con = con,
-                          verbose = verbose)
 
   # add metadata
   imported <- addMetaData(x = imported, con = con)
@@ -549,6 +548,14 @@ ctrRerunQuery <- function(
           # inform user
           message("First result page empty - no (new) trials found?")
           failed <- TRUE
+          # only for EUCTR, update history here because not for EUCTR but
+          # only for other registers, ctrLoadQueryIntoDb needs to be run
+          # to determine the number of new trial records
+          dbCTRUpdateQueryHistory(register = register,
+                                  queryterm = queryterm,
+                                  recordnumber = 0L,
+                                  con = con,
+                                  verbose = verbose)
           #
         } else {
           # new trials found, construct
@@ -1027,7 +1034,7 @@ dbCTRUpdateQueryHistory <- function(
 #' @noRd
 #'
 #' @importFrom jsonlite toJSON
-#' @importFrom httr content headers progress write_disk GET HEAD status_code
+#' @importFrom httr content progress write_disk GET status_code config
 #' @importFrom nodbi docdb_query
 #'
 ctrLoadQueryIntoDbCtgov <- function(
@@ -1064,7 +1071,8 @@ ctrLoadQueryIntoDbCtgov <- function(
     queryUSRoot, queryUSType2, "&", queryterm, queryupdateterm)
   #
   tmp <- try(httr::GET(
-    url = utils::URLencode(ctgovdfirstpageurl)),
+    url = utils::URLencode(ctgovdfirstpageurl),
+    httr::config(forbid_reuse = 1)),
     silent = TRUE)
   #
   if (inherits(tmp, "try-error") ||
@@ -1074,10 +1082,7 @@ ctrLoadQueryIntoDbCtgov <- function(
   }
   #
   tmp <- httr::content(tmp, as = "text")
-  tmp <- gsub("\n|\t|\r", " ", tmp)
-  tmp <- gsub("<.*?>", " ", tmp)
-  tmp <- gsub("  +", " ", tmp)
-  tmp <- sub(".* (.*?) Stud(y|ies) found for.*", "\\1", tmp)
+  tmp <- sub(".*[> ](.*?) Stud(y|ies) found for: .*", "\\1", tmp)
   tmp <- sub("^No$", "0", tmp)
 
   # safeguard against no or unintended large numbers
@@ -1102,9 +1107,9 @@ ctrLoadQueryIntoDbCtgov <- function(
   }
 
   # exit if too many records
-  if (as.integer(tmp) > 10000L) {
+  if (tmp > 10000L) {
     stop("These are ", tmp, " (more than 10,000) trials, this may be ",
-         "unintended. Downloading more than 10,000 trials is not supported ",
+         "unintended. Downloading more than 10,000 trials may not be supported ",
          "by the register; consider correcting or splitting queries")
   }
 
@@ -1125,8 +1130,8 @@ ctrLoadQueryIntoDbCtgov <- function(
   tmp <- try(httr::GET(
     url = utils::URLencode(ctgovdownloadcsvurl),
     httr::progress(),
-    httr::write_disk(path = f,
-                     overwrite = TRUE)),
+    httr::write_disk(path = f, overwrite = TRUE),
+    httr::config(forbid_reuse = 1)),
     silent = TRUE)
 
   # inform user, exit gracefully
@@ -1173,8 +1178,10 @@ ctrLoadQueryIntoDbCtgov <- function(
 #' @keywords internal
 #' @noRd
 #'
-#' @importFrom httr content headers progress write_disk GET HEAD status_code
-#' @importFrom curl curl_fetch_multi multi_run new_pool
+#' @importFrom httr content GET status_code config
+#' @importFrom curl new_handle handle_data handle_setopt parse_headers new_pool
+#' @importFrom curl curl_fetch_multi multi_run curl_fetch_memory multi_fdset
+#' @importFrom curl multi_run multi_add
 #' @importFrom nodbi docdb_query docdb_update
 #'
 ctrLoadQueryIntoDbEuctr <- function(
@@ -1214,7 +1221,9 @@ ctrLoadQueryIntoDbEuctr <- function(
   q <- utils::URLencode(paste0(queryEuRoot, queryEuType1, queryterm))
   if (verbose) message("DEBUG: queryterm is ", q)
   #
-  resultsEuPages <- try(httr::GET(url = q), silent = TRUE)
+  resultsEuPages <- try(
+    httr::GET(url = q),
+    silent = TRUE)
   #
   if (inherits(resultsEuPages, "try-error") ||
       httr::status_code(resultsEuPages) != 200L) {
@@ -1281,6 +1290,9 @@ ctrLoadQueryIntoDbEuctr <- function(
     stop("These are ", resultsEuNumTrials, " (more than 10,000) trials; ",
          "consider correcting or splitting into separate queries")
   }
+
+  # close connections after running
+  on.exit(try(rm(h, pool), silent = TRUE), add = TRUE)
 
   # create empty temporary directory on localhost for
   # download from register into temporary directory
@@ -1720,8 +1732,8 @@ ctrLoadQueryIntoDbEuctr <- function(
       pc <- 0L
       curlSuccess <- function(res) {
         pc <<- pc + 1L
-        # incomplete data received 206L
-        if (res$status_code == 206L) {
+        # incomplete data is 206L but some results pages are complete
+        if (any(res$status_code == c(200L, 206L))) {
           retdat <<- c(retdat, list(extractResultsInformation(res)))
           message("\r", pc, " downloaded", appendLF = FALSE)
         }}
@@ -1751,7 +1763,7 @@ ctrLoadQueryIntoDbEuctr <- function(
         pool = pool), silent = TRUE)
 
       # check plausibility
-      if (inherits(tmp, "try-error")) {
+      if (inherits(tmp, "try-error") || !length(retdat)) {
         message("Download from EUCTR failed; last error: ", class(tmp))
         return(invisible(emptyReturn))
       }
@@ -1839,7 +1851,7 @@ ctrLoadQueryIntoDbEuctr <- function(
 #' @noRd
 #'
 #' @importFrom jsonlite toJSON
-#' @importFrom httr content headers progress write_disk GET HEAD status_code
+#' @importFrom httr progress write_disk GET config
 #' @importFrom nodbi docdb_query
 #' @importFrom utils URLdecode
 #'
@@ -1957,9 +1969,9 @@ ctrLoadQueryIntoDbIsrctn <- function(
   }
 
   # exit if too many records
-  if (as.integer(tmp) > 10000L) {
+  if (tmp > 10000L) {
     stop("These are ", tmp, " (more than 10,000) trials, this may be ",
-         "unintended. Downloading more than 10,000 trials is not supported ",
+         "unintended. Downloading more than 10,000 trials may not be supported ",
          "by the register; consider correcting or splitting queries")
   }
 
@@ -1984,8 +1996,8 @@ ctrLoadQueryIntoDbIsrctn <- function(
   tmp <- try(httr::GET(
     url = utils::URLencode(isrctndownloadurl),
     httr::progress(),
-    httr::write_disk(path = f,
-                     overwrite = TRUE)),
+    httr::write_disk(path = f, overwrite = TRUE),
+    httr::config(forbid_reuse = 1)),
     silent = TRUE)
 
   # check plausibility

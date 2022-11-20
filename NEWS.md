@@ -1,3 +1,14 @@
+# ctrdata 1.11.1 (2022-11-20)
+ - cater for very short EUCTR results-related information
+ - show warning as beta CTGOV website is not supported
+ - limit unit testing to MongoDB and SQLite
+ - return error for ctrGetQueryUrl() if no query URL
+ - prevent re-using connections to reduce http/2 layer errors
+ - update query history when querytoupdate was used but no new records found
+ - make ctrLoadQueryIntoDb() to always return visible result
+ - correct dfTrials2Long() identifier (EUCTR no more top "1" across fields)
+ - correct non-ASCII characters
+ 
 # ctrdata 1.11.0 (2022-11-02)
  - now works with DuckDB (>= v0.6.0) as database backend, using nodbi (>= v0.9.0)
  - reduced default number of parallel connections to EUCTR from 10 to 4
@@ -56,7 +67,7 @@
  - thorough documentation improvement
  - simplified dbFindFields
  - cleaned up testing binaries
- - cleaned up heper scripts
+ - cleaned up helper scripts
  - removed ctrGetQueryUrlFromBrowser(), long deprecated
  
 # ctrdata 1.8.0.9000 (2021-11-22)

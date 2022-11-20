@@ -185,7 +185,7 @@ expect_message(
       queryterm = q,
       euctrresults = TRUE,
       euctrresultshistory = TRUE,
-      euctrresultspdfpath = tempdir(),
+      euctrresultsfilespath = tempdir(),
       con = dbc)),
   "Imported or updated results for 3")
 rm(q)
@@ -633,7 +633,7 @@ result <- suppressMessages(
 
 # test
 expect_true(
-  length(names(result)) > 400L)
+  length(names(result)) > 390L)
 
 
 # determine all classes
