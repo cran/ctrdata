@@ -20,11 +20,13 @@
 #' \code{register}, a string with query elements of a search URL.
 #' The queryterm is recorded in the \code{collection} for later
 #' use to update records.
+#' If register = "CTIS": The queryterm should be an empty string
+#' to obtain all trial records, all other queryterms are ignored
+#' at the moment .
 #'
 #' @param register String with abbreviation of register to query,
-#' either "EUCTR", "CTGOV" or "ISRCTN". Not needed
-#' if \code{queryterm} provide the information which register to
-#' query (see \code{queryterm}).
+#' either "EUCTR", "CTGOV", "ISRCTN" or "CTIS". Not needed
+#' if \code{queryterm} provides a query's full URL.
 #'
 #' @param querytoupdate Either the word "last" or the number of the
 #' query (based on \link{dbQueryHistory}) that should be run to
@@ -57,14 +59,18 @@
 #'
 #' @param annotation.text Text to be including in the records
 #' retrieved with the current query, in the field "annotation".
+#' The contents of the field "annotation" for a trial record
+#' can be preserved e.g. when running this function again and
+#' loading a record of the annotated trial again, see parameter
+#' \code{annotation.mode}.
 #'
 #' @param annotation.mode One of "append" (default), "prepend"
 #' or "replace" for new annotation.text with respect to any
 #' existing annotation for the records retrieved with the
 #' current query.
 #'
-#' @param parallelretrievals Number of parallel downloads of
-#' information from the register, defaults to 4
+#' @param parallelretrievals Deprecated, ignored since
+#' version 1.11.1.9000
 #'
 #' @param only.count Set to \code{TRUE} to return only the
 #' number of trial records found in the register for the query.
@@ -117,6 +123,13 @@
 #'   con = dbc
 #' )
 #'
+#' # Retrieve information on all trials in CTIS
+#' ctrLoadQueryIntoDb(
+#'   queryterm = "",
+#'   register = "CTIS",
+#'   con = dbc
+#' )
+#'
 #' }
 #'
 #' @export
@@ -132,7 +145,7 @@ ctrLoadQueryIntoDb <- function(
   euctrresultspdfpath = NULL,
   annotation.text = "",
   annotation.mode = "append",
-  parallelretrievals = 4L,
+  parallelretrievals = NULL,
   only.count = FALSE,
   con = NULL,
   verbose = FALSE) {
@@ -142,12 +155,15 @@ ctrLoadQueryIntoDb <- function(
   # - deprecated
   if (!is.null(euctrresultspdfpath)) {
     warning("Parameter 'euctrresultspdfpath' is deprecated, ",
-            "use euctrresultsfilespath.", call. = FALSE)
+            "use euctrresultsfilespath", call. = FALSE)
+  }
+  if (!missing("parallelretrievals")) {
+    warning("Parameter 'parallelretrievals' is deprecated and ignored")
   }
 
   # - minimum information
-  if (is.null(queryterm) && is.null(querytoupdate)) {
-    stop("neither 'queryterm' nor 'querytoupdate' specified.")
+  if (is.null(queryterm) && is.null(querytoupdate) && register != "CTIS") {
+    stop("neither 'queryterm' nor 'querytoupdate' nor 'register = \"CTIS\"' specified")
   }
 
   # - parameters consistent
@@ -263,14 +279,16 @@ ctrLoadQueryIntoDb <- function(
   if (!only.count) {
 
     # check binaries
-    message("Checking helper binaries: ", appendLF = FALSE)
-    suppressMessages(installCygwinWindowsTest())
-    if (register != "EUCTR") testBinaries <- c("php", "phpxml", "phpjson")
-    if (register == "EUCTR") testBinaries <- c("sed", "perl")
-    if (euctrresults) testBinaries <- c("sed", "perl", "php", "phpxml", "phpjson")
-    if (!checkBinary(b = testBinaries)) stop(
-      "ctrLoadQueryIntoDb() cannot continue. ", call. = FALSE)
-    message("done")
+    if (register != "CTIS") {
+      message("Checking helper binaries: ", appendLF = FALSE)
+      suppressMessages(installCygwinWindowsTest())
+      if (register == "ISRCTN" || register == "CTGOV") testBinaries <- c("php", "phpxml", "phpjson")
+      if (register == "EUCTR") testBinaries <- c("sed", "perl")
+      if (euctrresults) testBinaries <- c("sed", "perl", "php", "phpxml", "phpjson")
+      if (!checkBinary(b = testBinaries)) stop(
+        "ctrLoadQueryIntoDb() cannot continue", call. = FALSE)
+      message("done")
+    }
 
     # check database connection
     con <- ctrDb(con = con)
@@ -287,7 +305,6 @@ ctrLoadQueryIntoDb <- function(
                  euctrresultsfilespath = euctrresultsfilespath,
                  annotation.text = annotation.text,
                  annotation.mode = annotation.mode,
-                 parallelretrievals = parallelretrievals,
                  only.count = only.count,
                  con = con, verbose = verbose,
                  queryupdateterm = queryupdateterm)
@@ -297,7 +314,8 @@ ctrLoadQueryIntoDb <- function(
     as.character(register),
     "CTGOV" = do.call(ctrLoadQueryIntoDbCtgov, params),
     "EUCTR" = do.call(ctrLoadQueryIntoDbEuctr, params),
-    "ISRCTN" = do.call(ctrLoadQueryIntoDbIsrctn, params)
+    "ISRCTN" = do.call(ctrLoadQueryIntoDbIsrctn, params),
+    "CTIS" = do.call(ctrLoadQueryIntoDbCtis, params)
   )
 
   # add annotations
@@ -339,7 +357,7 @@ ctrLoadQueryIntoDb <- function(
 
   # return some useful information or break
   if (imported$n == 0L) message(
-    "Function did not result in any trial information imports")
+    "Function did not result in any trial records having been imported")
 
   # inform user
   if (verbose) {
@@ -531,8 +549,8 @@ ctrRerunQuery <- function(
 
         # check plausibility
         if (inherits(resultsRss, "try-error")) {
-          message("Download from EUCTR failed; last error: ", class(resultsRss))
-          failed <- TRUE
+          stop("Download from EUCTR failed; last error: ",
+               class(resultsRss), call. = FALSE)
         }
 
         # inform user
@@ -547,15 +565,20 @@ ctrRerunQuery <- function(
             resultsRssTrials == -1L) {
           # inform user
           message("First result page empty - no (new) trials found?")
+          # only for EUCTR, update history here because
+          # for EUCTR the query to be used with function
+          # ctrLoadQueryIntoDb cannot be specified to only
+          # query for updated trials;
+          # unless technical failure of retrieval
+          if (!failed) dbCTRUpdateQueryHistory(
+            register = register,
+            queryterm = queryterm,
+            recordnumber = 0L,
+            con = con,
+            verbose = verbose)
+          #
+          # set indicator
           failed <- TRUE
-          # only for EUCTR, update history here because not for EUCTR but
-          # only for other registers, ctrLoadQueryIntoDb needs to be run
-          # to determine the number of new trial records
-          dbCTRUpdateQueryHistory(register = register,
-                                  queryterm = queryterm,
-                                  recordnumber = 0L,
-                                  con = con,
-                                  verbose = verbose)
           #
         } else {
           # new trials found, construct
@@ -701,7 +724,7 @@ ctrConvertToJSON <- function(tempDir, scriptName, verbose) {
   } # if windows
 
   # run conversion of download to json
-  message("\n(2/3) Converting to JSON...", appendLF = FALSE)
+  message("(2/3) Converting to JSON...", appendLF = FALSE)
   imported <- system(script2Json, intern = TRUE)
   message("\b\b\b, ", imported, " records converted")
   if (verbose) message("DEBUG: ", script2Json)
@@ -739,6 +762,9 @@ dbCTRLoadJSONFiles <- function(dir, con, verbose) {
   tempFiles <- dir(path = dir,
                    pattern = ".+_trials_.*.ndjson",
                    full.names = TRUE)
+
+  # check
+  if (!length(tempFiles)) stop("no .+_trials_.*.ndjson files found in ", dir)
 
   # initialise counters
   fc <- length(tempFiles)
@@ -1034,8 +1060,9 @@ dbCTRUpdateQueryHistory <- function(
 #' @noRd
 #'
 #' @importFrom jsonlite toJSON
-#' @importFrom httr content progress write_disk GET status_code config
+#' @importFrom httr content GET status_code config
 #' @importFrom nodbi docdb_query
+#' @importFrom curl multi_download
 #'
 ctrLoadQueryIntoDbCtgov <- function(
   queryterm = queryterm,
@@ -1045,7 +1072,6 @@ ctrLoadQueryIntoDbCtgov <- function(
   euctrresultsfilespath,
   annotation.text,
   annotation.mode,
-  parallelretrievals,
   only.count,
   con,
   verbose,
@@ -1074,6 +1100,8 @@ ctrLoadQueryIntoDbCtgov <- function(
     url = utils::URLencode(ctgovdfirstpageurl),
     httr::config(forbid_reuse = 1)),
     silent = TRUE)
+  # save request options
+  requestOptions <- tmp$request$options
   #
   if (inherits(tmp, "try-error") ||
       !any(httr::status_code(tmp) == c(200L, 404L))) {
@@ -1127,19 +1155,21 @@ ctrLoadQueryIntoDbCtgov <- function(
   message("Downloading trials ", appendLF = FALSE)
 
   # get (download) trials in single zip file f
-  tmp <- try(httr::GET(
-    url = utils::URLencode(ctgovdownloadcsvurl),
-    httr::progress(),
-    httr::write_disk(path = f, overwrite = TRUE),
-    httr::config(forbid_reuse = 1)),
-    silent = TRUE)
+  tmp <- do.call(
+    curl::multi_download,
+    c(urls = list(utils::URLencode(ctgovdownloadcsvurl)),
+      destfiles = list(f),
+      progress = TRUE,
+      timeout = Inf,
+      requestOptions
+    )
+  )
 
   # inform user, exit gracefully
   if (inherits(tmp, "try-error") ||
-      !any(httr::status_code(tmp) == c(200L))) {
-    message("Host ", queryUSRoot, " not working as expected, ",
-            "cannot continue: ", tmp[[1]])
-    return(invisible(emptyReturn))
+      !any((tmp[["status_code"]]) == c(200L))) {
+    stop("Host ", queryUSRoot, " not working as expected, ",
+         "cannot continue ", call. = FALSE)
   }
 
   # inform user
@@ -1181,7 +1211,7 @@ ctrLoadQueryIntoDbCtgov <- function(
 #' @importFrom httr content GET status_code config
 #' @importFrom curl new_handle handle_data handle_setopt parse_headers new_pool
 #' @importFrom curl curl_fetch_multi multi_run curl_fetch_memory multi_fdset
-#' @importFrom curl multi_run multi_add
+#' @importFrom curl multi_run multi_add multi_download
 #' @importFrom nodbi docdb_query docdb_update
 #'
 ctrLoadQueryIntoDbEuctr <- function(
@@ -1192,7 +1222,6 @@ ctrLoadQueryIntoDbEuctr <- function(
   euctrresultsfilespath,
   annotation.text,
   annotation.mode,
-  parallelretrievals,
   only.count,
   con, verbose,
   queryupdateterm) {
@@ -1233,9 +1262,8 @@ ctrLoadQueryIntoDbEuctr <- function(
            "https://github.com/rfhb/ctrdata/issues/19#issuecomment-820127139",
            call. = FALSE)
     } else {
-      message("Host ", queryEuRoot, " not working as expected, ",
-              "cannot continue: ", resultsEuPages[[1]])
-      return(invisible(emptyReturn))
+      stop("Host ", queryEuRoot, " not working as expected, ",
+           "cannot continue: ", resultsEuPages[[1]], call. = FALSE)
     }
   }
   # - store options from request
@@ -1274,7 +1302,8 @@ ctrLoadQueryIntoDbEuctr <- function(
   # inform user
   message("Retrieved overview, multiple records of ",
           resultsEuNumTrials, " trial(s) from ",
-          resultsEuNumPages, " page(s) to be downloaded")
+          resultsEuNumPages, " page(s) to be downloaded ",
+          "(estimate: ", format(resultsEuNumTrials * 0.05, digits = 2), " MB)")
 
   # only count?
   if (only.count) {
@@ -1290,9 +1319,6 @@ ctrLoadQueryIntoDbEuctr <- function(
     stop("These are ", resultsEuNumTrials, " (more than 10,000) trials; ",
          "consider correcting or splitting into separate queries")
   }
-
-  # close connections after running
-  on.exit(try(rm(h, pool), silent = TRUE), add = TRUE)
 
   # create empty temporary directory on localhost for
   # download from register into temporary directory
@@ -1325,31 +1351,21 @@ ctrLoadQueryIntoDbEuctr <- function(
   ## download all text files from pages
 
   # inform user
-  message("Downloading trials (",
-          min(parallelretrievals, resultsEuNumPages),
-          " pages in parallel)...")
+  message("Downloading trials...")
 
-  # prepare download and saving
-
-  # prepare curl operations
-  #
-  # - make handle work with cookies
-  cf <- tempfile(
-    pattern = "cookies_",
-    fileext = ".txt")
-  # - new handle
-  h <- curl::new_handle(
-    useragent = "",
-    accept_encoding = "gzip,deflate,zstd,br",
-    cookiejar = cf,
-    cookiefile = cf)
-  # - add any user options specified for httr
-  curl::handle_setopt(h, .list = requestOptions)
-  # - do fetch
+  # new handle
+  h <- do.call(
+    curl::new_handle,
+    c(accept_encoding = "gzip,deflate,zstd,br",
+      requestOptions)
+  )
+  # test fetch
   tmp <- curl::curl_fetch_memory(
-    url = paste0(queryEuRoot, queryEuType3,
-                 "query=2008-003606-33", "&page=1", queryEuPost),
-    handle = h)
+    url = paste0(
+      queryEuRoot, queryEuType3,
+      "query=2008-003606-33", "&page=1", queryEuPost),
+    handle = h
+  )
   # inform user about capabilities
   stime <- curl::handle_data(h)[["times"]][["total"]]
   sgzip <- curl::parse_headers(tmp$headers)
@@ -1360,12 +1376,6 @@ ctrLoadQueryIntoDbEuctr <- function(
             "transfer takes longer, about ", signif(stime, digits = 1),
             "s per trial")
   }
-
-  # create pool for concurrent connections
-  pool <- curl::new_pool(
-    total_con = parallelretrievals,
-    host_con = parallelretrievals,
-    multiplex = TRUE)
 
   # generate vector with URLs of all pages
   urls <- vapply(
@@ -1385,53 +1395,24 @@ ctrLoadQueryIntoDbEuctr <- function(
     fileext = ".txt"
   )
 
-  # success handling: saving to file
-  # and progress indicator function
-  pc <- 0L
-  curlSuccess <- function(res) {
-    pc <<- pc + 1L
-    # note that the number in euctr_trials_nnn
-    # is not expected to correspond to the page
-    # number in the URL that was downloaded
-    # save to file
-    if (res$status_code == 200L) {
-      writeLines(text = rawToChar(res$content), con = fp[pc], useBytes = TRUE)
-    }
-    # inform user
-    message("Pages: ", pc, " done, ",
-            length(curl::multi_fdset(pool = pool)[["reads"]]), " ongoing   ",
-            "\r", appendLF = FALSE)
-  }
-
-  # add randomised URLs and file names into pool
-  tmp <- lapply(
-    sample(seq_along(urls),
-           size = length(urls),
-           replace = FALSE,
-           prob = NULL),
-    function(u) {
-      h <- curl::new_handle()
-      curl::handle_setopt(h, .list = requestOptions)
-      curl::curl_fetch_multi(
-        url = urls[u],
-        done = curlSuccess,
-        pool = pool,
-        handle = h)
-    })
-
-  # inform user on first page
-  message("Pages: 0 done...\r", appendLF = FALSE)
-
   # do download and saving
-  tmp <- try(curl::multi_run(
-    pool = pool), silent = TRUE)
+  tmp <- do.call(
+    curl::multi_download,
+    c(urls = list(urls),
+      destfiles = list(fp),
+      resume = TRUE,
+      progress = TRUE,
+      timeout = Inf,
+      requestOptions,
+      accept_encoding = "gzip,deflate,zstd,br"
+    )
+  )
 
   # check plausibility
   if (inherits(tmp, "try-error")) {
-    message("Download from EUCTR failed; last error: ", class(tmp))
-    return(invisible(emptyReturn))
+    stop("Download from EUCTR failed; last error: ", class(tmp), call. = FALSE)
   }
-  if (tmp[["success"]] != resultsEuNumPages) {
+  if (nrow(tmp) != resultsEuNumPages) {
     message("Download from EUCTR failed; incorrect number of records")
     return(invisible(emptyReturn))
   }
@@ -1439,7 +1420,7 @@ ctrLoadQueryIntoDbEuctr <- function(
   ## run conversion
   ctrConvertToJSON(tempDir, "euctr2ndjson.sh", verbose)
 
-  # run import into mongo from json files
+  # run import into database from json files
   message("(3/3) Importing JSON records into database...")
   if (verbose) message("DEBUG: ", tempDir)
   imported <- dbCTRLoadJSONFiles(dir = tempDir,
@@ -1482,21 +1463,18 @@ ctrLoadQueryIntoDbEuctr <- function(
     # latest version: "2007-000371-42"
 
     # inform user
-    message("(1/4) Downloading results (max. ",
-            parallelretrievals,
-            " trials in parallel):")
+    message("(1/4) Downloading and extracting results ",
+            "(. = data, F = file[s] and data, x = none):")
 
     # prepare download and save
-    pool <- curl::new_pool(
-      total_con = parallelretrievals,
-      host_con = parallelretrievals,
-      multiplex = TRUE)
-    #
+
+    # urls
     urls <- vapply(
       paste0(queryEuRoot, queryEuType4,
              eudractnumbersimported),
       utils::URLencode, character(1L), USE.NAMES = FALSE)
-    #
+
+    # destfiles
     fp <- tempfile(
       pattern = paste0(
         "euctr_results_",
@@ -1507,46 +1485,28 @@ ctrLoadQueryIntoDbEuctr <- function(
       tmpdir = tempDir,
       fileext = ".zip"
     )
-    #
-    # success handling: saving to file
-    # and progress indicator function
-    pc <- 0L
-    curlSuccess <- function(res) {
-      pc <<- pc + 1L
-      # save to file
-      if (res$status_code == 200L) {
-        writeBin(object = res$content, con = fp[pc])
-        message("\r", pc, " downloaded or checked", appendLF = FALSE)
-      }}
-    #
-    tmp <- lapply(
-      seq_along(urls),
-      function(i) {
-        h <- curl::new_handle()
-        curl::handle_setopt(h, .list = requestOptions)
-        curl::curl_fetch_multi(
-          url = urls[i],
-          done = curlSuccess,
-          pool = pool,
-          handle = h)
-      })
 
     # do download and save
-    tmp <- try(curl::multi_run(
-      pool = pool), silent = TRUE)
+    tmp <- do.call(
+      curl::multi_download,
+      c(urls = list(urls),
+        destfiles = list(fp),
+        resume = TRUE,
+        progress = TRUE,
+        timeout = Inf,
+        requestOptions,
+        accept_encoding = "gzip,deflate,zstd,br"
+      )
+    )
 
     # check plausibility
     if (inherits(tmp, "try-error")) {
-      message("Download from EUCTR failed; last error: ", class(tmp))
-      return(invisible(emptyReturn))
+      stop("Download from EUCTR failed; last error: ", class(tmp), call. = FALSE)
     }
 
-    # new line
-    message(", extracting: ", appendLF = FALSE)
-
-    # unzip downloaded file and rename any PDF files
+    # unzip downloaded files and move non-XML extracted files
     tmp <- lapply(
-      fp, function(f) { # fp was returned by download above
+      fp, function(f) {
 
         if (file.exists(f) &&
             file.size(f) != 0L) {
@@ -1560,6 +1520,7 @@ ctrLoadQueryIntoDbEuctr <- function(
           euctrnr <- gsub(paste0(".*(", regEuctr, ").*"),
                           "\\1", tmp[grepl("Results[.]xml$", tmp)])[1]
 
+          # any non-XML file
           if (length(nonXmlFiles)) {
             message("F ", appendLF = FALSE)
             if (euctrresultsfilespath != tempDir) {
@@ -1575,10 +1536,12 @@ ctrLoadQueryIntoDbEuctr <- function(
                         call. = FALSE, immediate. = TRUE)
               }
             } # if paths
-          } # if any pdf
+          } else {
+            # only XML data file
+            if (any(grepl("Results[.]xml$", tmp)))
+              message(". ", appendLF = FALSE)
+          }
 
-          # inform user
-          message(". ", appendLF = FALSE)
         } else {
           # unsuccessful
           message("x ", appendLF = FALSE)
@@ -1588,6 +1551,9 @@ ctrLoadQueryIntoDbEuctr <- function(
         if (!verbose) unlink(f)
 
       }) # lapply fp
+
+    # line break
+    message("", appendLF = TRUE)
 
     ## run conversion of XML files
     ctrConvertToJSON(tempDir, "euctr2ndjson_results.php", verbose)
@@ -1720,13 +1686,10 @@ ctrLoadQueryIntoDbEuctr <- function(
       # this does not include the retrieval of information
       # about amendment to the study, as presented at the bottom
       # of the webpage for the respective trial results
-      message("(4/4) Retrieving results history (max. ",
-              parallelretrievals, " in parallel):")
+      message("(4/4) Retrieving results history:")
 
       # prepare download and save
       pool <- curl::new_pool(
-        total_con = parallelretrievals,
-        host_con = parallelretrievals,
         multiplex = TRUE)
       #
       pc <- 0L
@@ -1763,9 +1726,10 @@ ctrLoadQueryIntoDbEuctr <- function(
         pool = pool), silent = TRUE)
 
       # check plausibility
-      if (inherits(tmp, "try-error") || !length(retdat)) {
-        message("Download from EUCTR failed; last error: ", class(tmp))
-        return(invisible(emptyReturn))
+      if (inherits(tmp, "try-error") || tmp[["error"]] || !length(retdat)) {
+        stop("Download from EUCTR failed; last error with one or more of:\n",
+        paste0(urls, collapse = "\n"), call. = FALSE
+        )
       }
 
       # combine results
@@ -1851,9 +1815,9 @@ ctrLoadQueryIntoDbEuctr <- function(
 #' @noRd
 #'
 #' @importFrom jsonlite toJSON
-#' @importFrom httr progress write_disk GET config
 #' @importFrom nodbi docdb_query
 #' @importFrom utils URLdecode
+#' @importFrom curl multi_download
 #'
 ctrLoadQueryIntoDbIsrctn <- function(
   queryterm = queryterm,
@@ -1863,7 +1827,6 @@ ctrLoadQueryIntoDbIsrctn <- function(
   euctrresultsfilespath,
   annotation.text,
   annotation.mode,
-  parallelretrievals,
   only.count,
   con,
   verbose,
@@ -1935,9 +1898,8 @@ ctrLoadQueryIntoDbIsrctn <- function(
     silent = TRUE)
   #
   if (inherits(tmp, "try-error")) {
-    message("Host ", queryIsrctnRoot, " not working as expected, ",
-            "cannot continue: ", tmp[[1]])
-    return(invisible(emptyReturn))
+    stop("Host ", queryIsrctnRoot, " not working as expected, ",
+         "cannot continue: ", tmp[[1]], call. = FALSE)
   }
   #
   tmp <- try(xml2::xml_attr(tmp, "totalCount"), silent = TRUE)
@@ -1957,7 +1919,8 @@ ctrLoadQueryIntoDbIsrctn <- function(
 
   # inform user
   message("Retrieved overview, records of ", tmp, " ",
-          "trial(s) are to be downloaded")
+          "trial(s) are to be downloaded (estimate: ",
+          format(tmp * 0.018, digits = 2), " MB)")
 
   # only count?
   if (only.count) {
@@ -1993,17 +1956,19 @@ ctrLoadQueryIntoDbIsrctn <- function(
     queryIsrctnRoot, queryIsrctnType1, tmp, "&", apiterm, queryupdateterm)
 
   # get (download) trials in single file f
-  tmp <- try(httr::GET(
-    url = utils::URLencode(isrctndownloadurl),
-    httr::progress(),
-    httr::write_disk(path = f, overwrite = TRUE),
-    httr::config(forbid_reuse = 1)),
-    silent = TRUE)
+  tmp <- do.call(
+    curl::multi_download,
+    c(urls = list(utils::URLencode(isrctndownloadurl)),
+      destfiles = list(f),
+      progress = TRUE,
+      timeout = Inf,
+      getOption("httr_config")[["options"]]
+    )
+  )
 
   # check plausibility
   if (inherits(tmp, "try-error")) {
-    message("Download from EUCTR failed; last error: ", class(tmp))
-    return(invisible(emptyReturn))
+    stop("Download from ISRCTN failed; last error: ", class(tmp), call. = FALSE)
   }
 
   # inform user
@@ -2029,3 +1994,126 @@ ctrLoadQueryIntoDbIsrctn <- function(
   return(imported)
 }
 # end ctrLoadQueryIntoDbIsrctn
+
+
+#' ctrLoadQueryIntoDbCtis
+#'
+#' @inheritParams ctrLoadQueryIntoDb
+#'
+#' @keywords internal
+#' @noRd
+#'
+#' @importFrom curl multi_download
+#' @importFrom jqr jq jq_flags
+#'
+ctrLoadQueryIntoDbCtis <- function(
+    queryterm = queryterm,
+    register,
+    euctrresults,
+    euctrresultshistory,
+    euctrresultsfilespath,
+    annotation.text,
+    annotation.mode,
+    only.count,
+    con, verbose,
+    queryupdateterm) {
+
+  ## create empty temporary directory on localhost for
+  # downloading from register into temporary directy
+  tempDir <- tempfile(pattern = "ctrDATA")
+  dir.create(tempDir)
+  tempDir <- normalizePath(tempDir, mustWork = TRUE)
+
+  # prepare a file handle for temporary directory
+  fin <- paste0(tempDir, "/", "ctis_trials_.json")
+  fout <- paste0(tempDir, "/", "ctis_trials_.ndjson")
+
+  # register to remove files after use for streaming
+  if (!verbose) on.exit(unlink(tempDir, recursive = TRUE), add = TRUE)
+
+  # inform user
+  message("(1/3) Downloading trials...")
+
+  # TODO currently just all trial records are downloaded
+  warning("At the moment, all CTIS trial records are downloaded; ",
+          "a mechanism to select trials of interest is being developed.",
+          call. = FALSE)
+
+  # construct url
+  ctisdownloadurl <- paste0(
+    "https://euclinicaltrials.eu/ct-public-api-services/services/ct/publiclookup",
+    "?&paging=0,-1" # corresponds to "pageInfo":{"offset":0,"limit":-1}
+  )
+
+  # get (download) trials in single file f
+  tmp <- do.call(
+    curl::multi_download,
+    c(urls = list(utils::URLencode(ctisdownloadurl)),
+      destfiles = list(fin),
+      progress = TRUE,
+      timeout = Inf,
+      getOption("httr_config")[["options"]],
+      # "HTTP server doesn't seem to support byte ranges. Cannot resume."
+      # resume = TRUE,
+      accept_encoding = "gzip,deflate,zstd,br"
+    )
+  )
+
+  # check plausibility
+  if (inherits(tmp, "try-error")) {
+    stop("Download from CTIS failed; last error: ", class(tmp), call. = FALSE)
+  }
+
+  # extract number of trial records
+  resultsEuNumTrials <- as.numeric(
+    jqr::jq(
+      file(fin, encoding = "UTF-8"),
+      ' {name: .totalSize} | .[]'))
+
+  # compose jq string
+  jqString <- paste0(
+    # get trial records array
+    '.elements[] += { ',
+    # add register name
+    'ctrname: "CTIS", ',
+    # add date and time "Y-m-d H:i:s"
+    'record_last_import: "',
+    strftime(Sys.time(), "%Y-%m-%d %H:%M:%S"),
+    '" }',
+    # extract trial records
+    ' | .elements | .[] ',
+    # add element _id
+    '| .["_id"] = .ctNumber',
+    # remove backticks ``, \n, \t, "
+    ' | walk(if type == "string" then
+      gsub("[\\n\\r\\t`\u0002]"; "") else . end) ' # \\"
+  )
+
+  # convert trial records array to ndjson
+  message("(2/3) Converting to NDJSON...")
+  jqr::jq(
+    file(fin, encoding = "UTF-8"),
+    jqString,
+    flags = jqr::jq_flags(pretty = FALSE),
+    out = fout
+  )
+
+  # run import into database from json files
+  message("(3/3) Importing JSON records into database...")
+  if (verbose) message("DEBUG: ", tempDir)
+  imported <- dbCTRLoadJSONFiles(dir = tempDir,
+                                 con = con,
+                                 verbose = verbose)
+
+  # TODO
+  # View(nodbi::docdb_get(src = con, key = "xyz"))
+
+  ## inform user on final import outcome
+  message("= Imported or updated ",
+          imported$n, " records on ",
+          resultsEuNumTrials, " trial(s)")
+
+  # return
+  return(imported)
+}
+# end ctrLoadQueryIntoDbCtis

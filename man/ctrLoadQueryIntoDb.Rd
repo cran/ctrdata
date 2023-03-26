@@ -15,7 +15,7 @@ ctrLoadQueryIntoDb(
   euctrresultspdfpath = NULL,
   annotation.text = "",
   annotation.mode = "append",
-  parallelretrievals = 4L,
+  parallelretrievals = NULL,
   only.count = FALSE,
   con = NULL,
   verbose = FALSE
@@ -28,12 +28,14 @@ a register, or the data frame returned by the
 \link{dbQueryHistory} functions, or, together with parameter
 \code{register}, a string with query elements of a search URL.
 The queryterm is recorded in the \code{collection} for later
-use to update records.}
+use to update records.
+If register = "CTIS": The queryterm should be an empty string
+to obtain all trial records, all other queryterms are ignored
+at the moment .}
 
 \item{register}{String with abbreviation of register to query,
-either "EUCTR", "CTGOV" or "ISRCTN". Not needed
-if \code{queryterm} provide the information which register to
-query (see \code{queryterm}).}
+either "EUCTR", "CTGOV", "ISRCTN" or "CTIS". Not needed
+if \code{queryterm} provides a query's full URL.}
 
 \item{querytoupdate}{Either the word "last" or the number of the
 query (based on \link{dbQueryHistory}) that should be run to
@@ -65,15 +67,19 @@ that had been submitted to EUCTR (default is \code{NULL}).}
 \item{euctrresultspdfpath}{Deprecated, use \code{euctrresultsfilespath}}
 
 \item{annotation.text}{Text to be including in the records
-retrieved with the current query, in the field "annotation".}
+retrieved with the current query, in the field "annotation".
+The contents of the field "annotation" for a trial record
+can be preserved e.g. when running this function again and
+loading a record of the annotated trial again, see parameter
+\code{annotation.mode}.}
 
 \item{annotation.mode}{One of "append" (default), "prepend"
 or "replace" for new annotation.text with respect to any
 existing annotation for the records retrieved with the
 current query.}
 
-\item{parallelretrievals}{Number of parallel downloads of
-information from the register, defaults to 4}
+\item{parallelretrievals}{Deprecated, ignored since
+version 1.11.1.9000}
 
 \item{only.count}{Set to \code{TRUE} to return only the
 number of trial records found in the register for the query.
@@ -136,6 +142,13 @@ ctrLoadQueryIntoDb(
 # into the same collection as used before
 ctrLoadQueryIntoDb(
   queryterm = "https://www.isrctn.com/search?q=neuroblastoma+OR+lymphoma&filters=phase\%3APhase+III",
+  con = dbc
+)
+
+# Retrieve information on all trials in CTIS
+ctrLoadQueryIntoDb(
+  queryterm = "",
+  register = "CTIS",
   con = dbc
 )
 
