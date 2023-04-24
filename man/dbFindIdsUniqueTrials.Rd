@@ -5,7 +5,7 @@
 \title{Get identifiers of deduplicated trial records}
 \usage{
 dbFindIdsUniqueTrials(
-  preferregister = c("EUCTR", "CTGOV", "ISRCTN"),
+  preferregister = c("EUCTR", "CTGOV", "ISRCTN", "CTIS"),
   prefermemberstate = "DE",
   include3rdcountrytrials = TRUE,
   con,
@@ -15,7 +15,7 @@ dbFindIdsUniqueTrials(
 \arguments{
 \item{preferregister}{A vector of the order of preference for
 registers from which to generate unique _id's, default
-\code{c("EUCTR", "CTGOV", "ISRCTN")}}
+\code{c("EUCTR", "CTGOV", "ISRCTN", "CTIS")}}
 
 \item{prefermemberstate}{Code of single EU Member State for which records
 should returned. If not available, a record for DE or lacking this, any
@@ -35,8 +35,9 @@ the European Union. Ignored if \code{prefermemberstate} is set to "3RD".}
 of the registers are used to find corresponding trial records}
 }
 \value{
-A vector with strings of keys ("_id") of records in
-the collection that represent unique trials.
+A named vector with strings of keys ("_id") of records in
+the collection that represent unique trials, where names correspond
+to the register of the record.
 }
 \description{
 Records for a clinical trial can be loaded from more than one

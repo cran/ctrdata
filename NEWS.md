@@ -1,8 +1,16 @@
+# ctrdata 1.13.0 (2023-04-23)
+ - data from CTIS is imported more completely
+ - adapt other functions to accommodate CTIS
+ - provide Tampermonkey script to get the URL of a user's query in a register 
+ - speed up ctrLoadQueryIntoDb() for CTIS with nodbi >=0.9.2.9000
+ - keep register names on vector returned by dbFindIdsUniqueTrials()
+ - correct dbFindFields() for EUCTR
+ 
 # ctrdata 1.12.1 (2023-03-29)
  - fix escaping hash symbol in PDF rendition of an help page
  - fix file encoding for CTIS downloads under MS Windows
  
- # ctrdata 1.12.0 (2023-03-25)
+# ctrdata 1.12.0 (2023-03-25)
  - added first access to new register: CTIS, the EU Clinical Trial Information System
  - stop (instead of warning) if register host errors (e.g. incorrect number of records)
  - switch to use curl::multi_download() which can resume retrievals from registers

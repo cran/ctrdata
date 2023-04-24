@@ -14,6 +14,8 @@ countriesEUCTR <- c(
   "NO", "3RD")
 #
 # regexpr
+# - queryterm and urls
+regQueryterm <- "[^-.a-zA-Z0-9=?+&#%_:\"/, ]"
 # - EudraCT e.g. 2010-022945-52
 regEuctr <- "[0-9]{4}-[0-9]{6}-[0-9]{2}"
 # - CTGOV
@@ -402,17 +404,17 @@ ctrDb <- function(
 } # end ctrDb
 
 
-#' Open stored query or register search page
+#' Open stored query in register or its search page
 #'
 #' Open advanced search pages of register(s), or execute search in browser
 #'
-#' @param url of search results page to show in the browser.
-#'   Can be the return value of \link{ctrGetQueryUrl} or \link{dbQueryHistory}.
-#'
-#' @param register Register(s) to open. Either "EUCTR" or "CTGOV" or a vector of
-#'   both. Default is to open both registers' advanced search pages. To open the
+#' @param url of search results page to show in the browser. To open the
 #'   browser with a previous search, the output of \link{ctrGetQueryUrl}
-#'   or one row from \link{dbQueryHistory} can be used.
+#'   or \link{dbQueryHistory} can be used. Can be left empty
+#'   to open the advanced search page of the \code{register}.
+#'
+#' @param register Register(s) to open, "EUCTR", "CTGOV", "ISRCTN" or "CTIS".
+#'   Default is to open the advanced search page of the register.
 #'
 #' @param copyright (Optional) If set to \code{TRUE}, opens copyright pages of
 #'   register(s).
@@ -425,15 +427,23 @@ ctrDb <- function(
 #'
 #' @examples
 #'
-#' # Check copyrights before using registers
+#' # Open all and check copyrights before using registers
 #' ctrOpenSearchPagesInBrowser(copyright = TRUE)
 #'
-#' # open all queries loaded into demo collection
-#' dbc <- nodbi::src_sqlite(
-#'    dbname = system.file("extdata", "demo.sqlite", package = "ctrdata"),
-#'    collection = "my_trials")
+#' # Open specific register advanced search page
+#' ctrOpenSearchPagesInBrowser(register = "EUCTR")
+#' ctrOpenSearchPagesInBrowser(register = "CTGOV")
+#' ctrOpenSearchPagesInBrowser(register = "ISRCTN")
+#' ctrOpenSearchPagesInBrowser(register = "CTIS")
+#' ctrOpenSearchPagesInBrowser(url = "status=Ended", register = "CTIS")
 #'
-#' dbh <- dbQueryHistory(con = dbc)
+#' # Open all queries that were loaded into demo collection
+#' dbc <- nodbi::src_sqlite(
+#'   dbname = system.file("extdata", "demo.sqlite", package = "ctrdata"),
+#'   collection = "my_trials")
+#'
+#' dbh <- dbQueryHistory(
+#'   con = dbc)
 #'
 #' for (r in seq_len(nrow(dbh))) {
 #'   ctrOpenSearchPagesInBrowser(dbh[r, ])
@@ -501,9 +511,24 @@ ctrOpenSearchPagesInBrowser <- function(
   if (is.atomic(url) && url != "" && register != "") {
     url <- switch(
       register,
-      "EUCTR" = paste0("https://www.clinicaltrialsregister.eu/ctr-search/search?", url),
+      "EUCTR" = paste0("https://www.clinicaltrialsregister.eu/ctr-search/search?", url, "#tabs"),
       "CTGOV" = paste0("https://clinicaltrials.gov/ct2/results?", url),
-      "ISRCTN" = paste0("https://www.isrctn.com/search?", url))
+      "ISRCTN" = paste0("https://www.isrctn.com/search?", url),
+      "CTIS" = paste0("https://euclinicaltrials.eu/app/#/search?", url)
+    )
+    ctrOpenUrl(url)
+    return(url)
+  }
+
+  # - open register
+  if (is.atomic(url) && url == "" && register != "") {
+    url <- switch(
+      register,
+      "EUCTR" = paste0("https://www.clinicaltrialsregister.eu/ctr-search/search"),
+      "CTGOV" = paste0("https://clinicaltrials.gov/ct2/results/refine"),
+      "ISRCTN" = paste0("https://www.isrctn.com/editAdvancedSearch"),
+      "CTIS" = paste0("https://euclinicaltrials.eu/app/#/search")
+    )
     ctrOpenUrl(url)
     return(url)
   }
@@ -521,8 +546,12 @@ ctrOpenSearchPagesInBrowser <- function(
 #'
 #' @param url URL such as from the browser address bar.
 #' If not specified, clipboard contents will be checked for
-#' a suitable URL. Can also contain a query term such as from
-#' \link{dbQueryHistory}()["query-term"]
+#' a suitable URL.
+#' For automatically copying the user's query of a register
+#' in a web browser to the clipboard, see
+#' \ifelse{latex}{\out{\href{https://github.com/rfhb/ctrdata\#3-script-to-automatically-copy-users-query-from-web-browser}{here}}}{\href{https://github.com/rfhb/ctrdata#3-script-to-automatically-copy-users-query-from-web-browser}{here}}.
+#' Can also contain a query term such as from
+#' \link{dbQueryHistory}()["query-term"].
 #'
 #' @param register Optional name of register (one of "EUCTR", "CTGOV",
 #' "ISRCTN" or "CTIS") in case url is a query term
@@ -580,7 +609,7 @@ ctrGetQueryUrl <- function(
       silent = TRUE)
     if (inherits(url, "try-error")) url <- ""
     if (is.null(url) || (length(url) != 1L) || (nchar(url) == 0L) ||
-        grepl("[^-a-zA-Z/:_.0-9%#+?=&]", url) ||
+        grepl(regQueryterm, url) ||
         !grepl("^https://", url)) {
       stop("ctrGetQueryUrl(): no clinical trial register ",
            "search URL found in parameter 'url' or in clipboard.",
@@ -603,6 +632,7 @@ ctrGetQueryUrl <- function(
       "clinicaltrials.gov" = "CTGOV",
       "isrctn.com" = "ISRCTN",
       "beta.clinicaltrials.gov" = "BETACTGOV",
+      "euclinicaltrials.eu" = "CTIS",
       "NONE")
   #
   # check parameters expectations
@@ -703,8 +733,19 @@ ctrGetQueryUrl <- function(
   }
   #
   if (register == "CTIS") {
-    # search result page
-    queryterm <- "- queryterm ignored at the moment -"
+    # url can be empty to retrieve all or looks like
+    # https://euclinicaltrials.eu/ct-public-api-services/services/ct/publiclookup?ageGroupCode=3
+    queryterm <- sub(
+      "https://euclinicaltrials.eu/ct-public-api-services/services/ct/publiclookup[?]", "", url)
+    # or https://euclinicaltrials.eu/app/#/search?status=Ended
+    queryterm <- sub(
+      "https://euclinicaltrials.eu/app/#/search[?]?", "", queryterm)
+    # remove unnecessary components
+    queryterm <- sub("&?paging=[-,0-9]+", "", queryterm)
+    queryterm <- sub("&?sorting=[-a-zA-Z]+", "", queryterm)
+    queryterm <- sub("&?isEeaOnly=false", "", queryterm)
+    queryterm <- sub("&?isNonEeaOnly=false", "", queryterm)
+    queryterm <- sub("&?isBothEeaNonEea=false", "", queryterm)
     #
     return(outdf(queryterm, register))
   }
@@ -999,7 +1040,7 @@ dbFindFields <- function(namepart = "",
     queries <- list(
       "EUCTR" = c(
         '{"trialInformation.analysisStage.value": {"$regex": ".+"}}',
-        paste0('{"_id": "', rev(allIds[grepl(paste0(regEuctr, "$"), allIds)])[1], '"}')),
+        paste0('{"_id": "', rev(allIds[grepl(paste0("^", regEuctr, "-[3]?[A-Z]{2}$"), allIds)])[1], '"}')),
       "CTGOV" = c(
         '{"results_first_submitted": {"$regex": ".+"}}',
         paste0('{"_id": "', rev(allIds[grepl(regCtgov, allIds)])[1], '"}')),
@@ -1034,6 +1075,7 @@ dbFindFields <- function(namepart = "",
     # since different approaches above return _id or not
     keyslist <- keyslist[!duplicated(keyslist)]
     keyslist <- keyslist[keyslist != "_id" & keyslist != ""]
+    keyslist <- sub("[.]$", "", keyslist)
 
     ## store keyslist to environment (cache)
     if (length(keyslist) > 1) {
@@ -1086,7 +1128,7 @@ dbFindFields <- function(namepart = "",
 #'
 #' @param preferregister A vector of the order of preference for
 #' registers from which to generate unique _id's, default
-#' \code{c("EUCTR", "CTGOV", "ISRCTN")}
+#' \code{c("EUCTR", "CTGOV", "ISRCTN", "CTIS")}
 #'
 #' @inheritParams dfFindUniqueEuctrRecord
 #'
@@ -1094,11 +1136,13 @@ dbFindFields <- function(namepart = "",
 #'  of the registers are used to find corresponding trial records
 #'
 #' @importFrom nodbi docdb_query
+#' @importFrom stats setNames
 #'
 #' @inheritParams ctrDb
 #'
-#' @return A vector with strings of keys ("_id") of records in
-#' the collection that represent unique trials.
+#' @return A named vector with strings of keys ("_id") of records in
+#' the collection that represent unique trials, where names correspond
+#' to the register of the record.
 #'
 #' @export
 #'
@@ -1111,7 +1155,7 @@ dbFindFields <- function(namepart = "",
 #' dbFindIdsUniqueTrials(con = dbc)
 #'
 dbFindIdsUniqueTrials <- function(
-  preferregister = c("EUCTR", "CTGOV", "ISRCTN"),
+  preferregister = c("EUCTR", "CTGOV", "ISRCTN", "CTIS"),
   prefermemberstate = "DE",
   include3rdcountrytrials = TRUE,
   con,
@@ -1153,7 +1197,10 @@ dbFindIdsUniqueTrials <- function(
     "id_info",
     # isrctn
     "externalRefs",
-    "isrctn"
+    "isrctn",
+    # ctis
+    "ctNumber",
+    "eudraCtInfo.eudraCtCode"
   )
 
   # check if cache environment has entry for the database
@@ -1237,7 +1284,10 @@ dbFindIdsUniqueTrials <- function(
     "externalRefs.eudraCTNumber",
     "externalRefs.clinicalTrialsGovNumber",
     "isrctn",
-    "externalRefs.protocolSerialNumber"
+    "externalRefs.protocolSerialNumber",
+    # ctis
+    "ctNumber",
+    "eudraCtInfo.eudraCtCode"
   )
   if (verbose) message(
     "\nFields used for finding corresponding register records of trials: ",
@@ -1266,7 +1316,9 @@ dbFindIdsUniqueTrials <- function(
     "euctr.2a", "euctr.2b", "ctgov.2a", "ctgov.2b", "isrctn.2",
     "sponsor.2a", "sponsor.2b",
     # isrctn
-    "euctr.3", "ctgov.3", "isrctn.3", "sponsor.3"
+    "euctr.3", "ctgov.3", "isrctn.3", "sponsor.3",
+    # ctis
+    "ctis.1", "euctr.4"
   )
 
   # keep only relevant content
@@ -1283,7 +1335,9 @@ dbFindIdsUniqueTrials <- function(
     c("euctr.1", regEuctr),
     c("euctr.2a", regEuctr),
     c("euctr.2b", regEuctr),
-    c("euctr.3", regEuctr)
+    c("euctr.3", regEuctr),
+    c("ctis.1", regCtis),
+    c("euctr.4", regEuctr)
   )
   # - do mangling; prerequisite is
   #   that each of the columns holds
@@ -1368,11 +1422,13 @@ dbFindIdsUniqueTrials <- function(
     prefermemberstate = prefermemberstate,
     include3rdcountrytrials = include3rdcountrytrials)
 
-  # count
-  countIds <- table(listofIds[["ctrname"]])
-
   # prepare output
-  listofIds <- listofIds[["_id"]]
+  listofIds <- setNames(
+    object = listofIds[["_id"]],
+    nm = listofIds[["ctrname"]])
+
+  # count
+  countIds <- table(names(listofIds))
 
   # copy attributes
   attributes(listofIds) <- attribsids[grepl("^ctrdata-", names(attribsids))]
@@ -1514,15 +1570,13 @@ dbGetFieldsIntoDf <- function(fields = "",
       # user info
       message(ifelse(i > 1L, "\n", ""), item, "... ", appendLF = FALSE)
       #
-      query <- '{"_id": {"$ne": "meta-info"}}'
-      #
       tmpItem <- try({
 
         # execute query
         dfi <- nodbi::docdb_query(
           src = con,
           key = con$collection,
-          query = query,
+          query = '{"_id": {"$ne": "meta-info"}}',
           fields = paste0('{"_id": 1, "', item, '": 1}'))
         message("\b\b\b\b   \b\b\b ", appendLF = FALSE)
 
@@ -2115,7 +2169,8 @@ dfTrials2Long <- function(df) {
     # process row.names to obtain trial id
     "_id" = stringi::stri_extract_first(
       str = row.names(out),
-      regex = c(paste0(regCtgov, "|", regIsrctn, "|", regEuctr, "-[3]?[A-Z]+"))),
+      regex = c(paste0(regCtgov, "|", regIsrctn, "|",
+                       regEuctr, "-[3]?[A-Z]{2}|", regCtis))),
     "identifier" = NA,
     "name" = out[["name"]],
     "value" = out[["value"]],
