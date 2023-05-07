@@ -6,7 +6,7 @@
 [![ctrdata status
 badge](https://rfhb.r-universe.dev/badges/ctrdata)](https://rfhb.r-universe.dev)
 [![codecov](https://codecov.io/gh/rfhb/ctrdata/branch/master/graph/badge.svg)](https://app.codecov.io/gh/rfhb/ctrdata)
-[![R-CMD-CHECK-ubuntu-duckdb-mongodb-sqlite](https://github.com/rfhb/ctrdata/actions/workflows/check-standard-linux.yaml/badge.svg)](https://github.com/rfhb/ctrdata/actions/workflows/check-standard-linux.yaml)
+[![R-CMD-CHECK-ubuntu-postgresql-duckdb-mongodb-sqlite](https://github.com/rfhb/ctrdata/actions/workflows/check-standard-linux.yaml/badge.svg)](https://github.com/rfhb/ctrdata/actions/workflows/check-standard-linux.yaml)
 [![R-CMD-CHECK-win-macos-duckdb-mongodb-sqlite](https://github.com/rfhb/ctrdata/actions/workflows/check-standard-win-macos.yaml/badge.svg)](https://github.com/rfhb/ctrdata/actions/workflows/check-standard-win-macos.yaml)
 <!-- badges: end -->
 
@@ -21,40 +21,42 @@ aggregating and analysing this information; it can be used for the
 - ClinicalTrials.gov (“CTGOV”, <https://clinicaltrials.gov/>)
 - ISRCTN (<https://www.isrctn.com/>)
 - EU Clinical Trials Information System (“CTIS”,
-  <https://euclinicaltrials.eu/>) 🔔 NEW since 2023-03-25 (see
-  [example](#workflow-ctis-example)) in workflow below
+  <https://euclinicaltrials.eu/>) 🔔 see
+  [example](#workflow-ctis-example) below
 
-The motivation is to understand trends in design and conduct of trials,
-their availability for patients and their detailled results. `ctrdata`
+The motivation is to investigate and understand trends in design and
+conduct of trials, their availability for patients and to facilitate
+using their detailed results for research and meta-analyses. `ctrdata`
 is a package for the [R](https://www.r-project.org/) system, but other
 systems and tools can be used with the databases created with the
-package. This README was reviewed on 2023-04-23 for version 1.12.2.
+package. This README was reviewed on 2023-05-07 for version 1.13.1.
 
 ## Main features
 
-- Protocol- and results-related trial information is easily retrieved
-  (downloaded): Users define a query in a register’s web interface and
-  then use `ctrdata` to retrieve in one go all trials found and to
-  accumulate information from different registers. Personal annotations
-  can be including during retrieval. Synonyms of an active substance can
-  also be found.
-- Retrieved (downloaded) trial information is transformed and stored in
-  a single collection of a document-centric database, for fast and
-  offline access. Uses `DuckDB`, `PostgreSQL`, `RSQLite` or `MongoDB`,
-  via R package `nodbi`: see section
-  [Databases](#databases-that-can-be-used-with-ctrdata) below. Easily
-  re-run any previous query in a collection to retrieve and update trial
+- Protocol- and results-related trial information is easily downloaded:
+  Users define a query in a register’s web interface and then enter the
+  URL into `ctrdata` which retrieves in one go all trials found.
+  Documents in registers on trials can also be downloaded. Personal
+  annotations can be made to trials when downloading a query. Synonyms
+  of an active substance can also be found.
+- Downloaded trial information is transformed and stored in a collection
+  of a document-centric database, for fast and offline access.
+  Information from different registers can be accumalated in a single
+  collection. Uses `DuckDB`, `PostgreSQL`, `RSQLite` or `MongoDB`, via R
+  package `nodbi`: see section
+  [Databases](#databases-that-can-be-used-with-ctrdata) below. Re-run
+  any previous query in a collection to retrieve and update trial
   records.
-- Analyses can be done with `R` (using convenience functions in
-  `ctrdata` to identify unique (de-duplicated) trial records across
-  registers, to merge and recode fields as well as to enumerate and
-  provide easy access to deeply-nested fields) and with many other
-  systems.
-- 🔔Queries in the registers can be automatically copied to the
-  clipboard (including for “CTIS”, where the URL does not show the
-  query), see
-  [here](#3-script-to-automatically-copy-users-query-from-web-browser)
-  NEW since 2023-04-15
+- For analyses, convenience functions in `ctrdata` allow to identify
+  unique (de-duplicated) trial records across registers, to merge and
+  recode fields as well as to easily access deeply-nested fields.
+  Analysis can be done with `R` or other systems, by accessing the
+  structured information in the database.
+
+URLs of queries in the registers can be automatically copied to the
+clipboard (including for “CTIS”, where the URL does not show the query),
+see
+[here](#3-script-to-automatically-copy-users-query-from-web-browser).
 
 Remember to respect the registers’ terms and conditions (see
 `ctrOpenSearchPagesInBrowser(copyright = TRUE)`). Please cite this
@@ -107,9 +109,9 @@ These commands also install the package’s dependencies (`nodbi`,
 ### 2. Command line tools `perl`, `sed` and `php` (5.2 or higher)
 
 These are required for `ctrLoadQueryIntoDb()`, the main function of
-package `ctrdata` (see [Example workflow](#example-workflow)), to with
-the registers EUCTR, CTGOV, ISRCTN (but not CTIS); the function also
-checks if the tools can be used.
+package `ctrdata` (see [Example workflow](#example-workflow)), to work
+with the registers EUCTR, CTGOV, ISRCTN (but are not required to work
+with CTIS); the function also checks if the tools can be used.
 
 - For MS Windows, install [`Cygwin`](https://cygwin.org/install.html):
   In `R`, run `ctrdata::installCygwinWindowsDoInstall()` for an
@@ -129,8 +131,7 @@ checks if the tools can be used.
 
 This is optional; it works with all registers supported by `ctrdata` but
 is recommended for CTIS because the URL in the web browser does not
-reflect the parameters the user specified for the querying this
-register.
+reflect the parameters the user specified for querying this register.
 
 In the web browser, install the [Tampermonkey browser
 extension](https://www.tampermonkey.net/), click on “New user script”
@@ -139,7 +140,7 @@ and then on “Tools”, then enter into “Import from URL” this URL:
 and last click on “Install”.
 
 The browser extension can be disabled and enabled by the user. When
-enabled, the URLs to all user’s queries in the registers are now
+enabled, the URLs to all user’s queries in the registers are
 automatically copied to the clipboard and can be pasted into the
 `queryterm=...` parameter of function `ctrLoadQueryIntoDb()`.
 
@@ -163,9 +164,6 @@ overview](https://rfhb.github.io/ctrdata/reference/index.html).
 | `dfName2Value()`                   | From a long name-value data.frame, extract values for variables (fields) of interest (e.g., endpoints)                         |
 | `dfMergeTwoVariablesRelevel()`     | Merge two simple variables into a new variable, optionally map values to a new set of values                                   |
 | `installCygwinWindowsDoInstall()`  | Convenience function to install a Cygwin environment (MS Windows only)                                                         |
-
-If package `dplyr` is loaded, a tibble is returned instead of a
-data.frame.
 
 ## Databases that can be used with `ctrdata`
 
@@ -300,7 +298,9 @@ database collection.
 - Analyse
 
 Tabulate the status of trials that are part of an agreed paediatric
-development program (paediatric investigation plan, PIP):
+development program (paediatric investigation plan, PIP). Where
+`ctrdata` functions would return a data.frame, a tibble is returned if
+package `dplyr` is loaded.
 
 ``` r
 # Get all records that have values in the fields of interest:
@@ -392,43 +392,80 @@ ctrLoadQueryIntoDb(
 Queries in the CTIS search interface can be automatically copied to the
 clipboard so that a user can paste them into `queryterm`, see
 [here](#3-script-to-automatically-copy-users-query-from-web-browser). As
-of April 2023, more than 150 trials are publicly accessible in CTIS.
+of April 2023, more than 160 trials are publicly accessible in CTIS.
 
 ``` r
 # Retrieve trials from another register:
 ctrLoadQueryIntoDb(
   queryterm = "https://euclinicaltrials.eu/ct-public-api-services/services/ct/publiclookup?ageGroupCode=3",
+  documents.path = "./files-ctis",
   con = db
 )
 # * Found search query from CTIS: ageGroupCode=3
-# (1/5) Downloading trials list...
-# (2/5) Downloading and processing part I and parts II... (approx. 19.35 Mb)
-# Download status: 129 done; 0 in progress. Total size: 19.44 Mb (100%)... done!             
-# . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 
-# . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .
-# . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 
-# . . . . . . . . . . . . 
+# (1/5) Downloading trials list, found 135 trials
+# (2/5) Downloading and processing part I and parts II... (estimate: 20.25 Mb)
+# Download status: 135 done; 0 in progress. Total size: 20.35 Mb (100%)... done!             
+# . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 
 # (3/5) Downloading and processing additional data: 
-# publicevents
-# summary
-# layperson
-# csr
-# cm
-# inspections
-# 
+# - publicevents
+# - summary
+# - layperson
+# - csr
+# - cm
+# - inspections
+# - publicevaluation 
+# Download status: 213 done; 0 in progress. Total size: 6.24 Mb (100%)... done!             
+# 135
 # (4/5) Importing JSON records into database...
-# JSON file #: 1 / 1                               
-# (5/5) Updating with additional data: . . 
-# = Imported / updated 129 / 129 / 2 records on 129 trial(s)
+# (5/5) Updating with additional data: . . .       
+# * Downloading documents into 'documents.path' = ./files-ctis
+# - Created directory ./files-ctis
+# - Getting ids of lists with document information
+# - Downloading 1594 lists with document information (estimate: 31.88 Mb)
+# Download status: 1594 done; 0 in progress. Total size: 4.93 Mb (100%)... done!             
+# - Processing document information in 1594 lists
+# - Creating subfolder for each trial
+# - Applying 'documents.regexp' to 1651 documents:
+# - Downloading 380 documents
+# Download status: 380 done; 0 in progress. Total size: 223.96 Mb (100%)... done!             
+# = Newly saved 356 document(s) for 116 trial(s) (latest versions only,  
+# deduplicated if e.g. in application and authorised part); 0 document(s) 
+# for 0 trial(s) already existed in ./files-ctis
+# = Imported / updated 135 / 135 / 2 / 135 records on 135 trial(s)
 # Updated history ("meta-info" in "some_collection_name")
+
 
 allFields <- dbFindFields(".*", db)
 length(allFields[grepl("CTIS", names(allFields))])
-# [1] 3052
+# [1] 2690
 
-allFields[grepl("defer", allFields, ignore.case = TRUE)]
-#                 CTIS 
-# "hasDeferrallApplied"
+
+allFields[grepl("defer|consideration$", allFields, ignore.case = TRUE)]
+#                                                                                            CTIS 
+#                                                                           "hasDeferrallApplied" 
+#                                                                                            CTIS 
+# "publicEvaluation.partIIEvaluationList.partIIRfiConsiderations.rfiConsiderations.consideration" 
+#                                                                                            CTIS 
+#                       "publicEvaluation.partIRfiConsiderations.rfiConsiderations.consideration" 
+#                                                                                            CTIS 
+#                  "publicEvaluation.partIRfiConsiderations.rfiConsiderations.part1Consideration" 
+#                                                                                            CTIS 
+#                  "publicEvaluation.validationRfiConsiderations.rfiConsiderations.consideration" 
+#                                                                                            CTIS 
+#             "publicEvaluation.validationRfiConsiderations.rfiConsiderations.part1Consideration"
+
+dbGetFieldsIntoDf("publicEvaluation.partIRfiConsiderations.rfiConsiderations.consideration", db)[1,]
+#               _id    publicEvaluation.partIRfiConsiderations.rfiConsiderations.consideration
+# 2022-500024-30-00    A detailed description of potential protocol deviations for the per-protocol 
+# set is missing on page 63/76 of the protocol and should be added. / Please, also amend the 
+# rationale why the secondary aims are exploratory, considering the study design, sample size,
+# and statistical modeling. / The sample size is based on uncorrected two sided p-value, 
+# ignoring multiplicity. The study will be more realistic by re-calculating what the sample-size 
+# could be, based on the adjusted one-side p-value. Please elaborate your reply. / Sample-size 
+# calculations make sense, except for considering multiplicity adjusted p-value. It is debatable 
+# whether hierarchical testing should be applied in this project since the objectives and 
+# outcomes are not ranked/ordered as hierarchical/sequential.
+
 
 # use an alternative to dbGetFieldsIntoDf()
 allData <- nodbi::docdb_query(src = db, key = db$collection, query = '{"ctrname":"CTIS"}')
@@ -451,15 +488,20 @@ names(allData)
 # [29] "therapeuticAreas"              "recruitmentStatus"            
 # [31] "sponsorType"                   "totalNumberEnrolled"          
 # [33] "hasDeferrallApplied"           "hasAmendmentApplied"          
-# [35] "cm"                            "trialPhase"                   
-# [37] "ageGroup"                      "gender"                       
-# [39] "startDateEU"                   "endDateEU"                    
-# [41] "queries" 
+# [35] "cm"                            "publicEvaluation"             
+# [37] "trialPhase"                    "ageGroup"                     
+# [39] "gender"                        "startDateEU"                  
+# [41] "endDateEU" 
+# 
+format(object.size(allData), "MB")
+# [1] "111.9 Mb"
 ```
 
 - Result-related trial information
 
-Analyse some simple result details (see vignette for more examples):
+Analyse some simple result details (see this
+[vignette](https://rfhb.github.io/ctrdata/articles/ctrdata_summarise.html)
+for more examples):
 
 ``` r
 # Get all records that have values in any of the specified fields
@@ -494,9 +536,7 @@ nsubj <- dfName2Value(
 # [2.] count number of sites
 nsite <- dfName2Value(
   df = result,
-  # some ctgov records use
-  # location.name, others use
-  # location.facility.name
+  # some ctgov records use location.name, others location.facility.name
   valuename = "^location.*name$"
 )
 # count
@@ -524,7 +564,7 @@ ncon <- dfName2Value(
 nset <- merge(nsubj, nsite, by = "_id")
 nset <- merge(nset, ncon, by = "_id")
 
-# Example plot
+# example plot
 library(ggplot2)
 ggplot(data = nset) +
   labs(
@@ -556,28 +596,24 @@ alt="Neuroblastoma trials" />
 <figcaption aria-hidden="true">Neuroblastoma trials</figcaption>
 </figure>
 
-- Retrieve protocols, statistical analysis plans and other documents
-  into a local folder `./files/`
+- Download documents: retrieve protocols, statistical analysis plans and
+  other documents into the local folder `./files/`
 
 ``` r
-# eudract files are downloaded as part of results
+# euctr document files can be downloaded when results are requested
 ctrLoadQueryIntoDb(
-  queryterm = q,
+  queryterm = "https://www.clinicaltrialsregister.eu/ctr-search/search?query=cancer&age=under-18&phase=phase-one",
   euctrresults = TRUE,
-  euctrresultspdfpath = "./files/",
+  documents.path = "./files-euctr/",
   con = db
 )
 
-# ctgov files can separately be downloaded
-sapply(
-  unlist(strsplit(
-    dbGetFieldsIntoDf(
-      fields = "provided_document_section.provided_document.document_url",
-      con = db
-    )[[2]],
-    split = " / "
-  )),
-  function(f) download.file(f, paste0("./files/", gsub("[/:]", "-", f)))
+# ctgov files
+ctrLoadQueryIntoDb(
+  queryterm = "cond=Neuroblastoma&type=Intr&recrs=e&phase=1&u_prot=Y&u_sap=Y&u_icf=Y",
+  register = "CTGOV",
+  documents.path = "./files-ctgov/",
+  con = db
 )
 ```
 

@@ -266,7 +266,7 @@ ctrCache <- function(xname, xvalue = NULL, verbose = FALSE) {
 #' Check and prepare nodbi connection object for ctrdata
 #'
 #' @param con A connection object, see section
-#' `Databases` in \link{ctrdata-package}
+#' `Databases` in \link{ctrdata-package}.
 #'
 #' @keywords internal
 #'
@@ -276,9 +276,7 @@ ctrCache <- function(xname, xvalue = NULL, verbose = FALSE) {
 #' @return Connection object as list, with collection
 #'  element under root
 #'
-ctrDb <- function(
-  con = nodbi::src_sqlite(
-    collection = "ctrdata_auto_generated")) {
+ctrDb <- function(con) {
 
   ## postgres
   if (inherits(con, "src_postgres")) {
@@ -321,16 +319,10 @@ ctrDb <- function(
              "db" = con$dbname,
              "ctrDb" = TRUE)
 
-    # print warning from nodbi::src_sqlite()
+    # print warning
     if (grepl(":memory:", con$dbname)) {
-      warning("Database not persisting,\ncopy to persistant database like ",
-              "this:\n\nRSQLite::sqliteCopyDatabase(",
-              "\n  from = <your in-memory-database-object>$con,",
-              "\n  to = RSQLite::dbConnect(RSQLite::SQLite(),",
-              "\n                          dbname = 'local_file.db'))\n",
-              call. = FALSE,
-              noBreaks. = FALSE,
-              immediate. = TRUE)
+      warning("Database not persisting",
+              call. = FALSE, noBreaks. = FALSE)
     }
 
     ## return
@@ -384,9 +376,7 @@ ctrDb <- function(
     # print warning about nodbi::src_duckdb()
     if (grepl(":memory:", attr(attr(con$con, "driver"), "dbdir"))) {
       warning("Database not persisting\n",
-              call. = FALSE,
-              noBreaks. = FALSE,
-              immediate. = TRUE)
+              call. = FALSE, noBreaks. = FALSE)
 
     }
 
@@ -554,7 +544,7 @@ ctrOpenSearchPagesInBrowser <- function(
 #' \link{dbQueryHistory}()["query-term"].
 #'
 #' @param register Optional name of register (one of "EUCTR", "CTGOV",
-#' "ISRCTN" or "CTIS") in case url is a query term
+#' "ISRCTN" or "CTIS") in case `url` is a query term
 #'
 #' @export
 #'
@@ -596,7 +586,7 @@ ctrGetQueryUrl <- function(
       is.na(url) || is.na(register)) {
     stop("ctrGetQueryUrl(): 'url' and / or 'register' ",
          "is not a single character string, url: '",
-         deparse(url), "', register: '", deparse(register), "'",
+         url, "', register: '", register, "'",
          call. = FALSE)
   }
   #
@@ -772,7 +762,8 @@ ctrGetQueryUrl <- function(
 #' @return A character vector of the active substance (input parameter) and
 #'  synonyms, or NULL if active substance was not found and may be invalid
 #'
-#' @importFrom httr GET
+#' @importFrom httr GET set_config user_agent
+#' @importFrom utils packageDescription
 #' @importFrom rvest html_element html_table read_html
 #'
 #' @export
@@ -928,10 +919,10 @@ dbQueryHistory <- function(con, verbose = FALSE) {
 #' (using \link{ctrLoadQueryIntoDb}). The field names can be fed
 #' into function \link{dbGetFieldsIntoDf} to extract the data
 #' from the collection into a data frame.
-#' In addition to the full names of leaf fields (e.g.,
+#' In addition to the full names of all child fields (e.g.,
 #' \code{clinical_results.outcome_list.outcome.measure.class_list.class.title})
-#' this function also returns names of node fields (e.g.,
-#' \code{clinical_results}). Data in node fields is typically complex
+#' this function may return names of parent fields (e.g.,
+#' \code{clinical_results}). Data in parent fields is typically complex
 #' (multiply nested) and can be converted into individual data
 #' elements by function \link{dfTrials2Long}, possibly followed
 #' by function \link{dfName2Value}.
@@ -948,9 +939,9 @@ dbQueryHistory <- function(con, verbose = FALSE) {
 #' Note: Only when `dbFindFields` is first called after
 #' \link{ctrLoadQueryIntoDb}, it will take a moment.
 #'
-#' @param namepart A plain string (can include a regular expression,
+#' @param namepart A character string (can include a regular expression,
 #' including Perl-style) to be searched for among all field names
-#' (keys) in the collection. Use `".*` to find all fields.
+#' (keys) in the collection, case-insensitive. Use `".*` to find all fields.
 #'
 #' @param verbose If \code{TRUE}, prints additional information
 #' (default \code{FALSE}).
@@ -960,9 +951,9 @@ dbQueryHistory <- function(con, verbose = FALSE) {
 #' @inheritParams ctrDb
 #'
 #' @return Vector of strings with full names of field(s) found,
-#' in alphabetical order by register. This is a named vector
-#' where the names of the vector are the register names for
-#' the respective fields.
+#' ordered by register and alphabet. This is a named vector
+#' where the names of the vector elements are the register names
+#' for the respective fields.
 #'
 #' @export
 #'
@@ -1165,7 +1156,7 @@ dbFindIdsUniqueTrials <- function(
   if (!all(preferregister %in% registerList)) {
     stop("'preferregister' not known: ", preferregister, call. = FALSE)
   }
-  if (length(prefermemberstate) != 1L |
+  if (length(prefermemberstate) != 1L ||
       !any(prefermemberstate == countriesEUCTR)) {
     stop("'prefermemberstate' not known: ", prefermemberstate, call. = FALSE)
   }
@@ -1518,7 +1509,7 @@ dbGetFieldsIntoDf <- function(fields = "",
                               stopifnodata = TRUE) {
 
   # check parameters
-  if (!is.vector(fields) |
+  if (!is.vector(fields) ||
       !all(class(fields) %in% "character")) {
     stop("Input should be a vector of strings of field names.", call. = FALSE)
   }
@@ -1530,7 +1521,7 @@ dbGetFieldsIntoDf <- function(fields = "",
   fields <- fields["_id" != fields]
 
   # check if valid fields
-  if (any(fields == "") | (length(fields) == 0)) {
+  if (any(fields == "") || (length(fields) == 0)) {
     stop("'fields' contains empty elements; ",
          "please provide a vector of strings of field names. ",
          "Function dbFindFields() can be used to find field names. ",
@@ -1808,6 +1799,9 @@ dbGetFieldsIntoDf <- function(fields = "",
     return(NULL)
   }
 
+  # remove row names
+  row.names(result) <- NULL
+
   # sort, add meta data
   result <- addMetaData(
     result[order(result[["_id"]]), , drop = FALSE],
@@ -1920,7 +1914,7 @@ dfName2Value <- function(df, valuename = "",
   # if no where... are specified, just
   # return rows where name corresponds
   # to valuename
-  if (wherename == "" & wherevalue == "") {
+  if (wherename == "" && wherevalue == "") {
 
     # get relevant rows
     out <- df[indexVnames, , drop = FALSE]
@@ -2202,7 +2196,7 @@ dfTrials2Long <- function(df) {
     out[["name"]][onlyHere], perl = TRUE)
   #
   # remove any double separators
-  out[["name"]] <- gsub("[.]+", ".", out[["name"]], perl = TRUE)
+  out[["name"]] <- gsub("[.][.]+", ".", out[["name"]], perl = TRUE)
 
   # remove double rows from duplicating e above
   out <- unique(out)
@@ -2520,7 +2514,7 @@ dfMergeTwoVariablesRelevel <- function(
 #' trial is conducted. For all trials conducted in more than one Member State,
 #' this function returns only one record per trial.
 #'
-#' Note: To deduplicate trials from different registers (EUCTR and CTGOV),
+#' Note: To deduplicate trials from different registers,
 #' please first use function \link{dbFindIdsUniqueTrials}.
 #'
 #' @param df A data frame created from the database collection that includes
@@ -2573,7 +2567,7 @@ dfFindUniqueEuctrRecord <- function(
   }
 
   # notify it mismatching parameters
-  if (prefermemberstate == "3RD" & !include3rdcountrytrials) {
+  if (prefermemberstate == "3RD" && !include3rdcountrytrials) {
     warning("Preferred EUCTR version set to 3RD country trials, but ",
             "'include3rdcountrytrials' was FALSE, setting it to TRUE.",
             call. = FALSE,
@@ -2867,7 +2861,7 @@ installCygwinWindowsDoInstall <- function(
          call. = FALSE)
   }
   #
-  if (!force & dir.exists("c:\\cygwin")) {
+  if (!force && dir.exists("c:\\cygwin")) {
     message("cygwin is already installed in c:\\cygwin. ",
             "To update or re-install, use force = TRUE.")
     # exit function after testing
@@ -3093,4 +3087,37 @@ checkBinary <- function(b = NULL, verbose = FALSE) {
   # all tests need to be ok
   invisible(all(out))
 
+}
+
+
+#' ctrMultiDownload
+#'
+#' @param urls Vector of urls to be downloaded
+#'
+#' @param progress Set to \code{FALSE} to not print progress bar
+#'
+#' @keywords internal
+#' @noRd
+#'
+#' @return Data frame with columns such as status_code etc
+#'
+#' @importFrom curl multi_download
+#' @importFrom utils URLencode
+#'
+ctrMultiDownload <- function(urls, destfiles, progress = TRUE) {
+
+  downloadValue <- do.call(
+    curl::multi_download,
+    c(urls = list(utils::URLencode(urls)),
+      destfiles = list(destfiles),
+      progress = progress,
+      getOption("httr_config")[["options"]],
+      accept_encoding = "gzip,deflate,zstd,br"
+    )
+  )
+  if (inherits(downloadValue, "try-error")) {
+    stop("Download failed; last error: ", class(downloadValue), call. = FALSE)
+  }
+
+  return(downloadValue)
 }

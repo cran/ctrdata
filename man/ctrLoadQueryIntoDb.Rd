@@ -11,14 +11,14 @@ ctrLoadQueryIntoDb(
   forcetoupdate = FALSE,
   euctrresults = FALSE,
   euctrresultshistory = FALSE,
-  euctrresultsfilespath = euctrresultspdfpath,
-  euctrresultspdfpath = NULL,
+  documents.path = NULL,
+  documents.regexp = "prot|sample|statist|_sap_|p1ar|p2ars|ctaletter",
   annotation.text = "",
   annotation.mode = "append",
-  parallelretrievals = NULL,
   only.count = FALSE,
   con = NULL,
-  verbose = FALSE
+  verbose = FALSE,
+  ...
 )
 }
 \arguments{
@@ -49,23 +49,32 @@ run last.}
 
 \item{forcetoupdate}{If \code{TRUE}, run again the query
 given in \code{querytoupdate}, irrespective of when it was
-run last (default is \code{FALSE}).}
+run last. Default is \code{FALSE}.}
 
 \item{euctrresults}{If \code{TRUE}, also download available
 results when retrieving and loading trials from EUCTR. This
-slows down this function. (For CTGOV, all available results
-are always retrieved and loaded.)}
+slows down this function. For "CTGOV", all available results
+are always retrieved and loaded.}
 
 \item{euctrresultshistory}{If \code{TRUE}, also download
-available history of results publication in EUCTR.
-This is quite time-consuming (default is \code{FALSE}).}
+available history of results publication in "EUCTR."
+This is quite time-consuming. Default is \code{FALSE}.}
 
-\item{euctrresultsfilespath}{If this is a relative or absolute
-path to a  directory that exists or can be created,
-save results files into it, e.g., PDF files of result publications
-that had been submitted to EUCTR (default is \code{NULL}).}
+\item{documents.path}{If this is a relative or absolute
+path to a directory that exists or can be created,
+save any documents into it that are directly available from
+the register ("EUCTR", "CTGOV", "CTIS") such as PDFs on results,
+analysis plans, spreadsheets, assessments or product information
+Default is \code{NULL}, which disables saving documents.}
 
-\item{euctrresultspdfpath}{Deprecated, use \code{euctrresultsfilespath}}
+\item{documents.regexp}{Regular expression, case insensitive,
+to select documents, if saving documents is requested
+(see \code{documents.path}).
+If set to \code{NULL}, empty placeholder files are saved for
+every document that could be saved. Default is
+\code{"prot|sample|statist|_sap_|p1ar|p2ars|ctaletter"}.
+Used with "CTGOV" and "CTIS" (but not "EUCTR" for which all
+available documents are saved).}
 
 \item{annotation.text}{Text to be including in the records
 retrieved with the current query, in the field "annotation".
@@ -79,19 +88,18 @@ or "replace" for new annotation.text with respect to any
 existing annotation for the records retrieved with the
 current query.}
 
-\item{parallelretrievals}{Deprecated, ignored since
-version 1.11.1.9000}
-
 \item{only.count}{Set to \code{TRUE} to return only the
 number of trial records found in the register for the query.
 Does not load trial information into the database.
 Default is \code{FALSE}.}
 
 \item{con}{A connection object, see section
-`Databases` in \link{ctrdata-package}}
+`Databases` in \link{ctrdata-package}.}
 
 \item{verbose}{Printing additional information if set to
 \code{TRUE}; default is \code{FALSE}.}
+
+\item{...}{Do not use (capture deprecated parameters).}
 }
 \value{
 A list with elements

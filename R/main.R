@@ -40,23 +40,32 @@
 #'
 #' @param forcetoupdate If \code{TRUE}, run again the query
 #' given in \code{querytoupdate}, irrespective of when it was
-#' run last (default is \code{FALSE}).
+#' run last. Default is \code{FALSE}.
+#'
+#' @param documents.path If this is a relative or absolute
+#' path to a directory that exists or can be created,
+#' save any documents into it that are directly available from
+#' the register ("EUCTR", "CTGOV", "CTIS") such as PDFs on results,
+#' analysis plans, spreadsheets, assessments or product information
+#' Default is \code{NULL}, which disables saving documents.
+#'
+#' @param documents.regexp Regular expression, case insensitive,
+#' to select documents, if saving documents is requested
+#' (see \code{documents.path}).
+#' If set to \code{NULL}, empty placeholder files are saved for
+#' every document that could be saved. Default is
+#' \code{"prot|sample|statist|_sap_|p1ar|p2ars|ctaletter"}.
+#' Used with "CTGOV" and "CTIS" (but not "EUCTR" for which all
+#' available documents are saved).
 #'
 #' @param euctrresults If \code{TRUE}, also download available
 #' results when retrieving and loading trials from EUCTR. This
-#' slows down this function. (For CTGOV, all available results
-#' are always retrieved and loaded.)
+#' slows down this function. For "CTGOV", all available results
+#' are always retrieved and loaded.
 #'
 #' @param euctrresultshistory If \code{TRUE}, also download
-#' available history of results publication in EUCTR.
-#' This is quite time-consuming (default is \code{FALSE}).
-#'
-#' @param euctrresultsfilespath If this is a relative or absolute
-#' path to a  directory that exists or can be created,
-#' save results files into it, e.g., PDF files of result publications
-#' that had been submitted to EUCTR (default is \code{NULL}).
-#'
-#' @param euctrresultspdfpath Deprecated, use \code{euctrresultsfilespath}
+#' available history of results publication in "EUCTR."
+#' This is quite time-consuming. Default is \code{FALSE}.
 #'
 #' @param annotation.text Text to be including in the records
 #' retrieved with the current query, in the field "annotation".
@@ -70,9 +79,6 @@
 #' existing annotation for the records retrieved with the
 #' current query.
 #'
-#' @param parallelretrievals Deprecated, ignored since
-#' version 1.11.1.9000
-#'
 #' @param only.count Set to \code{TRUE} to return only the
 #' number of trial records found in the register for the query.
 #' Does not load trial information into the database.
@@ -82,6 +88,8 @@
 #'
 #' @param verbose Printing additional information if set to
 #' \code{TRUE}; default is \code{FALSE}.
+#'
+#' @param ... Do not use (capture deprecated parameters).
 #'
 #' @return A list with elements
 #' `n` (number of trial records newly imported or updated),
@@ -134,6 +142,9 @@
 #'
 #' @export
 #'
+#' @importFrom httr set_config user_agent
+#' @importFrom utils packageDescription
+#'
 ctrLoadQueryIntoDb <- function(
   queryterm = NULL,
   register = "",
@@ -141,23 +152,29 @@ ctrLoadQueryIntoDb <- function(
   forcetoupdate = FALSE,
   euctrresults = FALSE,
   euctrresultshistory = FALSE,
-  euctrresultsfilespath = euctrresultspdfpath,
-  euctrresultspdfpath = NULL,
+  documents.path = NULL,
+  documents.regexp = "prot|sample|statist|_sap_|p1ar|p2ars|ctaletter",
   annotation.text = "",
   annotation.mode = "append",
-  parallelretrievals = NULL,
   only.count = FALSE,
   con = NULL,
-  verbose = FALSE) {
+  verbose = FALSE, ...) {
 
   ## check params
 
   # - deprecated
-  if (!is.null(euctrresultspdfpath)) {
+  params <- list(...)
+  if (!is.null(params$euctrresultspdfpath)) {
     warning("Parameter 'euctrresultspdfpath' is deprecated, ",
-            "use euctrresultsfilespath", call. = FALSE)
+            "use 'documents.path'", call. = FALSE)
+    documents.path <- params$euctrresultspdfpath
   }
-  if (!missing("parallelretrievals")) {
+  if (!is.null(params$euctrresultsfilespath)) {
+    warning("Parameter 'euctrresultsfilespath' is deprecated, ",
+            "use 'documents.path'", call. = FALSE)
+    documents.path <- params$euctrresultsfilespath
+  }
+  if (!is.null(params$parallelretrievals)) {
     warning("Parameter 'parallelretrievals' is deprecated and ignored")
   }
 
@@ -233,7 +250,7 @@ ctrLoadQueryIntoDb <- function(
   } # if not querytoupdate
 
   # check annotation parameters
-  if (annotation.text != "" &
+  if (annotation.text != "" &&
       !any(annotation.mode == c("append", "prepend", "replace"))) {
     stop("'annotation.mode' incorrect", call. = FALSE)
   }
@@ -288,7 +305,7 @@ ctrLoadQueryIntoDb <- function(
     }
 
     # check database connection
-    con <- ctrDb(con = con)
+    con <- ctrDb(con)
 
   }
 
@@ -301,11 +318,13 @@ ctrLoadQueryIntoDb <- function(
                  register = register,
                  euctrresults = euctrresults,
                  euctrresultshistory = euctrresultshistory,
-                 euctrresultsfilespath = euctrresultsfilespath,
+                 documents.path = documents.path,
+                 documents.regexp = documents.regexp,
                  annotation.text = annotation.text,
                  annotation.mode = annotation.mode,
                  only.count = only.count,
-                 con = con, verbose = verbose,
+                 con = con,
+                 verbose = verbose,
                  queryupdateterm = queryupdateterm)
 
   # call core functions
@@ -320,7 +339,7 @@ ctrLoadQueryIntoDb <- function(
   ## annotate records ---------------------------------------------------------
 
   # add annotations
-  if ((annotation.text != "") &
+  if ((annotation.text != "") &&
       (length(imported$success) > 0L)) {
 
     # dispatch
@@ -349,11 +368,16 @@ ctrLoadQueryIntoDb <- function(
 
   # add query parameters to database
   if (imported$n > 0L || !is.null(querytoupdate)) {
-    dbCTRUpdateQueryHistory(register = register,
-                            queryterm = querytermoriginal,
-                            recordnumber = imported$n,
-                            con = con,
-                            verbose = verbose)
+    dbCTRUpdateQueryHistory(
+      register = register,
+      queryterm = querytermoriginal,
+      recordnumber = imported$n,
+      con = con,
+      verbose = verbose)
+
+    # add metadata
+    imported <- addMetaData(x = imported, con = con)
+
   }
 
   # return some useful information or break
@@ -362,15 +386,13 @@ ctrLoadQueryIntoDb <- function(
 
   # inform user
   if (verbose) {
-    message("DEBUG: \n'queryterm'=", queryterm,
-            "\n'queryupdateterm'=", queryupdateterm,
-            "\n'imported'=", imported$n,
-            "\n'register'=", register,
-            "\n'collection'=", con$collection)
+    message(
+      "DEBUG: \n'queryterm'=", queryterm,
+      "\n'queryupdateterm'=", queryupdateterm,
+      "\n'imported'=", imported$n,
+      "\n'register'=", register,
+      "\n'collection'=", con$collection)
   }
-
-  # add metadata
-  imported <- addMetaData(x = imported, con = con)
 
   ## return
   return(imported)
@@ -396,7 +418,7 @@ ctrRerunQuery <- function(
   queryupdateterm = queryupdateterm) {
 
   ## check database connection
-  con <- ctrDb(con = con)
+  con <- ctrDb(con)
 
   ## prepare
   failed <- FALSE
@@ -999,7 +1021,7 @@ dbCTRUpdateQueryHistory <- function(
   verbose) {
 
   ## check database connection
-  con <- ctrDb(con = con)
+  con <- ctrDb(con)
 
   # debug
   if (verbose) message("Running dbCTRUpdateQueryHistory...")
@@ -1066,17 +1088,19 @@ dbCTRUpdateQueryHistory <- function(
 #' @keywords internal
 #' @noRd
 #'
-#' @importFrom jsonlite toJSON
-#' @importFrom httr content GET status_code config
+#' @importFrom jsonlite toJSON stream_in
+#' @importFrom httr content GET status_code config set_config
 #' @importFrom nodbi docdb_query
 #' @importFrom curl multi_download
+#' @importFrom jqr jq jq_flags
 #'
 ctrLoadQueryIntoDbCtgov <- function(
   queryterm = queryterm,
   register,
   euctrresults,
   euctrresultshistory,
-  euctrresultsfilespath,
+  documents.path,
+  documents.regexp,
   annotation.text,
   annotation.mode,
   only.count,
@@ -1103,16 +1127,16 @@ ctrLoadQueryIntoDbCtgov <- function(
 
   ## checks -------------------------------------------------------------------
 
+  # set configuration option
+  httr::set_config(httr::config(forbid_reuse = 1))
+
   # check number of trials to be downloaded
   ctgovdfirstpageurl <- paste0(
     queryUSRoot, queryUSType2, "&", queryterm, queryupdateterm)
   #
   tmp <- try(httr::GET(
-    url = utils::URLencode(ctgovdfirstpageurl),
-    httr::config(forbid_reuse = 1)),
+    url = utils::URLencode(ctgovdfirstpageurl)),
     silent = TRUE)
-  # save request options
-  requestOptions <- tmp$request$options
   #
   if (inherits(tmp, "try-error") ||
       !any(httr::status_code(tmp) == c(200L, 404L))) {
@@ -1162,28 +1186,13 @@ ctrLoadQueryIntoDbCtgov <- function(
   if (!verbose) on.exit(unlink(tempDir, recursive = TRUE), add = TRUE)
 
   # prepare a file handle for temporary directory
-  f <- paste0(tempDir, "/", "ctgov.zip")
+  f <- file.path(tempDir, "ctgov.zip")
 
   # inform user
   message("Downloading trials ", appendLF = FALSE)
 
   # get (download) trials in single zip file f
-  tmp <- do.call(
-    curl::multi_download,
-    c(urls = list(utils::URLencode(ctgovdownloadcsvurl)),
-      destfiles = list(f),
-      progress = TRUE,
-      timeout = Inf,
-      requestOptions
-    )
-  )
-
-  # inform user, exit gracefully
-  if (inherits(tmp, "try-error") ||
-      !any((tmp[["status_code"]]) == c(200L))) {
-    stop("Host ", queryUSRoot, " not working as expected, ",
-         "cannot continue ", call. = FALSE)
-  }
+  tmp <- ctrMultiDownload(ctgovdownloadcsvurl, f)
 
   # inform user
   if (!file.exists(f) || file.size(f) == 0L) {
@@ -1195,7 +1204,7 @@ ctrLoadQueryIntoDbCtgov <- function(
   utils::unzip(f, exdir = tempDir)
 
   ## run conversion
-  ctrConvertToJSON(tempDir, "ctgov2ndjson.php", verbose)
+  tmp <- ctrConvertToJSON(tempDir, "ctgov2ndjson.php", verbose)
 
   ## run import
   message("(3/3) Importing JSON records into database...")
@@ -1206,6 +1215,119 @@ ctrLoadQueryIntoDbCtgov <- function(
 
   ## find out number of trials imported into database
   message("= Imported or updated ", imported$n, " trial(s)")
+
+
+  ## documents -----------------------------------------------------------------
+
+  ## save any documents
+  if (!is.null(documents.path)) {
+
+    # check and create directory
+    createdDir <- try(
+      dir.create(documents.path, recursive = TRUE, showWarnings = FALSE),
+      silent = TRUE)
+    if (inherits(createdDir, "try-errror")) {
+      warning("Directory could not be created for 'documents.path' ",
+              documents.path, ", cannot download files", call. = FALSE)
+    } else {
+
+      # continue after if
+      message("Downloading documents into 'documents.path' = ", documents.path)
+
+      # canonical directory path
+      documents.path <- normalizePath(documents.path, mustWork = TRUE)
+      if (createdDir) message("- Created directory ", documents.path)
+
+      # get documents urls, file names
+      fDocsOut <- file.path(tempDir, "ctgov_docs.ndjson")
+      unlink(fDocsOut)
+      for (f in dir(path = tempDir, pattern = "ctgov_trials_[0-9]+[.]ndjson", full.names = TRUE)) {
+        cat(jqr::jq(
+          file(f),
+          ' { _id: ._id, docs: [ .provided_document_section.provided_document[].document_url ] } ',
+        flags = jqr::jq_flags(pretty = FALSE)
+        ), sep = "\n",
+        file = fDocsOut
+        )
+      }
+
+      # create directory per trial
+      dlFiles <- jsonlite::stream_in(file(fDocsOut), verbose = FALSE)
+      invisible(sapply(
+        dlFiles[["_id"]], function(i) {
+          d <- file.path(documents.path, i)
+          if (!dir.exists(d))
+          dir.create(d, showWarnings = FALSE, recursive = TRUE)
+      }))
+
+      # create data frame with file info
+      dlFiles <- apply(dlFiles, 1, function(r) {
+        data.frame(url = unlist(r[-1], use.names = TRUE), r[1],
+                   check.names = FALSE, stringsAsFactors = FALSE)
+      })
+      dlFiles <- do.call(rbind, dlFiles)
+      dlFiles$filename <- sub("^.+/(.+?)$", "\\1", dlFiles$url)
+      dlFiles$destfile <- file.path(
+        documents.path, dlFiles$`_id`, dlFiles$filename)
+      dlFiles$exists <- file.exists(dlFiles$destfile) &
+        file.size(dlFiles$destfile) > 10L
+
+      if (is.null(documents.regexp)) {
+
+        message("Creating empty document placeholders (max. ", nrow(dlFiles), ")")
+
+        # create empty files
+        tmp <-
+          sapply(
+            dlFiles$destfile,
+            function(i) if (!file.exists(i))
+              file.create(i, showWarnings = TRUE),
+            USE.NAMES = FALSE)
+
+        tmp <- sum(unlist(tmp), na.rm = TRUE)
+
+      } else {
+
+        message("Applying 'documents.regexp' to ",
+                nrow(dlFiles), " documents")
+        dlFiles <- dlFiles[
+          grepl(documents.regexp, dlFiles$filename, ignore.case = TRUE), ,
+          drop = FALSE]
+
+        # download and save
+        message("Downloading ", nrow(dlFiles), " documents:")
+
+        tmp <- ctrMultiDownload(dlFiles$url[!dlFiles$exists],
+                                dlFiles$destfile[!dlFiles$exists])
+
+        if (!nrow(tmp)) tmp <- 0L else {
+
+          # handle failures despite success is true
+          invisible(sapply(
+            tmp[tmp$status_code != 200L, "destfile", drop = TRUE], unlink
+          ))
+
+          tmp <- nrow(tmp[tmp$status_code == 200L, , drop = FALSE])
+
+        }
+
+      } # if documents.regexp
+
+      message(sprintf(paste0(
+        "Newly saved %i ",
+        ifelse(is.null(documents.regexp), "placeholder ", ""),
+        "document(s) for %i trial(s); ",
+        "%i document(s) for %i trial(s) already existed in %s"),
+        tmp,
+        length(unique(dlFiles$`_id`)),
+        sum(dlFiles$fileexists),
+        length(unique(dlFiles$`_id`[dlFiles$fileexists])),
+        documents.path
+      ))
+
+    } # if documents.path available
+
+  } # if documents.path
 
   # return
   return(imported)
@@ -1232,7 +1354,8 @@ ctrLoadQueryIntoDbEuctr <- function(
   register,
   euctrresults,
   euctrresultshistory,
-  euctrresultsfilespath,
+  documents.path,
+  documents.regexp,
   annotation.text,
   annotation.mode,
   only.count,
@@ -1280,8 +1403,6 @@ ctrLoadQueryIntoDbEuctr <- function(
            "cannot continue: ", resultsEuPages[[1]], call. = FALSE)
     }
   }
-  # - store options from request
-  requestOptions <- resultsEuPages$request$options
   # - get content of response
   resultsEuPages <- httr::content(resultsEuPages, as = "text")
 
@@ -1344,25 +1465,25 @@ ctrLoadQueryIntoDbEuctr <- function(
   if (!verbose) on.exit(unlink(tempDir, recursive = TRUE), add = TRUE)
 
   # check results parameters
-  if (is.null(euctrresultsfilespath)) {
-    euctrresultsfilespath <- tempDir
+  if (is.null(documents.path)) {
+    documents.path <- tempDir
   }
   if (euctrresults &&
-      (is.na(file.info(euctrresultsfilespath)[["isdir"]]) ||
-       !file.info(euctrresultsfilespath)[["isdir"]])) {
+      (is.na(file.info(documents.path)[["isdir"]]) ||
+       !file.info(documents.path)[["isdir"]])) {
     createdDir <- try(
-      dir.create(euctrresultsfilespath, recursive = TRUE, showWarnings = FALSE),
+      dir.create(documents.path, recursive = TRUE, showWarnings = FALSE),
       silent = TRUE)
     if (!inherits(createdDir, "try-errror") && createdDir) {
-      message("Created directory ", euctrresultsfilespath)
+      message("Created directory ", documents.path)
     } else {
-      warning("Directory could not be created for 'euctrresultsfilespath' ",
-              euctrresultsfilespath, ", ignored", call. = FALSE)
-      euctrresultsfilespath <- tempDir
+      warning("Directory could not be created for 'documents.path' ",
+              documents.path, ", ignored", call. = FALSE)
+      documents.path <- tempDir
     }
   }
   # canonical directory path
-  euctrresultsfilespath <- normalizePath(euctrresultsfilespath, mustWork = TRUE)
+  documents.path <- normalizePath(documents.path, mustWork = TRUE)
 
   ## download all text files from pages
 
@@ -1373,7 +1494,7 @@ ctrLoadQueryIntoDbEuctr <- function(
   h <- do.call(
     curl::new_handle,
     c(accept_encoding = "gzip,deflate,zstd,br",
-      requestOptions)
+      getOption("httr_config")[["options"]])
   )
   # test fetch
   tmp <- curl::curl_fetch_memory(
@@ -1412,22 +1533,8 @@ ctrLoadQueryIntoDbEuctr <- function(
   )
 
   # do download and saving
-  tmp <- do.call(
-    curl::multi_download,
-    c(urls = list(urls),
-      destfiles = list(fp),
-      resume = TRUE,
-      progress = TRUE,
-      timeout = Inf,
-      requestOptions,
-      accept_encoding = "gzip,deflate,zstd,br"
-    )
-  )
+  tmp <- ctrMultiDownload(urls, fp)
 
-  # check plausibility
-  if (inherits(tmp, "try-error")) {
-    stop("Download from EUCTR failed; last error: ", class(tmp), call. = FALSE)
-  }
   if (nrow(tmp) != resultsEuNumPages) {
     message("Download from EUCTR failed; incorrect number of records")
     return(invisible(emptyReturn))
@@ -1504,22 +1611,7 @@ ctrLoadQueryIntoDbEuctr <- function(
     )
 
     # do download and save
-    tmp <- do.call(
-      curl::multi_download,
-      c(urls = list(urls),
-        destfiles = list(fp),
-        resume = TRUE,
-        progress = TRUE,
-        timeout = Inf,
-        requestOptions,
-        accept_encoding = "gzip,deflate,zstd,br"
-      )
-    )
-
-    # check plausibility
-    if (inherits(tmp, "try-error")) {
-      stop("Download from EUCTR failed; last error: ", class(tmp), call. = FALSE)
-    }
+    tmp <- ctrMultiDownload(urls, fp)
 
     # work only on successful downloads
     tmp <- tmp[tmp[["status_code"]] == 200L, , drop = FALSE]
@@ -1545,12 +1637,12 @@ ctrLoadQueryIntoDbEuctr <- function(
           # any non-XML file
           if (length(nonXmlFiles)) {
             message("F ", appendLF = FALSE)
-            if (euctrresultsfilespath != tempDir) {
+            if (documents.path != tempDir) {
               # move results file(s) to user specified directory
               saved <- try(file.rename(
                 from = nonXmlFiles,
                 to = paste0(
-                  normalizePath(path = euctrresultsfilespath, mustWork = TRUE),
+                  normalizePath(path = documents.path, mustWork = TRUE),
                   "/", euctrnr, "--", basename(nonXmlFiles)
                 )), silent = TRUE)
               if (any(!saved)) {
@@ -1738,7 +1830,7 @@ ctrLoadQueryIntoDbEuctr <- function(
             url = urls[i],
             range = "0-30000", # only top of page needed
             accept_encoding = "identity")
-          curl::handle_setopt(h, .list = requestOptions)
+          curl::handle_setopt(h, .list = getOption("httr_config")[["options"]])
           curl::multi_add(
             handle = h,
             done = curlSuccess,
@@ -1818,9 +1910,8 @@ ctrLoadQueryIntoDbEuctr <- function(
       message("= Imported or updated results history for ",
               importedresultshistory, " trials")
     }
-    if (euctrresultsfilespath != tempDir) {
-      message("= Results PDF files if any saved in '",
-              euctrresultsfilespath, "'")
+    if (documents.path != tempDir) {
+      message("= documents saved in '", documents.path, "'")
     }
 
   } # if euctrresults
@@ -1841,14 +1932,14 @@ ctrLoadQueryIntoDbEuctr <- function(
 #' @importFrom jsonlite toJSON
 #' @importFrom nodbi docdb_query
 #' @importFrom utils URLdecode
-#' @importFrom curl multi_download
 #'
 ctrLoadQueryIntoDbIsrctn <- function(
   queryterm = queryterm,
   register,
   euctrresults,
   euctrresultshistory,
-  euctrresultsfilespath,
+  documents.path,
+  documents.regexp,
   annotation.text,
   annotation.mode,
   only.count,
@@ -1985,20 +2076,7 @@ ctrLoadQueryIntoDbIsrctn <- function(
     queryIsrctnRoot, queryIsrctnType1, tmp, "&", apiterm, queryupdateterm)
 
   # get (download) trials in single file f
-  tmp <- do.call(
-    curl::multi_download,
-    c(urls = list(utils::URLencode(isrctndownloadurl)),
-      destfiles = list(f),
-      progress = TRUE,
-      timeout = Inf,
-      getOption("httr_config")[["options"]]
-    )
-  )
-
-  # check plausibility
-  if (inherits(tmp, "try-error")) {
-    stop("Download from ISRCTN failed; last error: ", class(tmp), call. = FALSE)
-  }
+  tmp <- ctrMultiDownload(isrctndownloadurl, f)
 
   # inform user
   if (!file.exists(f) || file.size(f) == 0L) {
@@ -2032,17 +2110,19 @@ ctrLoadQueryIntoDbIsrctn <- function(
 #' @keywords internal
 #' @noRd
 #'
-#' @importFrom curl multi_download
 #' @importFrom jqr jq jq_flags
-#' @importFrom utils read.table
+#' @importFrom utils read.table URLencode
 #' @importFrom nodbi docdb_update
+#' @importFrom jsonlite stream_in fromJSON
+#' @importFrom stringi stri_extract_all_regex
 #'
 ctrLoadQueryIntoDbCtis <- function(
     queryterm = queryterm,
     register,
     euctrresults,
     euctrresultshistory,
-    euctrresultsfilespath,
+    documents.path,
+    documents.regexp,
     annotation.text,
     annotation.mode,
     only.count,
@@ -2056,31 +2136,51 @@ ctrLoadQueryIntoDbCtis <- function(
   tempDir <- normalizePath(tempDir, mustWork = TRUE)
   # register function to remove files after use for streaming
   if (!verbose) on.exit(unlink(tempDir, recursive = TRUE), add = TRUE)
-  if (verbose) message("Downloading into ", tempDir)
+  if (verbose) message("DEBUG: ", tempDir)
 
   ## ctis api -----------------------------------------------------------
 
   ctisEndpoints <- c(
     #
-    # %s is ctNumber
+    # trial information - %s is ctNumber
     "https://euclinicaltrials.eu/ct-public-api-services/services/ct/publiclookup?&paging=0,-1&%s",
     "https://euclinicaltrials.eu/ct-public-api-services/services/ct/%s/publicview", # partI and partsII
+    #
     "https://euclinicaltrials.eu/ct-public-api-services/services/ct/%s/publicevents",
     "https://euclinicaltrials.eu/ct-public-api-services/services/ct/public/%s/summary/list",
     "https://euclinicaltrials.eu/ct-public-api-services/services/ct/public/%s/layperson/list",
-    "https://euclinicaltrials.eu/ct-public-api-services/services/ct/public/%s/csr/list",
-    "https://euclinicaltrials.eu/ct-public-api-services/services/ct/public/%s/cm/list",
-    "https://euclinicaltrials.eu/ct-public-api-services/services/ct/public/%s/inspections/list"
+    "https://euclinicaltrials.eu/ct-public-api-services/services/ct/public/%s/csr/list", # clinical study report
+    "https://euclinicaltrials.eu/ct-public-api-services/services/ct/public/%s/cm/list", # corrective measures
+    "https://euclinicaltrials.eu/ct-public-api-services/services/ct/public/%s/inspections/list",
     #
-    # %s is entity identifier
-    # "https://euclinicaltrials.eu/ct-public-api-services/services/document/product-group-common/%s/list"
-    # "https://euclinicaltrials.eu/ct-public-api-services/services/document/part1/%s/list"
-    # "https://euclinicaltrials.eu/ct-public-api-services/services/document/part2/%s/list"
+    # %s is an application id
+    "https://euclinicaltrials.eu/ct-public-api-services/services/ct/%s/publicEvaluation",
+    #
+    # download files - %s is document url
+    "https://euclinicaltrials.eu/ct-public-api-services/services/ct/public/download/%s",
+    #
+    # documents - %s is entity identifier, lists
+    "https://euclinicaltrials.eu/ct-public-api-services/services/document/part1/%s/list", # appl auth
+    "https://euclinicaltrials.eu/ct-public-api-services/services/document/part2/%s/list", # appl auth
+    "https://euclinicaltrials.eu/ct-public-api-services/services/document/product-group-common/%s/list",
+    "https://euclinicaltrials.eu/ct-public-api-services/services/document/part1/%s/list?documentType=274", # p1 AR
+    "https://euclinicaltrials.eu/ct-public-api-services/services/document/part2/%s/list/?documentType=43", # auth letter
+    "https://euclinicaltrials.eu/ct-public-api-services/services/document/part2/%s/list/?documentType=42", # p2 ARs
+    "https://euclinicaltrials.eu/ct-public-api-services/services/document/rfi/%s/list" # rfis
+    #
+    # unclear or not publicly accessible
+    # https://euclinicaltrials.eu/ct-public-api-services/services/document/part1/4433/list?documentType=93
+    # https://euclinicaltrials.eu/ct-public-api-services/services/document/part1/4433/list?documentType=94
+    # https://euclinicaltrials.eu/ct-public-api-services/services/document/part2/14808/list/?documentType=41
+    # https://euclinicaltrials.eu/ct-public-api-services/services/document/considerationDoc/32137/list
+    #
   )
 
-  ## trials list --------------------------------------------------------------
+  ## add_1: overviews ---------------------------------------------------------
 
-  message("(1/5) Downloading trials list...")
+  # this is for importing overview (recruitment, status etc.) into database
+
+  message("(1/5) Downloading trials list", appendLF = FALSE)
 
   # corresponds in output to "pageInfo":{"offset":0,"limit":-1}
   urls <- sprintf(ctisEndpoints[1], queryterm)
@@ -2089,24 +2189,29 @@ ctrLoadQueryIntoDbCtis <- function(
 
   # "HTTP server doesn't seem to support byte ranges. Cannot resume."
   # Note: at this time, this is just a single file to be downloaded
-  tmp <- do.call(
-    curl::multi_download,
-    c(urls = list(utils::URLencode(urls)),
-      destfiles = list(fTrialsJson),
-      progress = FALSE, timeout = Inf,
-      getOption("httr_config")[["options"]],
-      accept_encoding = "gzip,deflate,zstd,br"
-    )
-  )
-  if (inherits(tmp, "try-error")) {
-    stop("Download from CTIS failed; last error: ", class(tmp), call. = FALSE)
-  }
+  tmp <- ctrMultiDownload(urls, fTrialsJson, progress = FALSE)
 
   # extract total number of trial records
   resultsEuNumTrials <- as.numeric(
     jqr::jq(
       file(fTrialsJson),
       ' {name: .totalSize} | .[]'))
+  message(", found ", resultsEuNumTrials, " trials")
+
+  # early exit
+  if (!resultsEuNumTrials) {
+    warning("No trials found, check 'queryterm' and 'register'")
+    return(emptyReturn)
+  }
+
+  # only count?
+  if (only.count) {
+
+    # return
+    return(list(n = resultsEuNumTrials,
+                success = NULL,
+                failed = NULL))
+  }
 
   # get ids of trial records
   idsTrials <- read.table(
@@ -2134,7 +2239,9 @@ ctrLoadQueryIntoDbCtis <- function(
     out = fTrialsNdjson
   )
 
-  ## per trial partI and partsII ----------------------------------------------
+  ## import: partI, partsII ---------------------------------------------------
+
+  # this is imported as the main data into the database
 
   message("(2/5) Downloading and processing part I and parts II... (",
           "estimate: ", length(idsTrials) * 0.15, " Mb)")
@@ -2146,18 +2253,7 @@ ctrLoadQueryIntoDbCtis <- function(
   }
 
   # "HTTP server doesn't seem to support byte ranges. Cannot resume."
-  tmp <- do.call(
-    curl::multi_download,
-    c(urls = list(utils::URLencode(urls)),
-      destfiles = list(fPartIPartsIIJson(idsTrials)),
-      progress = TRUE, timeout = Inf,
-      getOption("httr_config")[["options"]],
-      accept_encoding = "gzip,deflate,zstd,br"
-    )
-  )
-  if (inherits(tmp, "try-error")) {
-    stop("Download from CTIS failed; last error: ", class(tmp), call. = FALSE)
-  }
+  tmp <- ctrMultiDownload(urls, fPartIPartsIIJson(idsTrials))
 
   importString <- paste0(
     '"ctrname":"CTIS",\\1,"record_last_import":"',
@@ -2175,40 +2271,29 @@ ctrLoadQueryIntoDbCtis <- function(
       sub("(\"id\":[0-9]+),", importString,
       sub("(\"ctNumber\"):(\"[-0-9]+\"),", '\\1:\\2,"_id":\\2,',
           readLines(fn, warn = FALSE)
-      )), #)
+      )),
       file = fPartIPartsIINdjson,
       append = TRUE,
       sep = "\n")
     message(". ", appendLF = FALSE)
   }
 
-  ## per trial additional data ----------------------------------------------
+  ## add_3:8: more data -------------------------------------------------------
 
   message("\n(3/5) Downloading and processing additional data: ")
 
-  for (e in (3:length(ctisEndpoints))) {
+  for (e in 3:8) {
 
     urls <- sprintf(ctisEndpoints[e], idsTrials)
     ep <- sub(".+/(.+?)$", "\\1", sub("/list$", "", urls[1]))
-    message(ep, appendLF = FALSE)
+    message("- ", ep, appendLF = FALSE)
 
     fAddJson <- function(i) {
       file.path(tempDir, paste0("ctis_add_", e, "_", i, ".json"))
     }
 
     # "HTTP server doesn't seem to support byte ranges. Cannot resume."
-    tmp <- do.call(
-      curl::multi_download,
-      c(urls = list(utils::URLencode(urls)),
-        destfiles = list(fAddJson(idsTrials)),
-        progress = FALSE, timeout = Inf,
-        getOption("httr_config")[["options"]],
-        accept_encoding = "gzip,deflate,zstd,br"
-      )
-    )
-    if (inherits(tmp, "try-error")) {
-      stop("Download from CTIS failed; last error: ", class(tmp), call. = FALSE)
-    }
+    tmp <- ctrMultiDownload(urls, fAddJson(idsTrials), progress = FALSE)
 
     # convert into ndjson file
     fAddNdjson <- file.path(tempDir, paste0("ctis_add_", e, ".ndjson"))
@@ -2247,17 +2332,92 @@ ctrLoadQueryIntoDbCtis <- function(
 
   }
 
-  ## import into database -----------------------------------------------------
+  ## add_9: more data -------------------------------------------------------
+
+  message("- publicevaluation ")
+
+  fApplicationsJson <- file.path(tempDir, "ctis_add_9.json")
+
+  # get ids of trial applications
+  jqr::jq(
+    file(fPartIPartsIINdjson),
+    ' { ctNumber: .ctNumber, applicationIds: [ .applications[] | .id ] } ',
+    flags = jqr::jq_flags(pretty = FALSE),
+    out = fApplicationsJson
+  )
+
+  idsApplications <- jsonlite::stream_in(file(fApplicationsJson), verbose = FALSE)
+
+  dlFiles <- apply(idsApplications, 1, function(r) {
+    data.frame(
+      "_id" = unlist(r[1], use.names = TRUE), r[-1],
+      check.names = FALSE, stringsAsFactors = FALSE,
+      row.names = NULL, check.rows = FALSE)
+  })
+
+  dlFiles <- do.call(rbind, dlFiles)
+  dlFiles$url <- sprintf(ctisEndpoints[9], dlFiles$applicationIds)
+  dlFiles$filepathname <- file.path(
+    tempDir, paste0("ctis_add_9_", dlFiles$applicationIds, ".json"))
+
+  # "HTTP server doesn't seem to support byte ranges. Cannot resume."
+  tmp <- ctrMultiDownload(dlFiles$url, dlFiles$filepathname)
+
+  fApplicationsNdjson <- file.path(tempDir, "ctis_add_9.ndjson")
+  unlink(fApplicationsNdjson)
+
+  for (i in seq_len(nrow(idsApplications))) {
+
+    # read all files for _id into vector
+    fApps <- file.path(tempDir, paste0(
+      "ctis_add_9_", unlist(idsApplications$applicationIds[i]), ".json"))
+
+    fApps <- fApps[file.size(fApps) >= 50L]
+    fn <- tmp[["destfile"]][fi]
+    if (!length(fApps)) next
+
+    # get data
+    jApps <- sapply(fApps, readLines, warn = FALSE, USE.NAMES = FALSE)
+    if (!length(jApps)) next
+
+    # sanitise texts
+    jApps <- gsub("['\xc2\xb4`\xe2\x80\x99\xe2\x80\x98]", "", jApps)
+
+    # add applicationId
+    jApps <- mapply(function(i, j) sub(
+      "^[{]", paste0('{"id":', i, ","), j),
+      unlist(idsApplications$applicationIds[i]),
+      jApps)
+
+    # compose array
+    jApps <- paste0(
+      '{"_id":"', idsApplications[["ctNumber"]][i],
+      '","publicEvaluation":[',
+      paste0(jApps, collapse = ","),
+      ']}')
+
+    # write ndjson
+    cat(
+      jApps,
+      file = fApplicationsNdjson,
+      append = TRUE,
+      sep = "\n")
+
+    message(i, rep("\b", nchar(i)), appendLF = FALSE)
+
+  }
+
+  ## database import -----------------------------------------------------
 
   message("\n(4/5) Importing JSON records into database...")
-  if (verbose) message("DEBUG: ", tempDir)
 
   # dbCTRLoadJSONFiles operates on pattern = ".+_trials_.*.ndjson"
   imported <- dbCTRLoadJSONFiles(dir = tempDir, con = con, verbose = verbose)
 
   # iterating over any additional ndjson files
   resAll <- NULL
-  message("\n(5/5) Updating with additional data: ", appendLF = FALSE)
+  message("(5/5) Updating with additional data: ", appendLF = FALSE)
+
   for (f in dir(path = tempDir, pattern = "ctis_add_[1-9]+[0-9]*.ndjson", full.names = TRUE)) {
 
     message(". ", appendLF = FALSE)
@@ -2265,6 +2425,271 @@ ctrLoadQueryIntoDbCtis <- function(
     resAll <- c(resAll, res)
 
   }
+
+  ## download files -----------------------------------------------------------
+
+  if (!is.null(documents.path)) {
+
+    # check and create directory
+    createdDir <- try(
+      dir.create(documents.path, recursive = TRUE, showWarnings = FALSE),
+      silent = TRUE)
+    if (inherits(createdDir, "try-errror")) {
+      warning("Directory could not be created for 'documents.path' ",
+              documents.path, ", cannot download files", call. = FALSE)
+    } else {
+
+      # continue after if
+      message("\n* Downloading documents into 'documents.path' = ", documents.path)
+
+      # canonical directory path
+      documents.path <- normalizePath(documents.path, mustWork = TRUE)
+      if (createdDir) message("- Created directory ", documents.path)
+
+      # define order for factor for sorting
+      orderedParts <- c(
+        "ctaletter", "p1ar", "p2ars", "part1auth", "part1appl",
+        "parts2auth", "parts2appl", "prodauth", "prodappl", "rfis")
+
+      # 1 - get ids of lists (which include urls to download)
+      message("- Getting ids of lists with document information")
+
+      # get temporary file
+      downloadsNdjson <- file.path(tempDir, "ctis_downloads.ndjson")
+
+      # extract ids of lists per parts per trial
+      jqr::jq(
+        file(fPartIPartsIINdjson),
+        ' ._id |= gsub("\\""; "") | { _id: ._id,
+          part1appl: [ .applications[].partI.id ],
+          part1auth: [ .authorizedPartI.id ],
+          parts2appl: [ .applications[].partIIInfo[].id ],
+          parts2auth: [ .authorizedPartsII[].id ],
+          prodappl: [ .applications[].partI.productRoleGroupInfos[].id ],
+          prodauth: [ .authorizedPartI.productRoleGroupInfos[].id ],
+          p1ar: [ .applications[].partI.id ],
+          p2ars: [ .applications[].partIIInfo[].id ],
+          ctaletter: [ .applications[].partIIInfo[].id ]
+        } ',
+        flags = jqr::jq_flags(pretty = FALSE),
+        out = downloadsNdjson
+      )
+
+      # extract ids of rfis from publicEvaluation
+      rfiIds1 <- jqr::jq(
+        file(fApplicationsNdjson),
+        '{ _id: ._id, rfis1: [ .publicEvaluation[].partIRfis[].id ]}')
+      rfiIds1 <- jsonlite::fromJSON(paste0("[", paste0(rfiIds1, collapse = ","), "]"))
+      rfiIds2 <- jqr::jq(
+        file(fApplicationsNdjson),
+        '{ _id: ._id, rfis2: [ .publicEvaluation[].partIIEvaluationList[].partIIRfis[].id ]}')
+      rfiIds2 <- jsonlite::fromJSON(paste0("[", paste0(rfiIds2, collapse = ","), "]"))
+
+      # convert and merge rfi ids
+      dlFiles <- jsonlite::stream_in(file(downloadsNdjson), verbose = FALSE)
+      if (nrow(rfiIds1)) dlFiles <- merge(dlFiles, rfiIds1)
+      if (nrow(rfiIds2)) dlFiles <- merge(dlFiles, rfiIds2)
+
+      epTyp <- list(
+        "part1" = ctisEndpoints[11],
+        "parts2" = ctisEndpoints[12],
+        "prod" = ctisEndpoints[13],
+        "p1ar" = ctisEndpoints[14],
+        "p2ars" = ctisEndpoints[15],
+        "ctaletter" = ctisEndpoints[16],
+        "rfis" = ctisEndpoints[17]
+      )
+
+      dlFiles <- apply(dlFiles, 1, function(r) {
+        tmp <- data.frame(id = unlist(r[-1], use.names = TRUE), r[1],
+                          check.names = FALSE, stringsAsFactors = FALSE)
+        # if id occurs repeatedly, only use last from defined order
+        tmp$part <- sub("[0-9]+$", "", row.names(tmp))
+        tmp$part <- ordered(tmp$part, orderedParts)
+        tmp$typ <- sub("appl|auth", "", tmp$part)
+        #
+        tmp$url <- mapply(
+          function(t, i) sprintf(epTyp[t][[1]], i), tmp$typ, tmp$id)
+        #
+        tmp <- tmp[order(tmp$id, tmp$part), , drop = FALSE]
+        rl <- rle(tmp$id)
+        rl <- unlist(sapply(rl$lengths, function(i) c(TRUE, rep(FALSE, i - 1L))))
+        tmp <- tmp[rl, , drop = FALSE]
+      })
+
+      dlFiles <- do.call(rbind, dlFiles)
+      dlFiles <- na.omit(dlFiles)
+
+      # do downloads of list files
+      message("- Downloading ", nrow(dlFiles),
+              " lists with document information (estimate: ",
+              nrow(dlFiles) * 0.02, " Mb)")
+
+      fFilesListJson <- function(t, p, id) {
+        file.path(tempDir, paste0("ctis_fileslist_", t, "_", p, "_", id, ".json"))
+      }
+
+      dlFiles$destfile <- fFilesListJson(
+        dlFiles[["_id"]], dlFiles[["part"]], dlFiles[["id"]])
+
+      tmp <- ctrMultiDownload(dlFiles[["url"]], dlFiles[["destfile"]])
+
+      if (sum(tmp$status_code != 200L, na.rm = TRUE)) {
+        warning("Could not download these lists with document information: ",
+                paste0(tmp$url[tmp$status_code != 200L], collapse = ", "))
+        tmp <- tmp[tmp$status_code == 200L, , drop = FALSE]
+      }
+
+      # 2 - create data frame with info on documents (url, name, extension etc.)
+
+      message("- Processing document information in ", nrow(tmp), " lists")
+      epTypChars <- paste0(names(epTyp), "appl", "auth", collapse = "")
+      epTypChars <- rawToChar(unique(charToRaw(epTypChars)))
+      unlink(downloadsNdjson)
+
+      for (fi in seq_len(nrow(tmp))) {
+
+        fn <- tmp[["destfile"]][fi]
+        if (file.size(fn) < 50L) next # size 49
+
+        # reconstruct trial id
+        id <- sub(paste0(".+_(", regCtis, ")_.+"), "\\1", tmp[["destfile"]][fi])
+
+        # reconstruct part
+        part <- sub(paste0(
+          "^.+_([", epTypChars, "]+?)_[0-9]+[.]json$"),
+          "\\1", tmp[["destfile"]][fi])
+
+        # get data
+        jOut <- readLines(fn, warn = FALSE)
+
+        # remove irrelevant information
+        jOut <- sub('^.*"elements":(.*?)}?$', "\\1", jOut)
+        jOut <- sub('(,?)"showWarning":(false|true)(,?)', "\\3", jOut)
+        jOut <- sub('(,?)"totalSize":[0-9]+(,?)', "\\2", jOut)
+        jOut <- sub('(,?)"pageInfo":[{].+?[}](,?)', "\\2", jOut)
+        jOut <- gsub('"versions":[[][{].+?[}][]],', "", jOut) # reconsider
+        if (!nchar(jOut) || jOut == "[]") next
+
+        jOut <- paste0(
+          '{"_id":"', id, '",',
+          stringi::stri_extract_all_regex(jOut, '"url":"[-a-z0-9]+?",')[[1]],
+          stringi::stri_extract_all_regex(jOut, '"title":".+?",')[[1]],
+          stringi::stri_extract_all_regex(jOut, '"fileTypeLabel":"[A-Z]+?",')[[1]],
+          stringi::stri_extract_all_regex(jOut, '"documentIdentity":[0-9]+?,')[[1]],
+          '"part":"', part, '"}'
+        )
+
+        jOut <- jOut[!grepl('",NA"', jOut)]
+        if (!length(jOut)) next
+
+        cat(
+          jOut,
+          file = downloadsNdjson,
+          append = TRUE,
+          sep = "\n")
+
+        message(fi, rep("\b", nchar(fi)), appendLF = FALSE)
+
+      } # for
+
+      # 3 - documents download
+      message("- Creating subfolder for each trial")
+
+      dlFiles <- jsonlite::stream_in(file(downloadsNdjson), verbose = FALSE)
+
+      # remove duplicate files based on their title
+      dlFiles$part <- ordered(dlFiles$part, orderedParts)
+      dlFiles <- dlFiles[order(dlFiles$title, dlFiles$part), , drop = FALSE]
+      rl <- rle(dlFiles$title)
+      rl <- unlist(sapply(rl$lengths, function(i) c(TRUE, rep(FALSE, i - 1L))))
+      dlFiles <- dlFiles[rl, , drop = FALSE]
+
+      # add destination file name
+      dlFiles$filename <- paste0(
+        dlFiles$part, "_",
+        # mangle html entities and special characters
+        gsub("&[a-z]+;|[/\\#%&{}$?!'\":<>|=@+.;]", "-_-",  dlFiles$title),
+        ".", dlFiles$fileTypeLabel)
+
+      # add destination file directory path
+      dlFiles$filepath <- file.path(documents.path, dlFiles$`_id`)
+
+      # create subdirectories by trial
+      invisible(sapply(
+        unique(dlFiles$filepath), function(i) if (!dir.exists(i))
+          dir.create(i, showWarnings = FALSE, recursive = TRUE)
+      ))
+
+      # check if destination document exists
+      dlFiles$filepathname <- file.path(dlFiles$filepath, dlFiles$filename)
+
+      dlFiles$fileexists <- file.exists(dlFiles$filepathname) &
+        file.size(dlFiles$filepathname) > 10L
+
+      # finally download
+
+      # apply regexp
+      if (is.null(documents.regexp)) {
+
+        message("- Creating empty document placeholders (max. ", nrow(dlFiles), ")")
+
+        # create empty files
+        tmp <-
+          sapply(
+            dlFiles$filepathname,
+            function(i) if (!file.exists(i))
+              file.create(i, showWarnings = TRUE),
+            USE.NAMES = FALSE)
+
+        tmp <- sum(unlist(tmp), na.rm = TRUE)
+
+      } else {
+
+        message("- Applying 'documents.regexp' to ",
+                nrow(dlFiles), " documents:")
+
+        dlFiles <- dlFiles[
+          grepl(documents.regexp, dlFiles$filename, ignore.case = TRUE), ,
+          drop = FALSE]
+
+        # do download
+        message("- Downloading ", nrow(dlFiles), " documents")
+
+        # do download
+        tmp <- ctrMultiDownload(
+          urls = sprintf(ctisEndpoints[10], dlFiles$url[!dlFiles$fileexists]),
+          destfiles = dlFiles$filepathname[!dlFiles$fileexists])
+
+        if (!nrow(tmp)) tmp <- 0L else {
+
+          # handle failures despite success is true
+          invisible(sapply(
+            tmp[tmp$status_code != 200L, "destfile", drop = TRUE], unlink
+          ))
+
+          tmp <- nrow(tmp[tmp$status_code == 200L, , drop = FALSE])
+
+        }
+      }
+
+      # inform user
+      message(sprintf(paste0(
+        "= Newly saved %i ",
+        ifelse(is.null(documents.regexp), "placeholder ", ""),
+        "document(s) for %i trial(s) (latest versions only, ",
+        "deduplicated if e.g. in application and authorised part); ",
+        "%i document(s) for %i trial(s) already existed in %s"),
+        tmp,
+        length(unique(dlFiles$`_id`)),
+        sum(dlFiles$fileexists),
+        length(unique(dlFiles$`_id`[dlFiles$fileexists])),
+        documents.path
+      ))
+
+    } # directory created
+
+  } # end if documents.path
 
   ## inform user on final import outcome
   message("\n= Imported / updated ",
