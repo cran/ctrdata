@@ -1,3 +1,7 @@
+# ctrdata 1.13.2 (2023-05-27)
+ - correct selection of lists with ids for documents to download from CTIS
+ - reduce dependencies (rvest, dplyr removed)
+ 
 # ctrdata 1.13.1 (2023-05-07)
  - load more CTIS data (publicEvaluation) and download documents
  - integrate downloading documents into ctrLoadQueryIntoDb() also for CTGOV

@@ -1,9 +1,9 @@
 Package: ctrdata
 Type: Package
 Title: Retrieve and Analyze Clinical Trials in Public Registers
-Version: 1.13.1
-Imports: jsonlite, httr, curl (>= 5.0), clipr, xml2, rvest, nodbi (>=
-        0.9.3), stringi, dplyr, lubridate, jqr
+Version: 1.13.2
+Imports: jsonlite, httr, curl (>= 5.0), clipr, xml2, nodbi (>= 0.9.3),
+        stringi, tibble, lubridate, jqr
 SystemRequirements: sed, php, cat, perl
 URL: https://cran.r-project.org/package=ctrdata
 BugReports: https://github.com/rfhb/ctrdata/issues
@@ -34,8 +34,8 @@ Encoding: UTF-8
 Authors@R: person(given = "Ralf", family = "Herold", role = c("aut", "cre"),
         email = "ralf.herold@mailbox.org", comment = c(ORCID =
         "0000-0002-8148-6748"))
-Packaged: 2023-05-07 19:07:34 UTC; ralfherold
+Packaged: 2023-05-26 09:10:32 UTC; ralfherold
 Author: Ralf Herold [aut, cre] (<https://orcid.org/0000-0002-8148-6748>)
 Maintainer: Ralf Herold <ralf.herold@mailbox.org>
 Repository: CRAN
-Date/Publication: 2023-05-07 19:20:02 UTC
+Date/Publication: 2023-05-26 09:30:02 UTC
