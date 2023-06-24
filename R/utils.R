@@ -465,7 +465,8 @@ ctrOpenSearchPagesInBrowser <- function(
   if (all(register == "") && all(url == "")) {
     sapply(
       c("https://www.clinicaltrialsregister.eu/ctr-search/search",
-        "https://clinicaltrials.gov/ct2/search/advanced",
+        "https://classic.clinicaltrials.gov/ct2/search/advanced",
+        # "https://www.clinicaltrials.gov/",
         "https://www.isrctn.com/editAdvancedSearch",
         "https://euclinicaltrials.eu/app/#/search"),
       ctrOpenUrl)
@@ -475,7 +476,8 @@ ctrOpenSearchPagesInBrowser <- function(
   if (copyright) {
     sapply(
       c("https://www.clinicaltrialsregister.eu/disclaimer.html",
-        "https://clinicaltrials.gov/ct2/about-site/terms-conditions#Use",
+        "https://classic.clinicaltrials.gov/ct2/about-site/terms-conditions#Use",
+        # "https://www.clinicaltrials.gov/about-site/terms-conditions",
         "https://www.isrctn.com/page/faqs#usingISRCTN",
         "https://euclinicaltrials.eu/data-protection-and-privacy/"),
       ctrOpenUrl)
@@ -502,7 +504,7 @@ ctrOpenSearchPagesInBrowser <- function(
     url <- switch(
       register,
       "EUCTR" = paste0("https://www.clinicaltrialsregister.eu/ctr-search/search?", url, "#tabs"),
-      "CTGOV" = paste0("https://clinicaltrials.gov/ct2/results?", url),
+      "CTGOV" = paste0("https://classic.clinicaltrials.gov/ct2/results?", url),
       "ISRCTN" = paste0("https://www.isrctn.com/search?", url),
       "CTIS" = paste0("https://euclinicaltrials.eu/app/#/search?", url)
     )
@@ -515,7 +517,7 @@ ctrOpenSearchPagesInBrowser <- function(
     url <- switch(
       register,
       "EUCTR" = paste0("https://www.clinicaltrialsregister.eu/ctr-search/search"),
-      "CTGOV" = paste0("https://clinicaltrials.gov/ct2/results/refine"),
+      "CTGOV" = paste0("https://classic.clinicaltrials.gov/ct2/results/refine"),
       "ISRCTN" = paste0("https://www.isrctn.com/editAdvancedSearch"),
       "CTIS" = paste0("https://euclinicaltrials.eu/app/#/search")
     )
@@ -567,7 +569,7 @@ ctrOpenSearchPagesInBrowser <- function(
 #' # extract query parameters from search result URL
 #' # (URL was cut for the purpose of formatting only)
 #' ctrGetQueryUrl(
-#'   url = paste0("https://clinicaltrials.gov/ct2/results?",
+#'   url = paste0("https://classic.clinicaltrials.gov/ct2/results?",
 #'   "cond=&term=AREA%5BMaximumAge%5D+RANGE%5B0+days%2C+28+days%5D",
 #'   "&type=Intr&rslt=&age_v=&gndr=&intr=Drugs%2C+Investigational",
 #'   "&titles=&outc=&spons=&lead=&id=&cntry=&state=&city=&dist=",
@@ -619,9 +621,9 @@ ctrGetQueryUrl <- function(
   registerFromUrl <- switch(
       sub("^https://[w]{0,3}[.]?([a-zA-Z.]+)/.*", "\\1", url),
       "clinicaltrialsregister.eu" = "EUCTR",
-      "clinicaltrials.gov" = "CTGOV",
+      "classic.clinicaltrials.gov" = "CTGOV",
       "isrctn.com" = "ISRCTN",
-      "beta.clinicaltrials.gov" = "BETACTGOV",
+      "clinicaltrials.gov" = "BETACTGOV",
       "euclinicaltrials.eu" = "CTIS",
       "NONE")
   #
@@ -715,9 +717,12 @@ ctrGetQueryUrl <- function(
   #
   if (register == "BETACTGOV") {
     #
-    stop("The beta website of ClinicalTrials.gov is not supported, ",
-         "please use the classic website. Package 'ctrdata' is being ",
-         "prepared to use the forthcoming website's functionality.")
+    stop("The new website of ClinicalTrials.gov is not yet supported, ",
+         "While package 'ctrdata' is being adapted to it, ",
+         "please use the classic website: call ",
+         "ctrOpenSearchPagesInBrowser(register = \"CTGOV\")",
+         " or open https://classic.clinicaltrials.gov/",
+         call. = FALSE)
     #
     return(invisible(NULL))
   }
@@ -754,8 +759,8 @@ ctrGetQueryUrl <- function(
 #'
 #' An active substance can be identified by a recommended international
 #' nonproprietary name (INN), a trade or product name, or a company code(s).
-#' Retrieves the substances which are searched for by the register
-#' 'ClinicalTrials.Gov' for a given active substance.
+#' Retrieves the names of substance which are searched for by "CTGOV"
+#' when querying for a given active substance.
 #'
 #' @param activesubstance An active substance, in an atomic character vector
 #'
@@ -764,6 +769,7 @@ ctrGetQueryUrl <- function(
 #'
 #' @importFrom httr GET set_config user_agent
 #' @importFrom utils packageDescription
+#' @importFrom xml2 read_html xml_find_all xml_text
 #'
 #' @export
 #'
@@ -789,12 +795,14 @@ ctrFindActiveSubstanceSynonyms <- function(activesubstance = "") {
   # does not close network connection in case of 404
   ctgovfirstpageurl <-
     utils::URLencode(
-      paste0("https://clinicaltrials.gov/ct2/results/details?term=",
+      paste0("https://classic.clinicaltrials.gov/ct2/results/details?term=",
              activesubstance))
 
   # set user agent for httr and curl to inform registers
   httr::set_config(httr::user_agent(
-    paste0("ctrdata/", utils::packageDescription("ctrdata")$Version)))
+    paste0(
+      "ctrdata/", utils::packageDescription("ctrdata")$Version,
+      " (https://cran.r-project.org/package=ctrdata)")))
 
   # get webpage
   tmp <- try({
@@ -828,8 +836,8 @@ ctrFindActiveSubstanceSynonyms <- function(activesubstance = "") {
 #'  with columns: `query-timestamp`, `query-register`,
 #'  `query-records` (note: this is the number of records loaded when last
 #'  executing \link{ctrLoadQueryIntoDb}, not the total record number) and
-#'  `query-term`, with one row for each time \link{ctrLoadQueryIntoDb}
-#'  loaded trial records into this collection.
+#'  `query-term`, with one row for each time that
+#'  \link{ctrLoadQueryIntoDb} loaded trial records into this collection.
 #'
 #' @param verbose If \code{TRUE}, prints additional information
 #' (default \code{FALSE}).
@@ -909,29 +917,31 @@ dbQueryHistory <- function(con, verbose = FALSE) {
 #' (using \link{ctrLoadQueryIntoDb}). The field names can be fed
 #' into function \link{dbGetFieldsIntoDf} to extract the data
 #' from the collection into a data frame.
+#'
 #' In addition to the full names of all child fields (e.g.,
 #' \code{clinical_results.outcome_list.outcome.measure.class_list.class.title})
 #' this function may return names of parent fields (e.g.,
-#' \code{clinical_results}). Data in parent fields is typically complex
+#' \code{clinical_results}).
+#' Data in parent fields is typically complex
 #' (multiply nested) and can be converted into individual data
-#' elements by function \link{dfTrials2Long}, possibly followed
-#' by function \link{dfName2Value}.
+#' elements by function \link{dfTrials2Long}, and subelements
+#' can be accessed with function \link{dfName2Value}.
 #'
-#' For fields in EUCTR (protocol- and results-related information),
+#' For fields in "EUCTR" (protocol- and results-related information),
 #' \url{https://eudract.ema.europa.eu/result.html}.
 #'
-#' For fields in CTGOV (protocol-related information), see
+#' For fields in "CTGOV" (protocol-related information), see
 #' \url{https://prsinfo.clinicaltrials.gov/definitions.html}.
 #'
-#' For fields in ISRCTN (protocol-related information), see
+#' For fields in "ISRCTN" (protocol-related information), see
 #' \url{https://www.isrctn.com/page/definitions}.
 #'
-#' Note: Only when `dbFindFields` is first called after
+#' Note: Only when \code{dbFindFields} is first called after
 #' \link{ctrLoadQueryIntoDb}, it will take a moment.
 #'
 #' @param namepart A character string (can include a regular expression,
 #' including Perl-style) to be searched for among all field names
-#' (keys) in the collection, case-insensitive. Use `".*` to find all fields.
+#' (keys) in the collection, case-insensitive. Use ".*" to find all fields.
 #'
 #' @param verbose If \code{TRUE}, prints additional information
 #' (default \code{FALSE}).
@@ -1097,14 +1107,14 @@ dbFindFields <- function(namepart = "",
 #' Get identifiers of deduplicated trial records
 #'
 #' Records for a clinical trial can be loaded from more than one
-#' register into a collection. The function returns identifiers of
-#' records in the collection that were loaded from the
+#' register into a collection. This function returns deduplicated
+#' identifiers for all trials in the collection, respecting the
 #' register(s) preferred by the user. All registers are recording
 #' identifiers also from other registers, which are used by this
 #' function to provide a vector of identifiers of deduplicated trials.
 #'
 #' Note that the content of records may differ between registers
-#' (and, for EUCTR, between records for different Member States).
+#' (and, for "EUCTR", between records for different Member States).
 #' Such differences are not considered by this function.
 #'
 #' @param preferregister A vector of the order of preference for
@@ -1121,9 +1131,9 @@ dbFindFields <- function(namepart = "",
 #'
 #' @inheritParams ctrDb
 #'
-#' @return A named vector with strings of keys ("_id") of records in
-#' the collection that represent unique trials, where names correspond
-#' to the register of the record.
+#' @return A named vector with strings of keys (field "_id") of
+#' records in the collection that represent unique trials, where
+#' names correspond to the register of the record.
 #'
 #' @export
 #'
@@ -1408,11 +1418,16 @@ dbFindIdsUniqueTrials <- function(
     object = listofIds[["_id"]],
     nm = listofIds[["ctrname"]])
 
+  listofIds <- sort(listofIds)
+
   # count
   countIds <- table(names(listofIds))
 
-  # copy attributes
-  attributes(listofIds) <- attribsids[grepl("^ctrdata-", names(attribsids))]
+  # append attributes
+  attributes(listofIds) <- c(
+    attributes(listofIds),
+    attribsids[grepl("^ctrdata-", names(attribsids))]
+  )
 
   # avoid returning list() if none found
   if (length(listofIds) == 0) listofIds <- character()
@@ -1425,7 +1440,7 @@ dbFindIdsUniqueTrials <- function(
     " records in collection \"", con$collection, "\"")
 
   # return
-  return(sort(listofIds))
+  return(listofIds)
 
 }
 # end dbFindIdsUniqueTrials
@@ -1439,12 +1454,12 @@ dbFindIdsUniqueTrials <- function(
 #' Names of fields can be found with \link{dbFindFields}.
 #' The function uses the field names to appropriately type the values
 #' that it returns, harmonising original values (e.g. "Information not present
-#' in EudraCT" becomes `NA`, "Yes" becomes `TRUE`, "false" becomes `FALSE`,
-#' date strings become class Date, number strings become numbers).
-#' The function attempts so simplify the structure of some nested data and
-#' may concatenate multiple strings in a field using " / " (see below);
-#' for complex nested data, use function \link{dfTrials2Long} followed by
-#' \link{dfName2Value} to extract the desired nested variable(s).
+#' in EudraCT" to `NA`, "Yes" to `TRUE`, "false" to `FALSE`,
+#' date strings to class Date, number strings to numbers).
+#' The function also attempts to simplify the structure of nested data and
+#' may concatenate multiple strings in a field using " / " (see example).
+#' For full handling of complex nested data, use function \link{dfTrials2Long}
+#' followed by \link{dfName2Value} to extract the sought nested variable(s).
 #'
 #' @param fields Vector of one or more strings, with names of sought fields.
 #' See function \link{dbFindFields} for how to find names of fields.
@@ -1461,11 +1476,11 @@ dbFindIdsUniqueTrials <- function(
 #'
 #' @return A data frame (or tibble, if \code{tibble} is loaded)
 #' with columns corresponding to the sought fields.
-#' A column for the record `_id` will always be included.
+#' A column for the records' `_id` will always be included.
 #' Each column can be either a simple data type (numeric, character, date)
-#' or a list. For complicated lists, use function
-#' \link{dfTrials2Long} followed by function \link{dfName2Value} to
-#' extract values for nested variables.
+#' or a list (typically for nested data, see above). For complicated lists,
+#' use function \link{dfTrials2Long} followed by function \link{dfName2Value}
+#' to extract values for sought nested variables.
 #' The maximum number of rows of the returned data frame is equal to,
 #' or less than the number of records of trials in the database
 #' collection.
@@ -1807,9 +1822,9 @@ dbGetFieldsIntoDf <- function(fields = "",
 
 #' Get value for variable of interest
 #'
-#' Get information of interest (e.g., endpoint)
-#' from long data frame of protocol- or result-related
-#' trial information as returned by \link{dfTrials2Long}.
+#' Get information for variable of interest  (e.g., clinical endpoints)
+#' from long data frame of protocol- or result-related trial information
+#' as returned by \link{dfTrials2Long}.
 #' Parameters `valuename`, `wherename` and `wherevalue` are
 #' matched using Perl regular expressions and ignoring case.
 #'
@@ -1995,12 +2010,13 @@ dfName2Value <- function(df, valuename = "",
 #' The function works with procotol- and results- related information.
 #' It converts lists and other values that are in a data frame returned
 #' by \link{dbGetFieldsIntoDf} into individual rows of a long data frame.
-#' From the resulting data frame, values of interest can be selected
+#' From the resulting long data frame, values of interest can be selected
 #' using \link{dfName2Value}.
-#' The function is intended for fields with complex content, such as node
-#' field "\code{clinical_results}" from EUCTR, which \link{dbGetFieldsIntoDf}
-#' returns as a multiply nested list and for which this function then
-#' converts every observation of every (leaf) field into a row of its own.
+#' The function is particularly useful for fields with complex content,
+#' such as node field "\code{clinical_results}" from EUCTR, for which
+#' \link{dbGetFieldsIntoDf} returns as a multiply nested list and for
+#' which this function then converts every observation of every (leaf)
+#' field into a row of its own.
 #'
 #' @param df Data frame (or tibble) with columns including
 #'  the trial identifier (\code{_id}) and
@@ -2823,7 +2839,8 @@ addMetaData <- function(x, con) {
 #' https://www.mirrorservice.org/sites/sourceware.org/pub/cygwin/ --packages
 #' perl,php-jsonc,php-simplexml}.
 #' These binaries are required only for function \link{ctrLoadQueryIntoDb}
-#' but not for any other function in this package.
+#' when used for register "EUCTR", "CTGOV" or "ISRCT",
+#' but not for any other register or any other function in this package.
 #'
 #' @export
 #'

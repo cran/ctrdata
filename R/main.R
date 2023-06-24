@@ -3,25 +3,24 @@
 
 #' Load and store register trial information
 #'
-#' Retrieves or updates information on clinical trials from registers
-#' and stores it in a collection in a database.
-#' This is the main function of \link{ctrdata-package} for accessing
-#' registers and loading trial information into a database collection,
-#' even if from different queries or different registers.
-#' The query details are stored in the database collection and can
-#' be accessed using \link{dbQueryHistory}.
+#' Retrieves information on clinical trials from registers
+#' and stores it in a collection in a database. Main function
+#' of \link{ctrdata-package} for accessing registers.
+#' A collection can store trial information from different queries
+#' or different registers. Query details are stored in the
+#' collection and can be accessed using \link{dbQueryHistory}.
 #' A previous query can be re-run, which replaces or adds trial
-#' records. However, user annotations of trial records are kept.
+#' records while keeping any user annotations of trial records.
 #'
-#' @param queryterm Either a string with the full URL of a search in
-#' a register, or the data frame returned by the
+#' @param queryterm Either a string with the full URL of a search
+#' query in a register, or the data frame returned by the
 #' \link{ctrGetQueryUrl} or the
 #' \link{dbQueryHistory} functions, or, together with parameter
 #' \code{register}, a string with query elements of a search URL.
-#' The queryterm is recorded in the \code{collection} for later
-#' use to update records.
-#' For "CTIS", the queryterm can be an empty string to obtain
-#' all trial records; for automatically copying the user's
+#' The query details are recorded in the \code{collection} for
+#' later use to update records.
+#' For "CTIS", \code{queryterm} can be an empty string to obtain
+#' all trial records. For automatically copying the user's
 #' query of a register in a web browser to the clipboard, see
 #' \ifelse{latex}{\out{\href{https://github.com/rfhb/ctrdata\#3-script-to-automatically-copy-users-query-from-web-browser}{here}}}{\href{https://github.com/rfhb/ctrdata#3-script-to-automatically-copy-users-query-from-web-browser}{here}}
 #'
@@ -29,14 +28,15 @@
 #' either "EUCTR", "CTGOV", "ISRCTN" or "CTIS". Not needed
 #' if \code{queryterm} provides a query's full URL.
 #'
-#' @param querytoupdate Either the word "last" or the number of the
-#' query (based on \link{dbQueryHistory}) that should be run to
-#' retrieve any trial records that are new or have been updated
-#' since this query was run the last time.
+#' @param querytoupdate Either the word "last", or the row number of
+#' a query in the data frame returned by \link{dbQueryHistory} that
+#' should be run to retrieve any new or update trial records since
+#' this query was run the last time.
 #' This parameter takes precedence over \code{queryterm}.
-#' For EUCTR, updates are available only for the last seven days;
+#' For "EUCTR", updates are available only for the last seven days;
 #' the query is run again if more time has passed since it was
 #' run last.
+#' Does not work with "CTIS" at this time.
 #'
 #' @param forcetoupdate If \code{TRUE}, run again the query
 #' given in \code{querytoupdate}, irrespective of when it was
@@ -56,28 +56,31 @@
 #' every document that could be saved. Default is
 #' \code{"prot|sample|statist|_sap_|p1ar|p2ars|ctaletter"}.
 #' Used with "CTGOV" and "CTIS" (but not "EUCTR" for which all
-#' available documents are saved).
+#' available documents are saved, and not with "ISRCTN" which
+#' does not hold documents).
 #'
 #' @param euctrresults If \code{TRUE}, also download available
 #' results when retrieving and loading trials from EUCTR. This
-#' slows down this function. For "CTGOV", all available results
-#' are always retrieved and loaded.
+#' slows down this function. (For "CTGOV" and "CTIS", all
+#' available results are always retrieved and loaded into the
+#' collection.)
 #'
 #' @param euctrresultshistory If \code{TRUE}, also download
 #' available history of results publication in "EUCTR."
 #' This is quite time-consuming. Default is \code{FALSE}.
 #'
-#' @param annotation.text Text to be including in the records
-#' retrieved with the current query, in the field "annotation".
+#' @param annotation.text Text to be including into the field
+#' "annotation" in the records retrieved with the query
+#' that is to be loaded into the collection.
 #' The contents of the field "annotation" for a trial record
-#' can be preserved e.g. when running this function again and
-#' loading a record of the annotated trial again, see parameter
+#' are preserved e.g. when running this function again and
+#' loading a record of a with an annotation, see parameter
 #' \code{annotation.mode}.
 #'
 #' @param annotation.mode One of "append" (default), "prepend"
 #' or "replace" for new annotation.text with respect to any
-#' existing annotation for the records retrieved with the
-#' current query.
+#' existing annotation for the records retrieved with the query
+#' that is to be loaded into the collection.
 #'
 #' @param only.count Set to \code{TRUE} to return only the
 #' number of trial records found in the register for the query.
@@ -206,7 +209,7 @@ ctrLoadQueryIntoDb <- function(
     if (!all(substr(names(queryterm), 1, 6) == "query-") ||
         !is.data.frame(queryterm)) {
       stop("'queryterm' does not seem to result from ctrQueryHistoryInDb() ",
-           "or ctrGetQueryUrl(): ", deparse(queryterm), call. = FALSE)
+           "or ctrGetQueryUrl(): ", queryterm, call. = FALSE)
     }
 
     # - process queryterm dataframe
@@ -257,7 +260,9 @@ ctrLoadQueryIntoDb <- function(
 
   # set user agent for httr and curl to inform registers
   httr::set_config(httr::user_agent(
-    paste0("ctrdata/", utils::packageDescription("ctrdata")$Version)))
+    paste0(
+      "ctrdata/", utils::packageDescription("ctrdata")$Version,
+      " (https://cran.r-project.org/package=ctrdata)")))
 
   ## handle querytoupdate -----------------------------------------------------
 
@@ -502,7 +507,7 @@ ctrRerunQuery <- function(
 
       # ctgov:
       # specify any date - "lup_s/e" last update start / end:
-      # https://clinicaltrials.gov/ct2/results?term=&recr=&rslt=&type=Intr&cond=
+      # https://classic.clinicaltrials.gov/ct2/results?term=&recr=&rslt=&type=Intr&cond=
       # Cancer&intr=&titles=&outc=&spons=&lead=
       # &id=&state1=&cntry1=&state2=&cntry2=&state3=&cntry3=&locn=&gndr=&age=0
       # &rcv_s=&rcv_e=&lup_s=01%2F01%2F2015&lup_e=12%2F31%2F2016
@@ -678,8 +683,11 @@ ctrRerunQuery <- function(
     # ctis ------------------------------------------------------------------
     if (register == "CTIS") {
 
-      # as of 2023-04-22, the RSS function in the public
-      # interface of CTIS does not seem to be working
+      # https://euclinicaltrials.eu/ct-public-api-services/services/ct/rss?basicSearchInputAND=cancer
+      # issue: returned data do not include trial identifiers, thus no efficient loading possible
+      # checked from: 2023-04-22
+      # checked last: 2023-06-24
+
       warning("'querytoupdate=", querytoupdate, "' not possible because no ",
               "way to implement querying CTIS for recent changes were found ",
               "thus far. Reverting to normal download. ",
@@ -1112,9 +1120,9 @@ ctrLoadQueryIntoDbCtgov <- function(
 
   # CTGOV standard identifiers
   # updated 2017-07 with revised ctgov website links, e.g.
-  # "https://clinicaltrials.gov/ct2/results/download_studies?
+  # "https://classic.clinicaltrials.gov/ct2/results/download_studies?
   # rslt=With&cond=Neuroblastoma&age=0&draw=3"
-  queryUSRoot   <- "https://clinicaltrials.gov/"
+  queryUSRoot   <- "https://classic.clinicaltrials.gov/"
   queryUSType1  <- "ct2/results/download_studies?"
   queryUSType2  <- "ct2/results?"
 
@@ -2286,7 +2294,7 @@ ctrLoadQueryIntoDbCtis <- function(
 
     urls <- sprintf(ctisEndpoints[e], idsTrials)
     ep <- sub(".+/(.+?)$", "\\1", sub("/list$", "", urls[1]))
-    message("- ", ep, appendLF = FALSE)
+    message(ep, ", ", appendLF = FALSE)
 
     fAddJson <- function(i) {
       file.path(tempDir, paste0("ctis_add_", e, "_", i, ".json"))
@@ -2328,13 +2336,13 @@ ctrLoadQueryIntoDbCtis <- function(
 
     }
 
-    message("\b\b")
+    # message("\b\b")
 
   }
 
   ## add_9: more data -------------------------------------------------------
 
-  message("- publicevaluation ")
+  message("publicevaluation")
 
   fApplicationsJson <- file.path(tempDir, "ctis_add_9.json")
 
@@ -2514,7 +2522,7 @@ ctrLoadQueryIntoDbCtis <- function(
         tmp <- tmp[order(tmp$url, tmp$part), , drop = FALSE]
         rl <- rle(tmp$url)
         rl <- unlist(sapply(rl$lengths, function(i) c(TRUE, rep(FALSE, i - 1L))))
-        tmp <- tmp[rl, , drop = FALSE]
+        tmp[rl, , drop = FALSE]
       })
 
       dlFiles <- do.call(rbind, dlFiles)
@@ -2647,14 +2655,16 @@ ctrLoadQueryIntoDbCtis <- function(
       } else {
 
         message("- Applying 'documents.regexp' to ",
-                nrow(dlFiles), " documents:")
+                nrow(dlFiles), " documents")
 
         dlFiles <- dlFiles[
           grepl(documents.regexp, dlFiles$filename, ignore.case = TRUE), ,
           drop = FALSE]
 
         # do download
-        message("- Downloading ", nrow(dlFiles), " documents")
+        message("- Downloading ",
+                nrow(dlFiles[!dlFiles$fileexists, , drop = FALSE]),
+                " missing documents")
 
         # do download
         tmp <- ctrMultiDownload(
