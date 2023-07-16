@@ -1,3 +1,8 @@
+# ctrdata 1.14.0 (2023-07-16)
+ - fix dbFindIdsUniqueTrials() for single-record register contents
+ - expand number of CTIS variables that are typed as date
+ - dfMergeVariablesRelevel() superseeds dfMergeTwoVariablesRelevel()
+ 
 # ctrdata 1.13.3 (2023-06-24)
  - typo in dbFindFields()
  - use only CTGOV classic website (ctrdata is being adapted to new website)

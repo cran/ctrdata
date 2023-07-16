@@ -76,8 +76,106 @@ typeVars <- list(
   "trialDesign.overallEndDate"    = "ctrDateTime",
   #
   # - CTIS
-  "startDateEU" = "ctrDate",
+  "applications.ctMSCs.activeTrialPeriod.fromDate" = "ctrDate",
+  "applications.ctMSCs.activeTrialPeriod.trialStartDate" = "ctrDate",
+  "applications.ctMSCs.firstDecisionDate" = "ctrDate",
+  "applications.ctMSCs.fromDate" = "ctrDate",
+  "applications.ctMSCs.toDate" = "ctrDate",
+  "applications.ctMSCs.trialPeriod.fromDate" = "ctrDate",
+  "applications.ctMSCs.trialPeriod.trialStartDate" = "ctrDate",
+  "applications.ctMSCsByApplication.fromDate" = "ctrDate",
+  "applications.ctMSCsByApplication.toDate" = "ctrDate",
+  "applications.decisionDate" = "ctrDate",
+  "applications.isDossierUpdate" = "ctrDate",
+  "applications.partI.assessmentOutcomeDate" = "ctrDate",
+  "applications.partI.conclusionDate" = "ctrDate",
+  "applications.partI.productRoleGroupInfos.products.startDate" = "ctrDate",
+  "applications.partI.products.startDate" = "ctrDate",
+  "applications.partI.sponsors.fromDate" = "ctrDate",
+  "applications.partI.submissionDate" = "ctrDate",
+  "applications.partI.trialDetails.trialInformation.trialDuration.estimatedEndDate" = "ctrDate",
+  "applications.partI.trialDetails.trialInformation.trialDuration.estimatedRecruitmentStartDate" = "ctrDate",
+  "applications.partIIInfo.applicationStatusDate" = "ctrDate",
+  "applications.partIIInfo.applicationStatusDate" = "ctrDate",
+  "applications.partIIInfo.conclusionDate" = "ctrDate",
+  "applications.partIIInfo.conclusionDate" = "ctrDate",
+  "applications.partIIInfo.mscInfo.activeTrialPeriod.fromDate" = "ctrDate",
+  "applications.partIIInfo.mscInfo.activeTrialPeriod.trialStartDate" = "ctrDate",
+  "applications.partIIInfo.mscInfo.firstDecisionDate" = "ctrDate",
+  "applications.partIIInfo.mscInfo.firstDecisionDate" = "ctrDate",
+  "applications.partIIInfo.mscInfo.fromDate" = "ctrDate",
+  "applications.partIIInfo.mscInfo.fromDate" = "ctrDate",
+  "applications.partIIInfo.mscInfo.toDate" = "ctrDate",
+  "applications.partIIInfo.mscInfo.toDate" = "ctrDate",
+  "applications.partIIInfo.mscInfo.trialPeriod.fromDate" = "ctrDate",
+  "applications.partIIInfo.mscInfo.trialPeriod.trialStartDate" = "ctrDate",
+  "applications.partIIInfo.submissionDate" = "ctrDate",
+  "applications.partIIInfo.submissionDate" = "ctrDate",
+  "applications.primarySponsor.fromDate" = "ctrDate",
+  "applications.reportingDate" = "ctrDate",
+  "applications.submissionDate" = "ctrDate",
+  "applications.validationConclusionDate" = "ctrDate",
   "authorizationDate" = "ctrDate",
+  "authorizedPartI.assessmentOutcomeDate" = "ctrDate",
+  "authorizedPartI.conclusionDate" = "ctrDate",
+  "authorizedPartI.productRoleGroupInfos.products.startDate" = "ctrDate",
+  "authorizedPartI.products.startDate" = "ctrDate",
+  "authorizedPartI.sponsors.fromDate" = "ctrDate",
+  "authorizedPartI.submissionDate" = "ctrDate",
+  "authorizedPartI.trialDetails.trialInformation.trialDuration.estimatedEndDate" = "ctrDate",
+  "authorizedPartI.trialDetails.trialInformation.trialDuration.estimatedRecruitmentStartDate" = "ctrDate",
+  "authorizedPartsII.applicationStatusDate" = "ctrDate",
+  "authorizedPartsII.conclusionDate" = "ctrDate",
+  "authorizedPartsII.mscInfo.activeTrialPeriod.fromDate" = "ctrDate",
+  "authorizedPartsII.mscInfo.activeTrialPeriod.trialStartDate" = "ctrDate",
+  "authorizedPartsII.mscInfo.firstDecisionDate" = "ctrDate",
+  "authorizedPartsII.mscInfo.fromDate" = "ctrDate",
+  "authorizedPartsII.mscInfo.toDate" = "ctrDate",
+  "authorizedPartsII.mscInfo.trialPeriod.fromDate" = "ctrDate",
+  "authorizedPartsII.mscInfo.trialPeriod.trialStartDate" = "ctrDate",
+  "authorizedPartsII.submissionDate" = "ctrDate",
+  "coSponsors.fromDate" = "ctrDate",
+  "decisionDate" = "ctrDate",
+  "eeaStartDate" = "ctrDate",
+  "memberStatesConcerned.activeTrialPeriod.fromDate" = "ctrDate",
+  "memberStatesConcerned.activeTrialPeriod.trialStartDate" = "ctrDate",
+  "memberStatesConcerned.firstDecisionDate" = "ctrDate",
+  "memberStatesConcerned.fromDate" = "ctrDate",
+  "memberStatesConcerned.toDate" = "ctrDate",
+  "memberStatesConcerned.trialPeriod.fromDate" = "ctrDate",
+  "memberStatesConcerned.trialPeriod.trialStartDate" = "ctrDate",
+  "mscTrialNotificationsInfoList.mscNotificationsListInfo.date" = "ctrDate",
+  "mscTrialNotificationsInfoList.mscNotificationsListInfo.submitDate" = "ctrDate",
+  "primarySponsor.fromDate" = "ctrDate",
+  "publicEvaluation.decisions.decisionDate" = "ctrDate",
+  "publicEvaluation.partIAssessmentOutcomeDate" = "ctrDate",
+  "publicEvaluation.partIIEvaluationList.partIIConclusion.decisionInfoList.decisionDate" = "ctrDate",
+  "publicEvaluation.partIIEvaluationList.partIIConclusion.eventDate" = "ctrDate",
+  "publicEvaluation.partIIEvaluationList.partIIRfiConsiderations.rfiConsiderations.fromDate" = "ctrDate",
+  "publicEvaluation.partIIEvaluationList.partIIRfiConsiderations.rfiConsiderations.rfiSubmissionDate" = "ctrDate",
+  "publicEvaluation.partIIEvaluationList.partIIRfiConsiderations.rfiConsiderations.sponsorSubmitDate" = "ctrDate",
+  "publicEvaluation.partIIEvaluationList.partIIRfis.createdDate" = "ctrDate",
+  "publicEvaluation.partIIEvaluationList.partIIRfis.dueDate" = "ctrDate",
+  "publicEvaluation.partIIEvaluationList.partIIRfis.responseDate" = "ctrDate",
+  "publicEvaluation.partIIEvaluationList.partIIRfis.submissionDate" = "ctrDate",
+  "publicEvaluation.partIRfiConsiderations.rfiConsiderations.fromDate" = "ctrDate",
+  "publicEvaluation.partIRfiConsiderations.rfiConsiderations.rfiSubmissionDate" = "ctrDate",
+  "publicEvaluation.partIRfiConsiderations.rfiConsiderations.sponsorSubmitDate" = "ctrDate",
+  "publicEvaluation.partIRfis.createdDate" = "ctrDate",
+  "publicEvaluation.partIRfis.dueDate" = "ctrDate",
+  "publicEvaluation.partIRfis.responseDate" = "ctrDate",
+  "publicEvaluation.partIRfis.submissionDate" = "ctrDate",
+  "publicEvaluation.validationConclusion.conclusionDate" = "ctrDate",
+  "publicEvaluation.validationRfiConsiderations.rfiConsiderations.fromDate" = "ctrDate",
+  "publicEvaluation.validationRfiConsiderations.rfiConsiderations.rfiSubmissionDate" = "ctrDate",
+  "publicEvaluation.validationRfiConsiderations.rfiConsiderations.sponsorSubmitDate" = "ctrDate",
+  "publicEvaluation.validationRfis.createdDate" = "ctrDate",
+  "publicEvaluation.validationRfis.dueDate" = "ctrDate",
+  "publicEvaluation.validationRfis.responseDate" = "ctrDate",
+  "publicEvaluation.validationRfis.submissionDate" = "ctrDate",
+  "startDateEU" = "ctrDate",
+  "submissionDate" = "ctrDate",
+  "trialStartDate" = "ctrDate",
   #
   #
   # factors / logical
@@ -1386,10 +1484,14 @@ dbFindIdsUniqueTrials <- function(
             rep(FALSE, times = length(c1))
           }},
         tmp[, colsToCheck, drop = FALSE],
-        outSet[, colsToCheck, drop = FALSE]
+        outSet[, colsToCheck, drop = FALSE],
+        SIMPLIFY = FALSE
       )
+
       # mangle dupes for marginal cases, e.g. one record
-      if (length(dim(dupes)) == 1L) dupes <- t(dupes)
+      dupes <- do.call(cbind, dupes)
+      dupes <- as.data.frame(dupes)
+
       # keep uniques
       tmp <- tmp[rowSums(dupes) == 0L, , drop = FALSE]
       rm(dupes)
@@ -2351,165 +2453,139 @@ dfListExtractKey <- function(
   if (any("tibble" == .packages())) return(tibble::as_tibble(out))
   return(out)
 
-} # end dfListExtractKey
+}
+# end dfListExtractKey
 
 
-#' Merge two variables
+#' Merge variables, keeping type, and optionally relevel factors
 #'
-#' Merge two variables in a data frame such as returned by \link{dbGetFieldsIntoDf}
+#' Merge variables in a data frame such as returned by \link{dbGetFieldsIntoDf}
 #' into a new variable, and optionally also map its values to new levels.
 #'
-#' @param df A \link{data.frame} in which there are two variables (columns)
-#' to be merged into one.
+#' @param df A \link{data.frame} with the variables (columns) to be merged into
+#' one vector.
 #'
-#' @param colnames A vector of length two with names of the two columns
-#' that hold the variables to be merged. See \link{colnames} for how to
-#' obtain the names of columns of a data frame.
+#' @param colnames A vector of names of columns in `df` that hold the variables
+#' to be merged, or a selection of columns as per \code{\link[dplyr]{select}}.
 #'
-#' @param levelslist A list with one slice each for a new value to be
+#' @param levelslist A names list with one slice each for a new value to be
 #' used for a vector of old values (optional).
 #'
-#' @param ... for deprecated \code{varnames} parameter (will be removed)
-#'
-#' @return A vector of strings
+#' @return A vector, with the type of the columns to be merged
 #'
 #' @importFrom tibble as_tibble
+#' @importFrom dplyr c_across mutate rowwise
 #'
 #' @export
 #'
 #' @examples
-#'
-#' vars2merge <- c("overall_status", "x5_trial_status")
 #'
 #' dbc <- nodbi::src_sqlite(
 #'    dbname = system.file("extdata", "demo.sqlite", package = "ctrdata"),
 #'    collection = "my_trials")
 #'
 #' df <- dbGetFieldsIntoDf(
-#'   fields = vars2merge,
+#'   fields = c("overall_status", "x5_trial_status"),
 #'   con = dbc)
 #'
 #' statusvalues <- list(
-#'   "ongoing" = c("Recruiting", "Active", "Ongoing",
-#'                 "Active, not recruiting", "Enrolling by invitation"),
+#'   "ongoing" = c("Recruiting", "Active", "Ongoing"),
 #'   "completed" = c("Completed", "Prematurely Ended", "Terminated"),
-#'   "other" = c("Withdrawn", "Suspended",
-#'               "No longer available", "Not yet recruiting"))
+#'   "other" = c("Withdrawn", "Suspended", "No longer available"))
 #'
-#' dfMergeTwoVariablesRelevel(
+#' dfMergeVariablesRelevel(
 #'   df = df,
-#'   colnames = vars2merge,
+#'   colnames = 'contains("status")',
 #'   levelslist = statusvalues)
+#'
+dfMergeVariablesRelevel <- function(
+    df = NULL,
+    colnames = "",
+    levelslist = NULL) {
+
+  # initialise
+  env <- new.env()
+  evalq(warned <- FALSE, env)
+
+  # helper function
+  getValuesOrNa <- function(x) {
+
+    x <- na.omit(x)
+    if (!length(x)) return(NA)
+
+    if (length(x) > 1L) {
+
+      x <- as.character(x)
+      x <- paste0(x[nchar(x) > 0L], collapse = " / ")
+
+      if (!get("warned", envir = env)) {
+        message("More than one column had values, returning e.g. '", x, "'")
+        evalq(warned <- TRUE, env)
+      }
+    }
+
+    return(x)
+  }
+
+  # merge columns
+  if (length(colnames) == 1L && grepl("[()]", colnames)) {
+
+    out <- dplyr::mutate(
+      dplyr::rowwise(df),
+      out = getValuesOrNa(dplyr::c_across(eval(parse(text = colnames))))
+    )[["out"]]
+
+  } else {
+
+    out <- dplyr::mutate(
+      dplyr::rowwise(df),
+      out = getValuesOrNa(dplyr::c_across(colnames))
+    )[["out"]]
+
+  }
+
+  # merge levels
+  if (!is.null(levelslist)) {
+
+    out <- factor(out)
+    levels(out) <- levelslist
+
+  }
+
+  # return
+  return(out)
+
+}
+# end dfMergeVariablesRelevel
+
+
+#' Merge two variables (superseded)
+#'
+#' Superseded, please use \link{dfMergeVariablesRelevel}
+#'
+#' @inheritParams dfMergeVariablesRelevel
+#'
+#' @export
 #'
 dfMergeTwoVariablesRelevel <- function(
   df = NULL,
   colnames = "",
-  levelslist = NULL,
-  ...) {
+  levelslist = NULL) {
 
-  # check parameters
+  # inform
+  message(
+    "dfMergeTwoVariablesRelevel() is deprecated, ",
+    "use dfMergeVariablesRelevel()")
 
-  # FIXME migrate from previously
-  # used parameter "varnames"
-  tmp <- match.call()
-  tmp <- tmp["varnames"]
-  tmp <- as.list(tmp)[[1]]
-  if (length(tmp) == 3 && colnames == "") {
-    colnames <- unlist(as.list(tmp[-1], use.names = FALSE))
-    warning("Parameter varnames is deprecated, use colnames instead.",
-            call. = FALSE)
-  }
+  # dispatch
+  return(
+    dfMergeVariablesRelevel(
+      df = df,
+      colnames = colnames,
+      levelslist = levelslist
+    )
+  )
 
-  # other checks
-  if (!inherits(df, "data.frame")) {
-    stop("Need a data frame as input.", call. = FALSE)
-  }
-  if (length(colnames) != 2) {
-    stop("Please provide exactly two column names.", call. = FALSE)
-  }
-  # change to data frame because
-  # variable classes are compared
-  df <- as.data.frame(df)
-
-  # find variables in data frame and merge
-  tmp <- match(colnames, names(df))
-  df <- df[, tmp, drop = FALSE]
-
-  # bind as ...
-  if (class(df[[1]]) == class(df[[2]]) &&
-      !all(class(df[[1]]) %in% "character")) {
-    # check
-    if (nrow(na.omit(df[!vapply(df[[1]], is.null, logical(1L)) &
-                        !vapply(df[[2]], is.null, logical(1L)), ,
-                        drop = FALSE]))) {
-      warning("Some rows had non-character values for both columns, used first",
-              noBreaks. = TRUE, immediate. = TRUE)
-    }
-    # values, with first having
-    # priority over the second
-    tmp <- ifelse(is.na(tt <- df[[1]]), df[[2]], df[[1]])
-  } else {
-    catind <- which((!is.na(df[[1]]) & df[[1]] != "") &
-                    (!is.na(df[[2]]) & df[[2]] != ""))
-    # check
-    if (length(catind)) {warning(
-      "Some rows had character values for both columns, concatenated",
-      noBreaks. = TRUE, immediate. = TRUE)
-    }
-    # strings, concatenated
-    tmp <- rep_len("", length.out = nrow(df))
-    tmp[catind] <- " / "
-    tmp <- paste0(
-      ifelse(is.na(tt <- as.character(df[[1]])), "", tt), tmp,
-      ifelse(is.na(tt <- as.character(df[[2]])), "", tt))
-  }
-
-  # type where possible
-  if (class(df[[1]]) == class(df[[2]]) &&
-      !all(class(df[[1]]) %in% "character")) {
-    mode(tmp) <- mode(df[[1]])
-    class(tmp) <- class(df[[1]])
-  }
-
-  # relevel if specified
-  if (!is.null(levelslist)) {
-
-    # check
-    if (!all(class(levelslist) %in% "list")) {
-      stop("Need list for parameter 'levelslist'.", call. = FALSE)
-    }
-
-    # helper function to collapse factor levels into the first
-    refactor <- function(x, collapselevels, levelgroupname) {
-      levels(x) [match(collapselevels, levels(x))] <- levelgroupname
-      return(x)
-    }
-
-    # convert result to factor as this is needed for helper function
-    tmp <- as.factor(tmp)
-
-    # apply helperfunction to elements of the list
-    for (i in seq_len(length(levelslist))) {
-      tmp <- refactor(tmp, unlist(levelslist[i], use.names = FALSE),
-                      attr(levelslist[i], "names"))
-    }
-
-    # convert factor back into string vector
-    tmp <- as.character(tmp)
-
-  }
-
-  # check and inform user
-  if (length(tt <- unique(tmp)) > 3L) {
-    message("Unique values returned (first three): ",
-            paste(tt[1L:3L], collapse = ", "))
-  } else {
-    message("Unique values returned: ",
-            paste(tt, collapse = ", "))
-  }
-
-  # return
-  return(tmp)
 }
 # end dfMergeTwoVariablesRelevel
 
