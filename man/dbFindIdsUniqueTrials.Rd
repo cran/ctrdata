@@ -5,7 +5,7 @@
 \title{Get identifiers of deduplicated trial records}
 \usage{
 dbFindIdsUniqueTrials(
-  preferregister = c("EUCTR", "CTGOV", "ISRCTN", "CTIS"),
+  preferregister = c("EUCTR", "CTGOV", "CTGOV2", "ISRCTN", "CTIS"),
   prefermemberstate = "DE",
   include3rdcountrytrials = TRUE,
   con,
@@ -15,7 +15,7 @@ dbFindIdsUniqueTrials(
 \arguments{
 \item{preferregister}{A vector of the order of preference for
 registers from which to generate unique _id's, default
-\code{c("EUCTR", "CTGOV", "ISRCTN", "CTIS")}}
+\code{c("EUCTR", "CTGOV", "CTGOV2", "ISRCTN", "CTIS")}}
 
 \item{prefermemberstate}{Code of single EU Member State for which records
 should returned. If not available, a record for DE or lacking this, any
@@ -29,7 +29,7 @@ that are conducted exclusively in third countries, that is, outside
 the European Union. Ignored if \code{prefermemberstate} is set to "3RD".}
 
 \item{con}{A connection object, see section
-`Databases` in \link{ctrdata-package}.}
+`Databases` in \link{ctrdata}.}
 
 \item{verbose}{If set to \code{TRUE}, prints out which fields
 of the registers are used to find corresponding trial records}

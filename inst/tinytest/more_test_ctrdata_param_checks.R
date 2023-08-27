@@ -7,6 +7,10 @@ if (!checkSqlite()) exit_file("Reason: no SQLite")
 ## test function
 tf <- function() {
 
+  if (Sys.info()[["sysname"]] != "Linux") {
+    clipr::clear_clip()
+  }
+
   ## database in memory
   dbc <- nodbi::src_sqlite(
     collection = "inmemory"
@@ -47,6 +51,7 @@ tf <- function() {
         con = dbc)),
     "only one of 'queryterm' and 'querytoupdate'")
   tmpdf["query-term"] <- as.character(tmpdf[["query-Species"]])
+
   # test
   expect_error(
     suppressWarnings(
@@ -238,12 +243,18 @@ tf <- function() {
       "age=adult&term=cancer")
   )
 
+  # sapply(sapply(queryterms, "[[", 1),
+  #        function(i) ctrGetQueryUrl(url = i, register = "EUCTR")[["query-term"]],
+  #        USE.NAMES = FALSE, simplify = TRUE)
+
   # test
-  expect_true(all(vapply(queryterms, function(qt) {
-    suppressMessages(ctrGetQueryUrl(
-      url = qt[[1]],
-      register = "EUCTR"))[[1]] == qt[[2]]},
-    logical(1L))))
+  expect_true(all(
+    vapply(queryterms, function(qt) {
+      suppressMessages(ctrGetQueryUrl(
+        url = qt[[1]],
+        register = "EUCTR"))[[1]] == qt[[2]]},
+      logical(1L))
+  ))
 
   # CTGOV
   queryterms <- list(
@@ -270,12 +281,18 @@ tf <- function() {
     c("age=adult&term=cancer", # no change
       "age=adult&term=cancer"))
 
+  # sapply(sapply(queryterms, "[[", 1),
+  #        function(i) ctrGetQueryUrl(url = i, register = "CTGOV")[["query-term"]],
+  #        USE.NAMES = FALSE, simplify = TRUE)
+
   # test
-  expect_true(all(vapply(queryterms, function(qt) {
-    suppressMessages(ctrGetQueryUrl(
-      url = qt[[1]],
-      register = "CTGOV"))[[1]] == qt[[2]]},
-    logical(1L))))
+  expect_true(all(
+    vapply(queryterms, function(qt) {
+      suppressMessages(ctrGetQueryUrl(
+        url = qt[[1]],
+        register = "CTGOV"))[[1]] == qt[[2]]},
+      logical(1L))
+  ))
 
   # URLs
   queryurls <- list(
@@ -285,7 +302,7 @@ tf <- function() {
     c("https://www.clinicaltrialsregister.eu/ctr-search/trial/2019-003713-33/NL",
       "query=2019-003713-33"),
     c("https://www.clinicaltrialsregister.eu/ctr-search/trial/2007-000371-42/results",
-      "query=2007-000371-42&resultsstatus=trials-with-results"),
+      "query=2007-000371-42"),
     # ctgov
     c("https://classic.clinicaltrials.gov/ct2/results?cond=Neuroblastoma&term=&intr=Investigational+Agent&type=Intr",
       "cond=Neuroblastoma&intr=Investigational+Agent&type=Intr"),
@@ -304,15 +321,22 @@ tf <- function() {
       "q=ISRCTN70039829")
   )
 
+  # sapply(sapply(queryurls, "[[", 1),
+  #        function(i) ctrGetQueryUrl(url = i)[["query-term"]],
+  #        USE.NAMES = FALSE, simplify = TRUE)
+
   # test
-  expect_true(all(vapply(queryurls, function(qt) {
-    suppressMessages(ctrGetQueryUrl(
-      url = qt[[1]]))[[1]] == qt[[2]]},
-    logical(1L))))
+  expect_true(all(
+    vapply(queryurls, function(qt) {
+      suppressMessages(ctrGetQueryUrl(
+        url = qt[[1]]))[[1]] == qt[[2]]},
+      logical(1L))
+  ))
 
   #### clipboard ####
   if (Sys.info()[["sysname"]] != "Linux") {
 
+    clipr::clear_clip()
     clipr::write_clip(
       queryurls[[1]][1],
       allow_non_interactive = TRUE)
@@ -331,6 +355,40 @@ tf <- function() {
       "no clinical trial register")
 
   }
+
+  # URLs for single studies
+  queryurls <- list(
+    # euctr
+    c("https://www.clinicaltrialsregister.eu/ctr-search/trial/2007-000371-42/results",
+      "https://www.clinicaltrialsregister.eu/ctr-search/search?query=2007-000371-42#tabs"),
+    # ctgov classic
+    c("https://classic.clinicaltrials.gov/ct2/show/NCT01492673?cond=neuroblastoma",
+      "https://classic.clinicaltrials.gov/ct2/show/NCT01492673"),
+    # ctgov classic
+    c("https://clinicaltrials.gov/ct2/show/NCT01492673?cond=neuroblastoma",
+      "https://classic.clinicaltrials.gov/ct2/show/NCT01492673"),
+    # ctgov2
+    c("https://www.clinicaltrials.gov/study/NCT01467986?cond=neuroblastoma&intr=Investigational%20drug&aggFilters=ages:child",
+      "https://www.clinicaltrials.gov/study/NCT01467986#main-content"),
+    # isrctn
+    c("https://www.isrctn.com/ISRCTN70039829",
+      "https://www.isrctn.com/ISRCTN70039829"),
+    # isrctn
+    c("https://www.isrctn.com/ISRCTN61139514?q=&filters=condition:cancer",
+      "https://www.isrctn.com/ISRCTN61139514")
+  )
+
+  # sapply(sapply(queryurls, "[[", 1),
+  #        function(i) ctrOpenSearchPagesInBrowser(url = i),
+  #        USE.NAMES = FALSE, simplify = TRUE)
+
+  # test
+  expect_true(all(
+    vapply(queryurls, function(qt) {
+    suppressMessages(ctrOpenSearchPagesInBrowser(
+      url = qt[[1]]))[[1]] == qt[[2]]},
+    logical(1L))
+    ))
 
   # clean up
   rm(queryurls)

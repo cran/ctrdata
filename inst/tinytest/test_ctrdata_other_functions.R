@@ -82,7 +82,7 @@ statusvalues <- list(
   "Firstvalues" = c("12", "23"),
   "Lastvalue"   = c("34"))
 
-df2 <- data.frame(var1 = c("A", "B", "C", "D"),
+df2 <- data.frame(var1 = c("A", "B", "C", NA),
                   var2 = c("D", "E", "",  "G"))
 
 # test
@@ -136,7 +136,14 @@ expect_error(
 expect_equal(
   sum(grepl(" / ", suppressWarnings(suppressMessages(
     dfMergeVariablesRelevel(
-      df = df2, colnames = c("var1", "var2")))))), 3L)
+      df = df2, colnames = c("var1", "var2")))))), 2L)
+
+# test
+expect_equal(
+  sum(grepl(" / ", suppressWarnings(suppressMessages(
+    dfMergeVariablesRelevel(
+      df = df2,
+      colnames = 'matches("var")'))))), 2L)
 
 
 #### ctrGetQueryUrl ####
@@ -236,10 +243,33 @@ expect_message(
   "but also had search")
 
 # test
-expect_error(
+expect_message(
   ctrGetQueryUrl(
-    url = "https://clinicaltrials.gov/search?cond=NCT04412252,%20NCT04368728"),
-  "website")
+    url = "https://clinicaltrials.gov/search?cond=neuroblastoma&intr=Investigational%20drug&aggFilters=ages:child,status:com&rank=8&sort=EnrollmentCount%3Adesc%2CNumArmGroups"),
+  "REST API")
+
+expect_message(
+  ctrGetQueryUrl(
+    url = "cond=neuroblastoma&intr=Investigational%20Drug&aggFilters=ages%3Achild%2Cstatus%3Acom&sort=EnrollmentCount%3Adesc%2CNumArmGroups",
+    register = "CTGOV"),
+  "REST API")
+
+expect_message(
+  ctrGetQueryUrl(
+    url =
+      "https://clinicaltrials.gov/study/NCT01467986?cond=neuroblastoma&intr=Investigational%20drug&aggFilters=ages:child,status:com&rank=2"),
+  "REST API")
+
+expect_message(
+  ctrGetQueryUrl(
+    url = "https://classic.clinicaltrials.gov/ct2/results?cond=neuroblastoma&rslt=With&recrs=e&age=0&intr=Drug"),
+  "Found search query from CTGOV")
+
+expect_message(
+  ctrGetQueryUrl(
+    url = "cond=Neuroblastoma&aggFilters=ages:child,results:with,studyType:int",
+    register = "CTGOV"),
+  "REST API")
 
 
 #### ctrOpenSearchPagesInBrowser ####
@@ -253,10 +283,6 @@ expect_message(
   "Found search query")
 
 # test
-expect_warning(
-  ctrOpenSearchPagesInBrowser(input = tmpTest),
-  "Parameter 'input' is deprecated, use 'url' instead")
-
 q <- paste0("https://www.clinicaltrialsregister.eu/ctr-search/",
             "search?query=&age=under-18&status=completed")
 
@@ -283,9 +309,37 @@ expect_equal(
   paste0(q, "#tabs"))
 
 # test
-expect_null(
+expect_true(
   ctrOpenSearchPagesInBrowser(
     copyright = TRUE))
+
+# test
+expect_equal(
+  ctrOpenSearchPagesInBrowser(
+    url = "https://www.clinicaltrials.gov/search?cond=neuroblastoma&intr=Investigational%20drug&aggFilters=ages:child,status:com&rank=200&sort=EnrollmentCount%3Adesc%2CNumArmGroups"
+  ), "https://www.clinicaltrials.gov/search?cond=neuroblastoma&intr=Investigational drug&aggFilters=ages:child,status:com")
+
+expect_equal(
+  ctrOpenSearchPagesInBrowser(
+    url = "https://www.clinicaltrials.gov/study/NCT01467986?cond=neuroblastoma&intr=Investigational%20drug&aggFilters=ages:child,status:com&rank=2"
+  ), "https://www.clinicaltrials.gov/study/NCT01467986#main-content")
+
+expect_equal(
+  ctrOpenSearchPagesInBrowser(
+    url = "https://euclinicaltrials.eu/app/#/view/2022-502267-37-00"
+  ), "https://euclinicaltrials.eu/app/#/view/2022-502267-37-00")
+
+expect_equal(
+  ctrOpenSearchPagesInBrowser(
+    url = "https://www.clinicaltrialsregister.eu/ctr-search/trial/2015-005219-34/DE"
+  ), "https://www.clinicaltrialsregister.eu/ctr-search/search?query=2015-005219-34#tabs")
+
+expect_equal(
+  ctrOpenSearchPagesInBrowser(
+    url = "https://www.isrctn.com/ISRCTN54460428?q=alzheimer&filters=&sort=&offset=29&totalResults=286&page=3&pageSize=10"
+  ), "https://www.isrctn.com/ISRCTN54460428")
+
+
 
 #### dfFindUniqueEuctrRecord ####
 
