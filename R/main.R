@@ -720,13 +720,14 @@ ctrRerunQuery <- function(
     if (register == "CTIS") {
 
       # https://euclinicaltrials.eu/ct-public-api-services/services/ct/rss?basicSearchInputAND=cancer
-      # issue: returned data do not include trial identifiers, thus no efficient loading possible
-      # checked from: 2023-04-22
-      # checked last: 2023-06-24
+      # issues: returned data do not include trial identifiers, thus no efficient loading possible;
+      # returned data include all trials found with search, not only those updated or added in last
+      # seven days; timestamp is the same for every trial listed, corresponding to time when called.
+      # checked from: 2023-04-22 to last: 2023-08-29
 
       warning("'querytoupdate=", querytoupdate, "' not possible because no ",
-              "way to implement querying CTIS for recent changes were found ",
-              "thus far. Reverting to normal download. ",
+              "way to query CTIS for recent changes was found thus far ",
+              "(last checked 2023-08-29). Reverting to normal download. ",
               call. = FALSE, immediate. = TRUE)
 
       message("Rerunning query: ", queryterm,
@@ -2219,10 +2220,11 @@ ctrLoadQueryIntoDbCtis <- function(
 
   ctisEndpoints <- c(
     #
-    # trial information - %s is ctNumber
-    "https://euclinicaltrials.eu/ct-public-api-services/services/ct/publiclookup?&paging=0,-1&%s",
-    "https://euclinicaltrials.eu/ct-public-api-services/services/ct/%s/publicview", # partI and partsII
+    # trial overview - %s is for pagination
+    "https://euclinicaltrials.eu/ct-public-api-services/services/ct/publiclookup?&paging=%s,%s&sorting=+ctNumber&%s",
     #
+    # trial information - %s is ctNumber
+    "https://euclinicaltrials.eu/ct-public-api-services/services/ct/%s/publicview", # partI and partsII
     "https://euclinicaltrials.eu/ct-public-api-services/services/ct/%s/publicevents",
     "https://euclinicaltrials.eu/ct-public-api-services/services/ct/public/%s/summary/list",
     "https://euclinicaltrials.eu/ct-public-api-services/services/ct/public/%s/layperson/list",
@@ -2258,62 +2260,112 @@ ctrLoadQueryIntoDbCtis <- function(
   # this is for importing overview (recruitment, status etc.) into database
   message("* Checking trials in EUCTR...")
 
-  # corresponds in output to "pageInfo":{"offset":0,"limit":-1}
-  urls <- sprintf(ctisEndpoints[1], queryterm)
-  fTrialsJson <- file.path(tempDir, "ctis_add_1.json")
-
   # "HTTP server doesn't seem to support byte ranges. Cannot resume."
-  # Note: at this time, this is just a single file to be downloaded
-  message("(1/5) Downloading trials list", appendLF = FALSE)
-  tmp <- ctrMultiDownload(urls, fTrialsJson, progress = FALSE)
+  message("(1/5) Downloading trials list ", appendLF = FALSE)
 
-  # extract total number of trial records
-  resultsEuNumTrials <- as.numeric(
-    jqr::jq(
-      file(fTrialsJson),
-      ' {name: .totalSize} | .[]'))
-  message(", found ", resultsEuNumTrials, " trials")
+  # prepare
+  i <- 0L
+  di <- 200L
+  idsTrials <- NULL
+  fTrialsNdjson <- file.path(tempDir, "ctis_add_1.ndjson")
+  unlink(fTrialsNdjson)
+
+  # need to iterate / paginate as total number cannot be determined
+  while (TRUE) {
+
+    # {"totalSize":299,"pageInfo":{"offset":200,"limit":200,"pageNumber":2}
+    url <- sprintf(ctisEndpoints[1], i, di, queryterm)
+    url <- utils::URLencode(url)
+    trialsJson <- httr::GET(url)
+    message(". ", appendLF = FALSE)
+
+    # early exit
+    if (httr::status_code(trialsJson) != 200L) {
+      warning("Could not be retrieved, check 'queryterm' and / or 'register'. ",
+              "\nAPI returned: ", httr::content(trialsJson),
+              call. = FALSE
+      )
+      message("API call: ", url)
+      return(emptyReturn)
+    }
+
+    # extract json
+    trialsJson <- suppressMessages(
+      httr::content(trialsJson, as = "text")
+    )
+
+    # get total size
+    totalSize <- as.numeric(
+      jqr::jq(trialsJson, " {name: .totalSize} | .[]")
+    )
+
+    # extract trial information
+    # and convert to ndjson
+    trialsJson <- jqr::jq(
+      trialsJson,
+      paste0(
+        # extract trial records
+        " .elements | .[] ",
+        # add element _id
+        '| .["_id"] = .ctNumber',
+        # keep only standardised fields
+        "| del(.id, .ctNumber, .product, .endPoint, .eudraCtInfo, .ctTitle,
+             .eudraCtInfo, .primaryEndPoint, .sponsor, .conditions) "
+      ),
+      flags = jqr::jq_flags(pretty = FALSE)
+    )
+
+    # get ids
+    idsTrialsBatch <- gsub(
+      '"', "", as.character(
+        jqr::jq(
+          trialsJson,
+          ' ."_id" '
+        )))
+
+    # check for any duplicates
+    nonDuplicates <- !(idsTrialsBatch %in% idsTrials)
+    idsTrials <- c(idsTrials, idsTrialsBatch[nonDuplicates])
+
+    # save and append to ndjson
+    cat(
+      trialsJson[nonDuplicates],
+      sep = "\n",
+      file = fTrialsNdjson,
+      append = TRUE
+    )
+
+    # iterate or break
+    if (totalSize < (i + di)) break
+
+    # update batch parameters
+    i <- i + di
+  }
 
   # early exit
-  if (!resultsEuNumTrials) {
+  if (!totalSize) {
     warning("No trials found, check 'queryterm' and 'register'")
     return(emptyReturn)
   }
 
-  # only count?
-  if (only.count) {
-
-    # return
-    return(list(n = resultsEuNumTrials,
-                success = NULL,
-                failed = NULL))
+  # duplicates?
+  if (totalSize != length(idsTrials)) {
+    warning("Overview retrieval resulted in duplicate ",
+            "trial records, only first record was kept. ")
   }
 
-  # get ids of trial records
-  idsTrials <- read.table(
-    text = jqr::jq(
-      file(fTrialsJson),
-      ' .elements[] | .ctNumber ',
-      flags = jqr::jq_flags(pretty = FALSE)
-    ), quote = "\"'"
-  )[[1]]
+  # inform user
+  message("found ", length(idsTrials), " trials")
 
-  # convert to ndjson
-  fTrialsNdjson <- file.path(tempDir, "ctis_add_1.ndjson")
-  jqr::jq(
-    file(fTrialsJson),
-    paste0(
-      # extract trial records
-      ' .elements | .[] ',
-      # add element _id
-      '| .["_id"] = .ctNumber',
-      # keep only standardised fields
-      '| del(.id, .ctNumber, .product, .endPoint, .eudraCtInfo, .ctTitle,
-             .eudraCtInfo, .primaryEndPoint, .sponsor, .conditions) '
-    ),
-    flags = jqr::jq_flags(pretty = FALSE),
-    out = fTrialsNdjson
-  )
+  # only count?
+  if (only.count) {
+    # return
+    return(list(
+      n = length(idsTrials),
+      success = NULL,
+      failed = NULL
+    ))
+  }
 
   ## import: partI, partsII ---------------------------------------------------
 
@@ -2368,6 +2420,7 @@ ctrLoadQueryIntoDbCtis <- function(
       str = readLines(i[1], warn = FALSE),
       pattern = i[3], replacement = i[4]
     ), file = i[2], sep = "\n")
+    message(". ", appendLF = FALSE)
   }
 
   ## add_3:8: get more data ----------------------------------------------------
@@ -2701,8 +2754,8 @@ ctrLoadQueryIntoDbCtis <- function(
       # add destination file name
       dlFiles$filename <- paste0(
         dlFiles$part, "_",
-        # mangle html entities and special characters
-        gsub("&[a-z]+;|[/\\#%&{}$?!'\":<>|=@+.;]", "-_-",  dlFiles$title),
+        # robustly sanitise file name
+        gsub("[^[:alnum:] ._-]", "",  dlFiles$title),
         ".", dlFiles$fileTypeLabel)
 
       # add destination file directory path
@@ -2788,7 +2841,7 @@ ctrLoadQueryIntoDbCtis <- function(
   ## inform user on final import outcome
   message("= Imported / updated ",
           paste0(c(imported$n, resAll), collapse = " / "),
-          " records on ", resultsEuNumTrials, " trial(s)")
+          " records on ", length(idsTrials), " trial(s)")
 
   # return
   return(imported)

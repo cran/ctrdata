@@ -1,13 +1,13 @@
-d3d0a2deba2bcf0f8cdcb3e82a74a259 *DESCRIPTION
+8ae23daa2b8f5e962875cf6be38895e3 *DESCRIPTION
 61b2a416a4210db88031c5f7b568b167 *LICENSE
 47568d7ea56a43a213eef80544a8f558 *NAMESPACE
-a3cdc20e385c12eb7c5d157d2fdf6002 *NEWS.md
+8ed7bb8162020b140bc6bb93f648884f *NEWS.md
 eeba88686cf0211580d92bc630c770d0 *R/ctrdata-package.R
-280ec58ad01658b5b21af79d7d6f22fb *R/ctrdata-registers.R
-af095d3927fb94af24875e3f0a38e524 *R/main.R
+b7b109ed08b2b0e567c342befecab7a1 *R/ctrdata-registers.R
+7a8a4f519de7dd2695e827a8f86ddd7d *R/main.R
 f81e45adc166a393ada203e8ef512139 *R/onload.R
 f4654210b3811a1083be06245c627de3 *R/utils.R
-c4e62a9d3b159d60b9f00c91993f675a *README.md
+159e46bcce69dc7dd55d6ff57aff5240 *README.md
 aee056cd80ba651726bad132ced545b0 *build/vignette.rds
 b1413a29304e5a94c1acb5f8be6a3393 *exec/ctgov2ndjson.php
 0054d01236ddf75dc7588f148648e69b *exec/euctr2ndjson.sh
@@ -38,7 +38,7 @@ b7f6ce60e144db7670a247655abb81f7 *inst/tinytest/more_test_ctrdata_mongo_remote_r
 34cee5c5487f50807c3f418330b79a78 *inst/tinytest/more_test_ctrdata_postgres_ctis.R
 d615858e76ae3f3d6562c0fe55a17205 *inst/tinytest/more_test_ctrdata_postgres_euctr.R
 643589ae2e2623308618d660c8a3ceb0 *inst/tinytest/more_test_ctrdata_postgres_isrctn.R
-f5a387b67f99575c0a732286f59e0a50 *inst/tinytest/sample_error_trials_euctr.txt
+041428ee38292b79708602a1c9cca8af *inst/tinytest/sample_error_trials_euctr.txt
 f9b35ded6e12a905163d359436011d1a *inst/tinytest/setup_ctrdata.R
 f76ab7afc3ba65a75e6d59e380733a5a *inst/tinytest/test_ctrdata_ctrfindactivesubstance.R
 c3f1cc33803c40e1bed61ff10c9c5d59 *inst/tinytest/test_ctrdata_mongo_local_ctgov.R
@@ -58,7 +58,7 @@ d753db72648093e69ec600f589a29826 *inst/tinytest/test_ctrdata_sqlite_euctr.R
 df18655a0a847448afbf33e77a7e1636 *man/ctrGetQueryUrl.Rd
 0d40d367310cf1f239a8de6d77d44b05 *man/ctrLoadQueryIntoDb.Rd
 5a27684f74a1973cded7eb7d73c6fcd7 *man/ctrOpenSearchPagesInBrowser.Rd
-1ca8e794e90b4382886d19d413736150 *man/ctrdata-registers.Rd
+a7d2e80a440d652c29470798507fc7b3 *man/ctrdata-registers.Rd
 0330a5c59fdf1fd387970ed496d5f9b8 *man/ctrdata.Rd
 d0b11d06c9d7084f3130b0d985ff1d69 *man/dbFindFields.Rd
 fd548c9c90d5a4feb30bfa9145579d02 *man/dbFindIdsUniqueTrials.Rd

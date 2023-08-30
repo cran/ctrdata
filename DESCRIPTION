@@ -1,7 +1,7 @@
 Package: ctrdata
 Type: Package
 Title: Retrieve and Analyze Clinical Trials in Public Registers
-Version: 1.15.0
+Version: 1.15.1
 Imports: jsonlite, httr, curl (>= 5.0), clipr, xml2, nodbi (>= 0.9.3),
         stringi, tibble, lubridate, jqr, dplyr
 SystemRequirements: sed, php, cat, perl
@@ -12,7 +12,8 @@ Description: A system for querying, retrieving and analyzing
         four public registers, the 'European Union Clinical Trials Register'
         ('EUCTR', <https://www.clinicaltrialsregister.eu/>), 
         'ClinicalTrials.gov' ('CTGOV', using the classic interface at 
-        <https://classic.clinicaltrials.gov/>), the 
+        <https://classic.clinicaltrials.gov/>, and 'CTGOV2', using the 
+        current interface at <https://www.clinicaltrials.gov/>), the 
         'ISRCTN' (<http://www.isrctn.com/>) and the
         'European Union Clinical Trials Information System'
         ('CTIS', <https://euclinicaltrials.eu/>). 
@@ -35,8 +36,8 @@ Encoding: UTF-8
 Authors@R: person(given = "Ralf", family = "Herold", role = c("aut", "cre"),
         email = "ralf.herold@mailbox.org", comment = c(ORCID =
         "0000-0002-8148-6748"))
-Packaged: 2023-08-27 08:52:42 UTC; ralfherold
+Packaged: 2023-08-30 08:07:42 UTC; ralfherold
 Author: Ralf Herold [aut, cre] (<https://orcid.org/0000-0002-8148-6748>)
 Maintainer: Ralf Herold <ralf.herold@mailbox.org>
 Repository: CRAN
-Date/Publication: 2023-08-27 23:10:02 UTC
+Date/Publication: 2023-08-30 09:10:14 UTC

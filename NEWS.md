@@ -1,3 +1,7 @@
+# ctrdata 1.15.1 (2023-08-29)
+ - correct LaTeX documentation resulting in CRAN error
+ - correct parts of downloading from `CTIS`, including file name sanitisation
+ 
 # ctrdata 1.15.0 (2023-08-27)
  - added CTGOV REST API 2.0.0.-test as new register with identifier `CTGOV2`
  - handle CTGOV classic interface as register `CTGOV` 
