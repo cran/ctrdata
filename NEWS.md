@@ -1,3 +1,9 @@
+# ctrdata 1.15.2 (2023-09-10)
+ - fix handling as utf8 upstream multi-language strings from CTIS
+ - correct creating lists for downloading documents for ctis
+ - adding missing endpoints for CTIS found with increasing amount of data, 
+   e.g. publicevents.temporaryHaltList.details for 2022-501559-99-00
+
 # ctrdata 1.15.1 (2023-08-29)
  - correct LaTeX documentation resulting in CRAN error
  - correct parts of downloading from `CTIS`, including file name sanitisation
