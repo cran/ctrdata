@@ -234,17 +234,6 @@ tmpTest <- c(
 expect_true(
   length(setdiff(tmpTest, names(result))) == 0L)
 
-# test
-expect_true(
-  sum(nchar(
-    # note: deprecated function
-    suppressWarnings(
-      dfListExtractKey(
-        result,
-        list(c("location", "name"))
-      ))[["value"]]),
-    na.rm = TRUE) > 1000L)
-
 # convert to long
 df <- suppressMessages(
   dfTrials2Long(
@@ -387,4 +376,4 @@ tmpc <- table(tmpc)
 # All ok, 34 results (21.8s)
 
 # clean up
-rm(df, df2, tmpf, result)
+rm(df, df2, tmpf, result, tmpc)

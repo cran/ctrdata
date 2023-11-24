@@ -2,7 +2,6 @@
 
 #### SETUP ####
 source("setup_ctrdata.R")
-
 if (!checkInternet()) exit_file("Reason: no internet connectivity")
 
 #### active substance ####

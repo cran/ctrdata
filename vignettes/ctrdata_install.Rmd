@@ -1,7 +1,7 @@
 ---
 title: "Install R package ctrdata"
 author: "Ralf Herold"
-date: 2023-05-07
+date: 2023-11-23
 output:
   rmarkdown::pdf_document:
     toc: true
@@ -25,9 +25,9 @@ knitr::opts_chunk$set(eval = FALSE)
 
 # Install package `ctrdata` on a R system
 
-The R Project website ([https://www.r-project.org/](https://www.r-project.org/)) provides installers for the R system. It can be used with software products and graphical user interfaces such as [R Studio](https://www.rstudio.com/products/RStudio/), or [Microsoft R Open](https://mran.microsoft.com/open/), or from [Visual Studio Code](https://marketplace.visualstudio.com/items?itemName=Ikuyadeu.r).
+The R Project website ([https://www.r-project.org/](https://www.r-project.org/)) provides installers for the R system. It can be used with software products and graphical user interfaces such as [R Studio](https://www.rstudio.com/products/RStudio/), or [Microsoft R Open](https://mran.microsoft.com/open/), or from [Visual Studio Code](https://marketplace.visualstudio.com/items?itemName=Ikuyadeu.r). 
 
-General information on the `ctrdata` package is available here: [https://github.com/rfhb/ctrdata](https://github.com/rfhb/ctrdata).
+General information on the `ctrdata` package is available here: [https://rfhb.github.io/ctrdata/](https://rfhb.github.io/ctrdata/).
 
 In R, execute:
 
@@ -38,9 +38,9 @@ install.packages("ctrdata")
 For using the development version of package `ctrdata`, install from GitHub:
 
 ```{r, eval=FALSE}
-# install preparatory package
-install.packages(c("devtools", "httr"))
-devtools::install_github("rfhb/ctrdata")
+# install package under development
+install.packages(c("remotes"))
+remotes::install_github("rfhb/ctrdata", dependencies = TRUE, build_vignettes = TRUE)
 ```
 
 Either of the above should install package `ctrdata` into the user's library.
@@ -53,48 +53,6 @@ Functions in package `ctrdata` that start with `ctr...` require access to trial 
 Sys.setenv(https_proxy = "your_proxy.server.domain:8080") # if needed
 Sys.setenv(https_proxy_user = "your_userid:your_password") # if needed
 ```
-
-## Additional installation aspects
-
-The command line tools `perl`, `sed` and `php` (5.2 or higher) are required for `ctrLoadQueryIntoDb()`, the main function of package `ctrdata` to work with registers "EUCTR", "CTGOV" and "ISRCTN" (but not "CTIS"). No other function in this package has this requirement.
-
-### MS Windows
-
-For this requirement on MS Windows, the [`Cygwin`](https://cygwin.org/install.html) environment has to be installed, into the local directory `c:\cygwin` (or any folder corresponding to `c:\cygw*`). The installation of a minimal Cygwin environment on MS Windows can be done with the help of package `ctrdata` in R as follows:
-
-```{r, eval=FALSE}
-ctrdata::installCygwinWindowsDoInstall()
-```
-
-To update or correct the Cygwin installation:
-
-```{r, eval=FALSE}
-ctrdata::installCygwinWindowsDoInstall(force = TRUE)
-```
-
-If internet access requires to specify a proxy (see above):
-
-```{r, eval=FALSE}
-ctrdata::installCygwinWindowsDoInstall(proxy = "proxy.server.domain:8080")
-```
-
-To install Cygwin manually, download the setup executable from [here](https://cygwin.com/install.html). In a MS Windows command window or Powershell window, use the following command line. The parameters are explained [here](https://cygwin.com/faq/faq.html#faq.setup.cli).
-
-```{bash, eval=FALSE}
-setup-x86_64.exe --no-admin --quiet-mode --verbose --upgrade-also --root c:/cygwin
---site http://www.mirrorservice.org/sites/sourceware.org/pub/cygwin/
---packages perl,php-jsonc,php-simplexml
-```
-
-### macOS, Linux and other operating systems
-
-The command line tools `perl`, `sed` and `php` (5.2 or higher) may already be available by default in some Linux and macOS systems. They are checked when running `ctrLoadQueryIntoDb()`; alternatively, check with `(ctrdata:::checkBinary())`.  
-
-- In macOS, [`homebrew`](https://brew.sh/) can be used to install `php` which may be needed starting from macOS 12 Monterey: first install [`homebrew`](https://brew.sh/) and then run in Terminal the command: `brew install php`.
-
-- In Linux, tools for installation vary by distribution (e.g., `sudo apt install php php-xml php-json`)
-
-- Install script to automatically copy user's query from web browser, see [here](https://github.com/rfhb/ctrdata#id_3-script-to-automatically-copy-users-query-from-web-browser)
 
 ## Databases to use
 

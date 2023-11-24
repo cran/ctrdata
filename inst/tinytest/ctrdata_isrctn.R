@@ -104,6 +104,19 @@ expect_message(
       con = dbc)),
   "Search result page empty")
 
+tempDf <- data.frame(
+  `query-term` = c("q=neuroblastoma", "q=neuroblastoma"),
+  `query-register` = c("ISRCTN", "ISRTCN"),
+  check.names = FALSE
+)
+
+# test
+expect_warning(
+  ctrLoadQueryIntoDb(
+    queryterm = tempDf,
+    con = dbc),
+  "Using last row of queryterm parameter")
+
 # test
 expect_message(
   suppressWarnings(
@@ -245,7 +258,7 @@ suppressWarnings(
     tmpDf <- dbGetFieldsIntoDf(
       fields = c(
         "participants.totalFinalEnrolment"
-        ),
+      ),
       stopifnodata = FALSE,
       con = dbc)))
 #
@@ -342,3 +355,18 @@ expect_message(
 expect_true(length(res) >= 5L)
 rm(res)
 
+
+#### ctrLoadQueryIntoDb documents ####
+
+tmpDir <- newTempDir()
+on.exit(unlink(tmpDir, recursive = TRUE), add = TRUE)
+
+expect_message(
+  ctrLoadQueryIntoDb(
+    queryterm = "https://www.isrctn.com/search?q=alzheimer",
+    con = dbc,
+    documents.path = tmpDir,
+    documents.regexp = ".*"
+  ),
+  "Newly saved [0-9]+ document[(]s[)] for [0-9]+ trial"
+)

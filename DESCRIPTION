@@ -1,10 +1,9 @@
 Package: ctrdata
 Type: Package
 Title: Retrieve and Analyze Clinical Trials in Public Registers
-Version: 1.15.2
-Imports: jsonlite, httr, curl (>= 5.0), clipr, xml2, nodbi (>= 0.9.3),
-        stringi, tibble, lubridate, jqr, dplyr
-SystemRequirements: sed, php, cat, perl
+Version: 1.16.0
+Imports: jsonlite, httr, curl (>= 5.1.0), clipr, xml2, nodbi (>=
+        0.9.3), stringi, tibble, lubridate, jqr, dplyr, zip, V8, readr
 URL: https://cran.r-project.org/package=ctrdata
 BugReports: https://github.com/rfhb/ctrdata/issues
 Description: A system for querying, retrieving and analyzing
@@ -19,7 +18,7 @@ Description: A system for querying, retrieving and analyzing
         ('CTIS', <https://euclinicaltrials.eu/>). 
         Trial information is downloaded, converted and stored in a database 
         ('PostgreSQL', 'SQLite', 'DuckDB' or 'MongoDB'; via package 'nodbi'). 
-        All documents in registers associated with trials can also be downloaded. 
+        Documents in registers associated with trials can also be downloaded. 
         Other functions identify deduplicated records, 
         easily find and extract variables (fields) of interest even 
         from complex nested data as used by the registers, 
@@ -36,8 +35,8 @@ Encoding: UTF-8
 Authors@R: person(given = "Ralf", family = "Herold", role = c("aut", "cre"),
         email = "ralf.herold@mailbox.org", comment = c(ORCID =
         "0000-0002-8148-6748"))
-Packaged: 2023-09-17 21:03:41 UTC; ralfherold
+Packaged: 2023-11-24 14:59:20 UTC; ralfherold
 Author: Ralf Herold [aut, cre] (<https://orcid.org/0000-0002-8148-6748>)
 Maintainer: Ralf Herold <ralf.herold@mailbox.org>
 Repository: CRAN
-Date/Publication: 2023-09-17 22:50:15 UTC
+Date/Publication: 2023-11-24 15:40:02 UTC

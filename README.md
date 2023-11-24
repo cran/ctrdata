@@ -2,7 +2,8 @@
 <!-- README.md is generated from README.Rmd -->
 <!-- badges: start -->
 
-[![CRAN](https://badges.cranchecks.info/worst/ctrdata.svg)](https://cran.r-project.org/package=ctrdata)
+[![CRAN
+status](https://www.r-pkg.org/badges/version/ctrdata)](https://CRAN.R-project.org/package=ctrdata)
 [![ctrdata status
 badge](https://rfhb.r-universe.dev/badges/ctrdata)](https://rfhb.r-universe.dev/ctrdata)
 [![codecov](https://codecov.io/gh/rfhb/ctrdata/branch/master/graph/badge.svg)](https://app.codecov.io/gh/rfhb/ctrdata)
@@ -37,18 +38,19 @@ conduct of trials, their availability for patients and to facilitate
 using their detailed results for research and meta-analyses. `ctrdata`
 is a package for the [R](https://www.r-project.org/) system, but other
 systems and tools can be used with the databases created with the
-package. This README was reviewed on 2023-09-10 for version 1.15.2 for
-[CTGOV changes](#workflow-ctgov-example).
+package. This README was reviewed on 2023-11-24 for version 1.16.0
+(major improvement: remove all dependencies on external tools).
 
 ## Main features
 
 - Protocol- and results-related trial information is easily downloaded:
-  Users define a query in a register’s web interface and then enter the
-  URL into `ctrdata` which retrieves in one go all trials found.
+  Users define a query in a register’s web interface, then copy the URL
+  and enter it into `ctrdata` which retrieves in one go all trials
+  found. A
+  [script](#3-script-to-automatically-copy-users-query-from-web-browser)
+  can automate copying the query URL from all registers.
   [Documents](#documents-example) in registers on trials can also be
-  downloaded. Personal annotations can be made to trials when
-  downloading a query. Synonyms of an active substance can also be
-  found.
+  downloaded. Personal annotations can be made when downloading trials.
 - Downloaded trial information is transformed and stored in a collection
   of a document-centric database, for fast and offline access.
   Information from different registers can be accumalated in a single
@@ -57,22 +59,18 @@ package. This README was reviewed on 2023-09-10 for version 1.15.2 for
   [Databases](#databases-that-can-be-used-with-ctrdata) below. Re-run
   any previous query in a collection to retrieve and update trial
   records.
-- For analyses, convenience functions in `ctrdata` allow to identify
-  unique (de-duplicated) trial records across registers, to merge and
-  recode fields as well as to easily access deeply-nested fields.
-  Analysis can be done with `R` or other systems, by accessing the
-  structured information in the database.
-
-URLs of queries in the registers can be automatically copied to the
-clipboard (including for “CTIS”, where the URL does not show the query),
-see
-[here](#3-script-to-automatically-copy-users-query-from-web-browser).
+- For analyses, convenience functions in `ctrdata` allow find synonyms
+  of an active substance, to identify unique (de-duplicated) trial
+  records across all registers, to merge and recode fields as well as to
+  easily access deeply-nested fields. Analysis can be done with `R` or
+  other systems, using the `JSON`-[structured information in the
+  database](#mongodb).
 
 Remember to respect the registers’ terms and conditions (see
 `ctrOpenSearchPagesInBrowser(copyright = TRUE)`). Please cite this
 package in any publication as follows: “Ralf Herold (2023). *ctrdata:
 Retrieve and Analyze Clinical Trials in Public Registers.* R package
-version 1.14.0, <https://cran.r-project.org/package=ctrdata>”.
+version 1.16.0, <https://cran.r-project.org/package=ctrdata>”.
 
 <!--
 &#10;```r
@@ -91,7 +89,7 @@ Package `ctrdata` has been used for:
   research](https://paediatricdata.eu/innovation-coming-to-paediatric-research/)
 - Cancer Research UK (2017) [The impact of collaboration: The value of
   UK medical research to EU science and
-  health](https://www.cancerresearchuk.org/about-us/we-develop-policy/we-work-with-government/exiting-the-eu/uk-and-eu-research#downloads)
+  health](https://www.cancerresearchuk.org/about-us/we-develop-policy/policy-publications-and-research-tenders#Policy_publications4)
 
 ## Installation
 
@@ -112,32 +110,11 @@ install.packages("devtools")
 devtools::install_github("rfhb/ctrdata", build_vignettes = TRUE)
 ```
 
-These commands also install the package’s dependencies (`nodbi`,
-`jsonlite`, `httr`, `curl`, `clipr`, `xml2`, `rvest`, `lubridate` and
-`stringi`).
+These commands also install the package’s dependencies (`jsonlite`,
+`httr`, `curl`, `clipr`, `xml2`, `nodbi`, `stringi`, `tibble`,
+`lubridate`, `jqr`, `dplyr`, `zip` and `V8`).
 
-### 2. Command line tools `perl`, `sed` and `php` (5.2 or higher)
-
-These are required for `ctrLoadQueryIntoDb()`, the main function of
-package `ctrdata` (see [Example workflow](#example-workflow)), to work
-with the registers EUCTR, CTGOV, ISRCTN (but are not required to work
-with CTIS); the function also checks if the tools can be used.
-
-- For MS Windows, install [`Cygwin`](https://cygwin.org/install.html):
-  In `R`, run `ctrdata::installCygwinWindowsDoInstall()` for an
-  automated minimal installation. Alternatively, manually install Cygwin
-  with packages `perl`, `php-jsonc` and `php-simplexml` into
-  `c:\cygwin`. The installation needs about 160 MB disk space.
-
-- In macOS including 11 Big Sur, these are already installed; as
-  alternative and 🔔for macOS 12 Monterey and above,
-  [`homebrew`](https://brew.sh/) can be used: `brew install php`, which
-  seems to include all `php` libraries required for `ctrdata`.
-
-- In Linux, these are usually already installed; tools to install vary
-  by distribution (e.g., `sudo apt install php-cli php-xml php-json`).
-
-### 3. Script to automatically copy user’s query from web browser
+### 2. Script to automatically copy user’s query from web browser
 
 This is optional; it works with all registers supported by `ctrdata` but
 is recommended for CTIS because the URL in the web browser does not
@@ -173,7 +150,6 @@ overview](https://rfhb.github.io/ctrdata/reference/index.html).
 | `dfTrials2Long()`                  | Transform the data.frame from `dbGetFieldsIntoDf()` into a long name-value data.frame, including deeply nested fields          |
 | `dfName2Value()`                   | From a long name-value data.frame, extract values for variables (fields) of interest (e.g., endpoints)                         |
 | `dfMergeVariablesRelevel()`        | Merge variables into a new variable, optionally map values to a new set of levels                                              |
-| `installCygwinWindowsDoInstall()`  | Convenience function to install a Cygwin environment (MS Windows only)                                                         |
 
 ## Databases that can be used with `ctrdata`
 
@@ -288,31 +264,33 @@ ctrLoadQueryIntoDb(
   con = db
 )
 # * Found search query from EUCTR: query=cancer&age=under-18&phase=phase-one&status=completed
-# Checking helper binaries: . . . . . done
 # * Checking trials in EUCTR...
-# Retrieved overview, multiple records of 92 trial(s) from 5 page(s) to be downloaded (estimate: 4.6 MB)
+# Retrieved overview, multiple records of 95 trial(s) from 5 page(s) to be downloaded (estimate: 5 MB)
 # (1/3) Downloading trials...
-# Note: register server cannot compress data, transfer takes longer, about 0.2s per trial
-# Download status: 5 done; 0 in progress. Total size: 7.33 Mb (100%)... done!             
-# (2/3) Converting to JSON, 353 records converted
-# (3/3) Importing JSON records into database...
-# = Imported or updated 353 records on 92 trial(s) 
-# * Checking results if available from EUCTR for 92 trials: 
+# Note: register server cannot compress data, transfer takes longer (estimate: 30 s)
+# Download status: 5 done; 0 in progress. Total size: 7.72 Mb (100%)... done!             
+# (2/3) Converting to NDJSON (estimate: 1.7 s)...
+# (3/3) Importing records into database...
+# = Imported or updated 369 records on 95 trial(s) 
+# * Checking results if available from EUCTR for 95 trials: 
 # (1/4) Downloading and extracting results (. = data, F = file[s] and data, x = none):
-# Download status: 92 done; 0 in progress. Total size: 57.94 Mb (100%)... done!             
-# F . F F . F . F . . . . F F . . . . . . F . . . . . . . . . . . . . . . . . . . . . . . . . . . . 
-# . . F . . . . F . . F . . . . . . F . . . . F . , 74 records converted
-# (3/4) Importing JSON into database...
+# Download status: 95 done; 0 in progress. Total size: 48.63 Mb (100%)... done!             
+# Download status: 19 done; 0 in progress. Total size: 76.48 Kb (308%)... done!             
+# Download status: 19 done; 0 in progress. Total size: 76.48 Kb (308%)... done!             
+# Download status: 19 done; 0 in progress. Total size: 76.48 Kb (308%)... done!             
+# F . . . . F . . F . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 
+# (2/4) Converting to NDJSON (estimate: 8 s)...
+# (3/4) Importing results into database (may take some time)...
 # (4/4) Results history: not retrieved (euctrresultshistory = FALSE)
-# = Imported or updated results for 74 trials
+# = Imported or updated results for 76 trials
 # No history found in expected format.
 # Updated history ("meta-info" in "some_collection_name")
 ```
 
-Under the hood, scripts `euctr2json.sh` and `xml2json.php` (in
-`ctrdata/exec`) transform EUCTR plain text files and CTGOV as well as
-ISRCTN `XML` files to `ndjson` format, which is imported into the
-database collection.
+Under the hood, external script `euctr2json.sh` (in `ctrdata/exec`)
+transform EUCTR plain text files, and `xml2js` via `V8` in `R`
+transforms CTGOV’s ISRCTN’s `XML` files, into `NDJSON`, which is
+imported into the database collection.
 
 - Analyse
 
@@ -336,11 +314,11 @@ result <- dbGetFieldsIntoDf(
 # one record, for example for several EU Member States or in several registers:
 uniqueids <- dbFindIdsUniqueTrials(con = db)
 # Searching for duplicate trials... 
-#  - Getting all trial identifiers (may take some time), 353 found in collection
+#  - Getting all trial identifiers (may take some time), 369 found in collection
 #  - Finding duplicates among registers' and sponsor ids...
-#  - 261 EUCTR _id were not preferred EU Member State record for 92 trials
-#  - Keeping 92 / 0 / 0 / 0 / 0 records from EUCTR / CTGOV / CTGOV2 / ISRCTN / CTIS
-# = Returning keys (_id) of 92 records in collection "some_collection_name"
+#  - 274 EUCTR _id were not preferred EU Member State record for 95 trials
+#  - Keeping 95 / 0 / 0 / 0 / 0 records from EUCTR / CTGOV / CTGOV2 / ISRCTN / CTIS
+# = Returning keys (_id) of 95 records in collection "some_collection_name"
 
 # Keep only unique / de-duplicated records:
 result <- subset(
@@ -358,10 +336,11 @@ with(
 )
 #                           a7_trial_is_part_of_a_paediatric_investigation_plan
 # p_end_of_trial_status      FALSE TRUE
-#   Completed                   46   20
+#                                1    1
+#   Completed                   47   20
 #   GB - no longer in EU/EEA     1    1
-#   Ongoing                      3    1
-#   Prematurely Ended            3    2
+#   Ongoing                      5    1
+#   Prematurely Ended            2    2
 #   Restarted                    0    1
 #   Temporarily Halted           1    1
 ```
@@ -407,12 +386,13 @@ ctrLoadQueryIntoDb(
 )
 # * Appears specific for CTGOV REST API 2.0.0
 # * Found search query from CTGOV2: cond=Neuroblastoma&aggFilters=ages:child,results:with,studyType:int
-# * Checking trials using CTGOV API 2.0.0.-test, found 88 trials
-# (1/2) Downloading and converting in 1 batch(es) (max. 1000 trials each; estimate: 8.8 MB total)
-# Download status: 1 done; 0 in progress. Total size: 8.75 Mb (837%)...converting to NDJSON...
-# (2/2) Importing JSON records into database...
+# * Checking trials using CTGOV API 2.0.0.-test, found 89 trials
+# (1/3) Downloading in 1 batch(es) (max. 1000 trials each; estimate: 8.9 MB total)
+# Download status: 1 done; 0 in progress. Total size: 8.37 Mb (813%)... done!             
+# (2/3) Converting to NDJSON...
+# (3/3) Importing records into database...
 # JSON file #: 1 / 1                               
-# = Imported / updated 88 records on 88 trial(s)
+# = Imported or updated 89 trial(s)
 # Updated history ("meta-info" in "some_collection_name")
 ```
 
@@ -420,21 +400,21 @@ ctrLoadQueryIntoDb(
   <https://classic.clinicaltrials.gov/ct2/results?cond=neuroblastoma&rslt=With&recrs=e&age=0&intr=Drug>
 
 ``` r
-# Retrieve trials from another register:
+# Retrieve trials:
 ctrLoadQueryIntoDb(
   queryterm = "https://classic.clinicaltrials.gov/ct2/results?cond=neuroblastoma&rslt=With&recrs=e&age=0&intr=Drug",
+  verbose = TRUE,
   con = db
 )
 # * Appears specific for CTGOV CLASSIC
 # * Found search query from CTGOV: cond=neuroblastoma&rslt=With&recrs=e&age=0&intr=Drug
-# Checking helper binaries: done
 # * Checking trials in CTGOV classic...
-# Retrieved overview, records of 55 trial(s) are to be downloaded (estimate: 0.44 MB)
+# Retrieved overview, records of 56 trial(s) are to be downloaded (estimate: 0.45 MB)
 # (1/3) Downloading trial file...
-# Download status: 1 done; 0 in progress. Total size: 755.00 Kb (100%)... done!             
-# (2/3) Converting to JSON, 55 records converted
-# (3/3) Importing JSON records into database...
-# = Imported or updated 55 trial(s)                
+# Download status: 1 done; 0 in progress. Total size: 779.10 Kb (100%)... done!             
+# (2/3) Converting to NDJSON (estimate: 2 s)...
+# (3/3) Importing records into database...
+# = Imported or updated 56 trial(s)                
 # Updated history ("meta-info" in "some_collection_name")
 ```
 
@@ -450,13 +430,12 @@ ctrLoadQueryIntoDb(
   con = db
 )
 # * Found search query from ISRCTN: q=neuroblastoma
-# Checking helper binaries: done
 # * Checking trials in ISRCTN...
-# Retrieved overview, records of 9 trial(s) are to be downloaded (estimate: 0.16 MB)
+# Retrieved overview, records of 9 trial(s) are to be downloaded (estimate: 0.2 MB)
 # (1/3) Downloading trial file... 
-# Download status: 1 done; 0 in progress. Total size: 93.10 Kb (100%)... done!             
-# (2/3) Converting to JSON, 9 records converted
-# (3/3) Importing JSON records into database...
+# Download status: 1 done; 0 in progress. Total size: 93.12 Kb (100%)... done!             
+# (2/3) Converting to NDJSON (estimate: 0.05 s)...
+# (3/3) Importing records into database...
 # = Imported or updated 9 trial(s)                 
 # Updated history ("meta-info" in "some_collection_name")
 ```
@@ -470,35 +449,45 @@ ctrLoadQueryIntoDb(
 Queries in the CTIS search interface can be automatically copied to the
 clipboard so that a user can paste them into `queryterm`, see
 [here](#3-script-to-automatically-copy-users-query-from-web-browser). As
-of June 2023, more than 200 trials are publicly accessible in CTIS. See
+of 2023-11-22, there are 410 trials are publicly accessible in CTIS. See
 [below](#documents-example) for how to download documents from CTIS.
 
 ``` r
+# See how many trials are in CTIS publicly accessible:
+ctrLoadQueryIntoDb(
+  queryterm = "",
+  register = "CTIS",
+  only.count = TRUE,
+  con = db
+)
+# $n
+# [1] 411
+
 # Retrieve trials from another register:
 ctrLoadQueryIntoDb(
   queryterm = "https://euclinicaltrials.eu/app/#/search?ageGroupCode=2",
   con = db
 )
 # * Found search query from CTIS: ageGroupCode=2
-# * Checking trials in EUCTR...
-# (1/5) Downloading trials list, found 32 trials
-# (2/5) Downloading and processing part I and parts II... (estimate: 4.8 Mb)
-# Download status: 32 done; 0 in progress. Total size: 4.94 Mb (100%)... done!
-# . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 
+# * Checking trials in CTIS...
+# (1/5) Downloading trials list . found 44 trials
+# (2/5) Downloading and processing part I and parts II... (estimate: 9 Mb)
+# Download status: 44 done; 0 in progress. Total size: 8.69 Mb (100%)... done!             
+# . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 
 # (3/5) Downloading and processing additional data:
-# publicevents, summary, layperson, csr, cm, inspections, publicevaluation
-# Download status: 46 done; 0 in progress. Total size: 1.84 Mb (100%)... done!             
-# 32
-# (4/5) Importing JSON records into database...
+# publicevents, summary, layperson, csr, cm, inspections, publicevaluation (estimate: 3 Mb)
+# Download status: 83 done; 0 in progress. Total size: 2.71 Mb (100%)... done!             
+# 44
+# (4/5) Importing records into database...
 # (5/5) Updating with additional data: . .         
-# = Imported / updated 32 / 32 / 32 records on 32 trial(s)
+# = Imported / updated 44 / 44 / 44 records on 44 trial(s)
 # Updated history ("meta-info" in "some_collection_name")
 
 allFields <- dbFindFields(".*", db)
-# Finding fields in database collection (may take some time)
+# Finding fields in database collection (may take some time)...
 # Field names cached for this session.
 length(allFields[grepl("CTIS", names(allFields))])
-# [1] 1886
+# [1] 1704
 
 allFields[grepl("defer|consideration$", allFields, ignore.case = TRUE)]
 #                                                                                            CTIS 
@@ -510,7 +499,9 @@ allFields[grepl("defer|consideration$", allFields, ignore.case = TRUE)]
 #                                                                                            CTIS 
 #                  "publicEvaluation.partIRfiConsiderations.rfiConsiderations.part1Consideration" 
 #                                                                                            CTIS 
-#                  "publicEvaluation.validationRfiConsiderations.rfiConsiderations.consideration"
+#                  "publicEvaluation.validationRfiConsiderations.rfiConsiderations.consideration" 
+#                                                                                            CTIS 
+#             "publicEvaluation.validationRfiConsiderations.rfiConsiderations.part1Consideration"  
 
 dbGetFieldsIntoDf("publicEvaluation.partIRfiConsiderations.rfiConsiderations.consideration", db)[1,2]
 # publicEvaluation.partIRfiConsiderations.rfiConsiderations.consideration
@@ -536,19 +527,20 @@ sort(names(allData))
 #  [1] "_id"                           "ageGroup"                      "applications"                 
 #  [4] "authorizationDate"             "authorizedPartI"               "authorizedPartsII"            
 #  [7] "coSponsors"                    "ctNumber"                      "ctrname"                      
-# [10] "ctStatus"                      "decisionDate"                  "eeaStartDate"                 
-# [13] "eudraCtInfo"                   "gender"                        "hasAmendmentApplied"          
-# [16] "hasDeferrallApplied"           "id"                            "initialApplicationId"         
-# [19] "isRmsTacitAssignment"          "lastUpdated"                   "memberStatesConcerned"        
-# [22] "mscTrialNotificationsInfoList" "primarySponsor"                "publicEvaluation"             
-# [25] "record_last_import"            "recruitmentStatus"             "sponsorType"                  
-# [28] "startDateEU"                   "submissionDate"                "therapeuticAreas"             
-# [31] "title"                         "totalNumberEnrolled"           "totalPartIISubjectCount"      
-# [34] "trialCountries"                "trialGlobalEnd"                "trialPhase"                   
-# [37] "trialStartDate"  
-# 
+# [10] "ctStatus"                      "decisionDate"                  "eeaEndDate"                   
+# [13] "eeaStartDate"                  "endDateEU"                     "eudraCtInfo"                  
+# [16] "gender"                        "hasAmendmentApplied"           "hasDeferrallApplied"          
+# [19] "id"                            "initialApplicationId"          "isRmsTacitAssignment"         
+# [22] "lastUpdated"                   "memberStatesConcerned"         "mscTrialNotificationsInfoList"
+# [25] "primarySponsor"                "publicEvaluation"              "record_last_import"           
+# [28] "recruitmentStatus"             "sponsorType"                   "startDateEU"                  
+# [31] "submissionDate"                "therapeuticAreas"              "title"                        
+# [34] "totalNumberEnrolled"           "totalPartIISubjectCount"       "trialCountries"               
+# [37] "trialEndDate"                  "trialGlobalEnd"                "trialPhase"                   
+# [40] "trialStartDate" 
+
 format(object.size(allData), "MB")
-# [1] "25.5 Mb"
+# [1] "42.9 Mb"
 ```
 
 <div id="workflow-cross-trial-example">
@@ -564,10 +556,12 @@ Show cumulative start of trials over time.
 library(dplyr)
 library(magrittr)
 library(tibble)
+library(purrr)
+library(tidyr)
 
 # get names of all fields / variables in the collaction
 length(dbFindFields(".*", con = db))
-# [1] 3014
+# [1] 2750
 
 dbFindFields("(start.*date)|(date.*decision)", con = db)
 # Using cache of fields.
@@ -608,14 +602,15 @@ result %<>%
   mutate(isrctnStatus = if_else(trialDesign.overallEndDate < record_last_import, "Ongoing", "Completed")) %>% 
   ungroup()
   
-# Merge variables / fields from different registers with re-leveling:
+# - Merge fields from different registers with re-leveling
 statusValues <- list(
   "ongoing" = c(
     # EUCTR
-    "Recruiting", "Active", "Ongoing", "Temporarily Halted", "Restarted",
+    "Recruiting", "Active", "Ongoing", 
+    "Temporarily Halted", "Restarted",
     # CTGOV
-    "Active, not recruiting", "Enrolling by invitation", "Not yet recruiting",
-    "ACTIVE_NOT_RECRUITING",
+    "Active, not recruiting", "Enrolling by invitation", 
+    "Not yet recruiting", "ACTIVE_NOT_RECRUITING",
     # CTIS
     "Ongoing, recruiting", "Ongoing, recruitment ended", 
     "Ongoing, not yet recruiting", "Authorised, not started"
@@ -634,7 +629,7 @@ result[["state"]] <- dfMergeVariablesRelevel(
   levelslist = statusValues
 )
 
-# example plot
+# - Plot example
 library(ggplot2)
 ggplot(result) + 
   stat_ecdf(aes(x = start, colour = state))
@@ -664,82 +659,63 @@ result <- dbGetFieldsIntoDf(
     "clinical_results.baseline.analyzed_list.analyzed.count_list.count",
     "clinical_results.baseline.group_list.group",
     "clinical_results.baseline.analyzed_list.analyzed.units",
+    "number_of_arms",
     "study_design_info.allocation",
-    "location"
+    "location",
+    "condition"
   ),
   con = db
 )
 
-# Transform all fields into long name - value format:
-result <- dfTrials2Long(df = result)
-# Total 9472 rows, 12 unique names of variables
+# Mangle to calculate:
+# - which columns with values for group counts are not labelled Total
+# - what are the numbers in each of the groups etc.
+result %<>% 
+  mutate(
+    which_not_total = lapply(clinical_results.baseline.group_list.group, "[[", 1),
+    which_not_total = lapply(which_not_total, function(i) which(i["title"] != "Total")),
+    num_participants = lapply(
+      clinical_results.baseline.analyzed_list.analyzed.count_list.count, 
+      function(i) if (is.data.frame(i[[1]])) i[[1]][2] else i[2])
+  ) %>% 
+  rowwise() %>% 
+  mutate(
+    is_randomised = case_when(
+      study_design_info.allocation == "Randomized" ~ TRUE,
+      study_design_info.allocation == "Non-Randomized" ~ FALSE, 
+      number_of_arms == 1L ~ FALSE
+    ),
+    num_sites = length(sapply(location, "[[", "name")),
+    which_not_total = list(if (length(which_not_total)) which_not_total else 1L),
+    num_participants = sum(as.integer(num_participants[[1]][which_not_total])),
+    num_arms_or_groups = max(number_of_arms, length(which_not_total))
+  ) 
 
-# [1.] Get counts of subjects for all arms into data frame
-# This count is in the group where either its title or its
-# description starts with "Total":
-nsubj <- dfName2Value(
-  df = result,
-  valuename = "clinical_results.baseline.analyzed_list.analyzed.count_list.count.value",
-  wherename = paste0(
-    "clinical_results.baseline.group_list.group.title|",
-    "clinical_results.baseline.group_list.group.description"
-  ),
-  wherevalue = "^Total$"
-)
-# Returning values for 32 out of 55 trials
+# Inspect:
+# View(result)
 
-# [2.] Count number of sites:
-nsite <- dfName2Value(
-  df = result,
-  # some ctgov records use location.name, others location.facility.name
-  valuename = "^location.*name$"
-)
-# Returning values for 32 out of 55 trials
-
-nsite <- tapply(
-  X = nsite[["value"]],
-  INDEX = nsite[["_id"]],
-  FUN = length,
-  simplify = TRUE
-)
-nsite <- data.frame(
-  "_id" = names(nsite),
-  nsite,
-  check.names = FALSE,
-  stringsAsFactors = FALSE,
-  row.names = NULL
-)
-
-# [3.] Randomised?
-ncon <- dfName2Value(
-  df = result,
-  valuename = "study_design_info.allocation"
-)
-# Returning values for 27 out of 55 trials
-
-# [4.] Merge sets:
-nset <- merge(nsubj, nsite, by = "_id")
-nset <- merge(nset, ncon, by = "_id")
-
-# [5.] Example plot:
+# Example plot:
 library(ggplot2)
-ggplot(data = nset) +
+ggplot(data = result) +
   labs(
-    title = "Neuroblastoma trials with results",
-    subtitle = "clinicaltrials.gov"
+    title = "Trials including patients with a neuroblastoma",
+    subtitle = "ClinicalTrials.Gov, trials with results"
   ) +
   geom_point(
     mapping = aes(
-      x = nsite,
-      y = value.x,
-      colour = value.y == "Randomized"
+      x = num_sites,
+      y = num_participants,
+      size = num_arms_or_groups,
+      colour = is_randomised
     )
   ) +
   scale_x_log10() +
   scale_y_log10() +
-  xlab("Number of sites") +
-  ylab("Total number of subjects") +
-  labs(colour = "Randomised?")
+  labs(
+    x = "Number of sites",
+    y = "Total number of participants",
+    colour = "Randomised?", 
+    size = "# Arms / groups")
 ggsave(
   filename = "man/figures/README-ctrdata_results_neuroblastoma.png",
   width = 5, height = 3, units = "in"
@@ -761,9 +737,11 @@ alt="Neuroblastoma trials" />
   other documents into the local folder `./files-.../`
 
 ``` r
-# EUCTR document files can be downloaded when results are requested
+### EUCTR document files can be downloaded when results are requested
+# All files are downloaded and saved (documents.regexp is not used) 
 ctrLoadQueryIntoDb(
-  queryterm = "https://www.clinicaltrialsregister.eu/ctr-search/search?query=cancer&age=under-18&phase=phase-one",
+  queryterm = "query=cancer&age=under-18&phase=phase-one",
+  register = "EUCTR",
   euctrresults = TRUE,
   documents.path = "./files-euctr/",
   con = db
@@ -773,10 +751,12 @@ ctrLoadQueryIntoDb(
 # Created directory ./files-euctr/
 # Downloading trials...
 # [...]
-# = Imported or updated results for 102 trials
+# = Imported or updated results for 114 trials
 # = documents saved in './files-euctr'
 
-# CTGOV files
+
+### CTGOV files are downloaded, here corresponding to the default of 
+# documents.regexp = "prot|sample|statist|sap_|p1ar|p2ars|ctaletter|^[0-9]+ "
 ctrLoadQueryIntoDb(
   queryterm = "cond=Neuroblastoma&type=Intr&recrs=e&phase=1&u_prot=Y&u_sap=Y&u_icf=Y",
   register = "CTGOV",
@@ -792,7 +772,37 @@ ctrLoadQueryIntoDb(
 # Download status: 10 done; 0 in progress. Total size: 38.10 Mb (100%)... done!             
 # Newly saved 10 document(s) for 7 trial(s); 0 document(s) for 0 trial(s) already existed
 
-# CTIS files
+
+### CTGOV2 files are downloaded, here corresponding to the default of 
+# documents.regexp = "prot|sample|statist|sap_|p1ar|p2ars|ctaletter|^[0-9]+ "
+ctrLoadQueryIntoDb(
+  queryterm = "https://clinicaltrials.gov/search?cond=neuroblastoma&aggFilters=phase:1,results:with",
+  documents.path = "./files-ctgov2/",
+  con = db
+)
+
+
+### ISRCTN files are downloaded, here corresponding to the default of 
+# documents.regexp = "prot|sample|statist|sap_|p1ar|p2ars|ctaletter|^[0-9]+ "
+ctrLoadQueryIntoDb(
+  queryterm = "https://www.isrctn.com/search?q=alzheimer",
+  documents.path = "./files-isrctn/",
+  con = db
+)
+# * Found search query from CTGOV2: cond=neuroblastoma&aggFilters=phase:1,results:with
+# [...]
+# * Downloading documents into 'documents.path' = ./files-ctgov2/
+# - Created directory ./files-ctgov2
+# - Creating subfolder for each trial
+# - Applying 'documents.regexp' to 30 documents
+# - Downloading 26 missing documents
+# Download status: 26 done; 0 in progress. Total size: 70.12 Mb (100%)... done!             
+# = Newly saved 26 document(s) for 19 trial(s); 0 document(s) for 0 trial(s) already 
+# existed in ./files-ctgov2
+
+
+### CTIS files are downloaded, here corresponding to the default of 
+# documents.regexp = "prot|sample|statist|sap_|p1ar|p2ars|ctaletter|^[0-9]+ "
 ctrLoadQueryIntoDb(
   queryterm = "https://euclinicaltrials.eu/app/#/search?ageGroupCode=2",
   documents.path = "./files-ctis/",
@@ -801,37 +811,52 @@ ctrLoadQueryIntoDb(
 # * Found search query from CTIS: ageGroupCode=2
 # [...]
 # * Downloading documents into 'documents.path' = ./files-ctis/
-# - Created directory /Users/ralfherold/Daten/mak/r/emea/ctrdata/files-ctis
+# - Created directory ./files-ctis
 # - Getting ids of lists with document information
-# - Downloading 564 lists with document information (estimate: 11.28 Mb)
-# Download status: 564 done; 0 in progress. Total size: 7.39 Mb (100%)... done!             
-# - Processing document information in 564 lists
+# - Downloading 939 lists with document information (estimate: 18.78 Mb)
+# Download status: 939 done; 0 in progress. Total size: 12.82 Mb (100%)... done!             
+# Download status: 294 done; 0 in progress. Total size: 2.16 Mb (100%)... done!             
+# - Processing document information in 939 lists
 # - Creating subfolder for each trial
-# - Applying 'documents.regexp' to 3132 documents
-# - Downloading 278 missing documents
-# Download status: 278 done; 0 in progress. Total size: 228.06 Mb (100%)... done!             
-# = Newly saved 255 document(s) for 29 trial(s) (latest versions only, deduplicated 
-# if e.g. in application and authorised part); 0 document(s) for 0 trial(s) already existed 
+# - Applying 'documents.regexp' to 4733 documents
+# - Downloading 440 missing documents
+# Download status: 440 done; 0 in progress. Total size: 115.61 Mb (100%)... done!             
+# Download status: 211 done; 0 in progress. Total size: 148.06 Mb (100%)... done!             
+# Download status: 81 done; 0 in progress. Total size: 130.86 Mb (100%)... done!             
+# Download status: 47 done; 0 in progress. Total size: 690 b (100%)... done!             
+# = Newly saved 393 document(s) for 39 trial(s) (latest versions only, deduplicated 
+# if e.g. in application and authorised part); 0 document(s) for 0 trial(s) already 
+# existed in./files-ctis
 ```
 
 ## Tests
 
+See also <https://app.codecov.io/gh/rfhb/ctrdata/tree/master/R>
+
 ``` r
-suppressMessages(tinytest::test_all())
-# test_ctrdata_ctrfindactivesubstance.R    4 tests OK 1.7s
-# test_ctrdata_mongo_local_ctgov.R   37 tests OK 59.6s
-# test_ctrdata_mongo_local_ctis.R   19 tests OK 1.4s
-# test_ctrdata_mongo_local_euctr.R   75 tests OK 2.3s
-# test_ctrdata_mongo_local_isrctn.R   30 tests OK 7.4s
-# test_ctrdata_other_functions.R   50 tests OK 0.6s
-# test_ctrdata_sqlite_ctgov.R   37 tests OK 3.0s
-# test_ctrdata_sqlite_ctis.R   19 tests OK 2.4s
-# test_ctrdata_sqlite_euctr.R   75 tests OK 7.0s
-# test_ctrdata_sqlite_isrctn.R   30 tests OK 9.7s
-# All ok, 376 results (17m 25.3s)
+tinytest::test_all()
+# test_ctrdata_ctrfindactivesubstance.R    4 tests OK 10.1s
+# test_ctrdata_mongo_local_ctgov.R   36 tests OK 48.4s
+# test_ctrdata_mongo_local_ctgov2.R   16 tests OK 20.6s
+# test_ctrdata_mongo_local_ctis.R   23 tests OK 2.2s
+# test_ctrdata_mongo_local_euctr.R   73 tests OK 1.4s
+# test_ctrdata_mongo_local_isrctn.R   33 tests OK 15.2s
+# test_ctrdata_other_functions.R   63 tests OK 2.8s
+# test_ctrdata_sqlite_ctgov.R...   36 tests OK 2.8s
+# test_ctrdata_sqlite_ctgov2.R..   16 tests OK 1.4s
+# test_ctrdata_sqlite_ctis.R....   23 tests OK 3.3s
+# test_ctrdata_sqlite_euctr.R...   73 tests OK 6.3s
+# test_ctrdata_sqlite_isrctn.R..   33 tests OK 23.8s
+# test_euctr_error_sample.R.....    8 tests OK 0.7s
+# All ok, 437 results (19m 23.7s)
 ```
 
 ## Future features
+
+- See project outline <https://github.com/users/rfhb/projects/1>
+
+- Replace external command line tools still needed for EUCTR, CTGOV,
+  ISRCTN, likely by V8 and custom Javascript
 
 - Canonical definitions, filters, calculations are in the works (since
   August 2023) for data mangling and analyses across registers, e.g. to
@@ -846,10 +871,9 @@ suppressMessages(tinytest::test_all())
   [ICTRP](https://trialsearch.who.int/) (authentication needed),
   [JPRN](https://rctportal.niph.go.jp/),
   [jRCT](https://jrct.niph.go.jp/),
-  [UMIN-CTR](https://www.umin.ac.jp/ctr/),
-  [ChiCTR](https://www.chictr.org.cn/) (exploration is continually
-  ongoing; added value, terms and conditions for programmatic access
-  vary; no clear roadmap is established yet).
+  [UMIN-CTR](https://www.umin.ac.jp/ctr/), ChiCTR (exploration is
+  continually ongoing; added value, terms and conditions for
+  programmatic access vary; no clear roadmap is established yet).
 
 - Retrieve previous versions of protocol- or results-related information
   (work not yet started). The challenge is that, apparently, initial
