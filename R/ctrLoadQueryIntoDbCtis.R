@@ -73,7 +73,7 @@ ctrLoadQueryIntoDbCtis <- function(
       # - 11 download files - %s is document url
       "/ct/public/download/%s",
       #
-      # - 12-21 documents - %s is entity identifier, lists
+      # - 12-22 documents - %s is entity identifier, lists
       "/document/part1/%s/list", # appl auth
       "/document/part2/%s/list", # appl auth
       "/document/product-group-common/%s/list",
@@ -83,9 +83,10 @@ ctrLoadQueryIntoDbCtis <- function(
       "/document/rfi/%s/list",                    # rfis
       "/document/notification/%s/list?documentType=101", # events
       "/document/cm/%s/list", # corrective measures
-      "/document/smr/%s/list"
+      "/document/smr/%s/list",
+      "/document/association/%s/list" # associated clinical trials
       #
-      # unclear or not publicly accessible
+      # unclear or no data publicly accessible at this time
       # https://euclinicaltrials.eu/ct-public-api-services/services/document/part1/4433/list?documentType=93
       # https://euclinicaltrials.eu/ct-public-api-services/services/document/part1/4433/list?documentType=94
       # https://euclinicaltrials.eu/ct-public-api-services/services/document/part2/14808/list/?documentType=41
@@ -121,7 +122,8 @@ ctrLoadQueryIntoDbCtis <- function(
       tempDir, paste0(
         "ctis_trials_",
         sapply(url, digest::digest, algo = "crc32"),
-        ".json")))
+        ".json")),
+      progress = FALSE)
 
     message(". ", appendLF = FALSE)
 
@@ -139,6 +141,12 @@ ctrLoadQueryIntoDbCtis <- function(
     totalSize <- as.numeric(
       jqr::jq(file(tmp$destfile[1]), " {name: .totalSize} | .[]")
     )
+
+    # early exit
+    if (totalSize == 0L) {
+      message("No trials found? Check 'queryterm' and / or 'register'.")
+      return(emptyReturn)
+    }
 
     # extract trial information
     # and convert to ndjson
@@ -226,7 +234,7 @@ ctrLoadQueryIntoDbCtis <- function(
   tmp <- ctrMultiDownload(urls, fPartIPartsIIJson(idsTrials), verbose = verbose)
 
   importString <- paste0(
-    '"ctrname":"CTIS",\\1,"record_last_import":"',
+    '"ctrname":"CTIS","ctId":\\1,"record_last_import":"',
     strftime(Sys.time(), "%Y-%m-%d %H:%M:%S"), '",')
 
   # convert partI and partsII details into ndjson file
@@ -240,7 +248,7 @@ ctrLoadQueryIntoDbCtis <- function(
       # files include id, ctNumber and others repeatedly
       # only replace first instance for updating records
       # sanitise texts removing various quotation marks
-      sub("(\"id\":[0-9]+),", importString,
+      sub("\"id\":([0-9]+),", importString,
           sub("(\"ctNumber\"):(\"[-0-9]+\"),", '\\1:\\2,"_id":\\2,',
               mangleText(readLines(fn, warn = FALSE))
           )),
@@ -492,7 +500,8 @@ ctrLoadQueryIntoDbCtis <- function(
           prodauth: [ .authorizedPartI.productRoleGroupInfos[].id ],
           p1ar: [ .applications[].partI.id ],
           p2ars: [ .applications[].partIIInfo[].id ],
-          ctaletter: [ .applications[].partIIInfo[].id ]
+          ctaletter: [ .applications[].partIIInfo[].id ],
+          asscts: [ .applications[].partI.trialDetails.associatedClinicalTrials[].id ]
         } ',
       flags = jqr::jq_flags(pretty = FALSE),
       out = downloadsNdjson
@@ -549,18 +558,18 @@ ctrLoadQueryIntoDbCtis <- function(
     }
 
     # map type to endpoints for lists
-    epTyp <- ctisEndpoints[c(12:21, 21, 21)]
+    epTyp <- ctisEndpoints[c(12:21, 21, 21, 22)]
     names(epTyp) <- c(
       "part1", "parts2", "prod", "p1ar", "p2ars",
       "ctaletter", "rfis", "events", "cm", "layperson",
-      "summary", "csr")
+      "summary", "csr", "asscts")
     epTyp <- as.list(epTyp)
 
     # define order for sorting
     orderedParts <- c(
       "ctaletter", "p1ar", "p2ars", "part1auth", "part1appl",
       "parts2auth", "parts2appl", "prodauth", "prodappl", "rfis",
-      "events", "cm", "csr", "summary", "layperson")
+      "events", "cm", "csr", "summary", "layperson", "asscts")
 
     # ordering files list
     dlFiles <- apply(dlFiles, 1, function(r) {
@@ -616,7 +625,11 @@ ctrLoadQueryIntoDbCtis <- function(
     message("- Processing document information in ", nrow(tmp), " lists")
     epTypChars <- paste0(names(epTyp), "appl", "auth", collapse = "")
     epTypChars <- rawToChar(unique(charToRaw(epTypChars)))
+
     try(unlink(downloadsNdjson), silent = TRUE)
+    downloadsNdjsonCon <- file(downloadsNdjson, open = "at")
+    on.exit(try(close(downloadsNdjsonCon), silent = TRUE), add = TRUE)
+    on.exit(try(unlink(downloadsNdjson), silent = TRUE), add = TRUE)
 
     for (fi in seq_len(nrow(tmp))) {
 
@@ -631,40 +644,23 @@ ctrLoadQueryIntoDbCtis <- function(
         "^.+_([", epTypChars, "]+?)_[0-9]+[.]json$"),
         "\\1", tmp[["destfile"]][fi])
 
-      # get data
-      jOut <- readLines(fn, warn = FALSE)
-
-      # remove irrelevant information
-      jOut <- sub('^.*"elements":(.*?)}?$', "\\1", jOut)
-      jOut <- sub('(,?)"showWarning":(false|true)(,?)', "\\3", jOut)
-      jOut <- sub('(,?)"totalSize":[0-9]+(,?)', "\\2", jOut)
-      jOut <- sub('(,?)"pageInfo":[{].+?[}](,?)', "\\2", jOut)
-      jOut <- gsub('"versions":[[][{].+?[}][]],', "", jOut) # reconsider
-      if (!nchar(jOut) || jOut == "[]") next
-
-      jOut <- paste0(
-        '{"_id":"', id, '",',
-        stringi::stri_extract_all_regex(jOut, '"url":"[-a-z0-9]+?",')[[1]],
-        stringi::stri_extract_all_regex(jOut, '"title":".+?",')[[1]],
-        stringi::stri_extract_all_regex(jOut, '"fileTypeLabel":"[A-Z]+?",')[[1]],
-        stringi::stri_extract_all_regex(jOut, '"documentIdentity":[0-9]+?,')[[1]],
-        '"part":"', part, '"}'
+      # get data for downloading
+      jOut <- jqr::jq(
+        file(fn), paste0(
+          ' .elements[] | { ',
+          '_id: "', id, '", part: "', part, '",',
+          'url, title, fileTypeLabel, documentIdentity
+       }'),
+       flags = jqr::jq_flags(pretty = FALSE),
+       out = downloadsNdjsonCon
       )
-
-      jOut <- jOut[!grepl('",NA"', jOut)]
-      if (!length(jOut)) next
-
-      cat(
-        jOut,
-        file = downloadsNdjson,
-        append = TRUE,
-        sep = "\n")
 
       message(fi, rep("\b", nchar(fi)), appendLF = FALSE)
 
     } # for
 
     # 3 - documents download
+    close(downloadsNdjsonCon)
     dlFiles <- jsonlite::stream_in(file(downloadsNdjson), verbose = FALSE)
     try(unlink(downloadsNdjson), silent = TRUE)
 

@@ -105,7 +105,7 @@ ctrLoadQueryIntoDbEuctr <- function(
   message("Retrieved overview, multiple records of ",
           resultsEuNumTrials, " trial(s) from ",
           resultsEuNumPages, " page(s) to be downloaded ",
-          "(estimate: ", signif(resultsEuNumTrials * 0.05, 1L), " MB)")
+          "(estimate: ", signif(resultsEuNumTrials * 0.13, 1L), " MB)")
 
   # only count?
   if (only.count) {
@@ -175,7 +175,7 @@ ctrLoadQueryIntoDbEuctr <- function(
   if (length(sgzip) && !sgzip) {
     message("Note: register server cannot compress data, ",
             "transfer takes longer (estimate: ",
-            signif(stime * resultsEuNumTrials, 1L), " s)")
+            signif(resultsEuNumTrials * 1.2, 1L), " s)")
   }
 
   # generate vector with URLs of all pages
@@ -205,9 +205,9 @@ ctrLoadQueryIntoDbEuctr <- function(
 
   if (length(.ctrdataenv$ct) == 0L) initTranformers()
 
-  # run conversion (~6 ms per record, ~3 records per trial)
+  # run conversion (~12s for 563 trials)
   message("(2/3) Converting to NDJSON (estimate: ",
-          signif(resultsEuNumTrials * 0.006 * 3, 1L), " s)...")
+          signif(resultsEuNumTrials * 0.02, 1L), " s)...")
 
   tmp$ndjsonfile <- sub("[.]txt$", ".ndjson", tmp$destfile)
 
@@ -297,7 +297,7 @@ ctrLoadQueryIntoDbEuctr <- function(
     # inform user
     message(
       "- extracting results (. = data, F = file[s] and data, x = none):")
-    
+
     # unzip downloaded files and move non-XML extracted files
     tmp <- lapply(
       tmp[["destfile"]], function(f) {

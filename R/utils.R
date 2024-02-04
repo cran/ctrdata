@@ -308,6 +308,7 @@ typeVars <- list(
   "publicevents.temporaryHaltList.details.plannedRestartDate" = "ctrDate",
   "publicevents.temporaryHaltList.details.submissionDate" = "ctrDate",
   "publicevents.temporaryHaltList.submissionDate" = "ctrDate",
+  "recruitmentStartDate" = "ctrDate",
   "submissionDate" = "ctrDate",
   "summary.submissionDate" = "ctrDate",
   "trialEndDate" = "ctrDate",
@@ -1187,7 +1188,7 @@ ctrTempDir <- function(verbose = FALSE) {
     if (length(.ctrdataenv$keeptempdir) &&
         !is.null(.ctrdataenv$keeptempdir)) {
       if (.ctrdataenv$keeptempdir) {
-        message("Since 'VERBOSE = TRUE', not deleting ctrdata.tempdir ", tempDir)
+        message("Since 'verbose = TRUE', not deleting ctrdata.tempdir ", tempDir)
       } else {
         try(unlink(tempDir, recursive = TRUE), silent = TRUE)
         message("...deleted ctrdata.tempdir\r")
