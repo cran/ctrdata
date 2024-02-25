@@ -106,6 +106,7 @@ ctrLoadQueryIntoDbCtis <- function(
   offset <- 0L
   limit <- 200L
   idsTrials <- NULL
+  importDateTime <- strftime(Sys.time(), "%Y-%m-%d %H:%M:%S")
 
   # temp file for mangled download
   fTrialsNdjson <- file.path(tempDir, "ctis_trials_1.ndjson")
@@ -120,7 +121,7 @@ ctrLoadQueryIntoDbCtis <- function(
 
     tmp <- ctrMultiDownload(url, file.path(
       tempDir, paste0(
-        "ctis_trials_",
+        "ctis_trials_", offset, "_",
         sapply(url, digest::digest, algo = "crc32"),
         ".json")),
       progress = FALSE)
@@ -155,8 +156,10 @@ ctrLoadQueryIntoDbCtis <- function(
       paste0(
         # extract trial records
         " .elements | .[] ",
-        # add element _id
-        '| .["_id"] = .ctNumber',
+        # add canonical elements
+        '| .["_id"] = .ctNumber ',
+        '| .["ctrname"] = "CTIS" ',
+        '| .["record_last_import"] = "', importDateTime, '" ',
         # keep only standardised fields
         "| del(.id, .ctNumber, .product, .endPoint, .eudraCtInfo, .ctTitle,
              .eudraCtInfo, .primaryEndPoint, .sponsor, .conditions) "
@@ -207,6 +210,11 @@ ctrLoadQueryIntoDbCtis <- function(
   # inform user
   message("found ", length(idsTrials), " trials")
 
+  # remove last download so as to become aware of
+  # any further trials if the query is re-run and
+  # previously downloaded files are used
+  unlink(tmp$destfile[1])
+
   # only count?
   if (only.count) {
     # return
@@ -222,7 +230,7 @@ ctrLoadQueryIntoDbCtis <- function(
   # this is imported as the main data into the database
 
   message("(2/5) Downloading and processing part I and parts II... (",
-          "estimate: ", signif(length(idsTrials) * 8.7 / 44, 1L), " Mb)")
+          "estimate: ", signif(length(idsTrials) * 79 / 509, 1L), " Mb)")
 
   urls <- sprintf(ctisEndpoints[2], idsTrials)
 
@@ -233,30 +241,25 @@ ctrLoadQueryIntoDbCtis <- function(
   # "HTTP server doesn't seem to support byte ranges. Cannot resume."
   tmp <- ctrMultiDownload(urls, fPartIPartsIIJson(idsTrials), verbose = verbose)
 
-  importString <- paste0(
-    '"ctrname":"CTIS","ctId":\\1,"record_last_import":"',
-    strftime(Sys.time(), "%Y-%m-%d %H:%M:%S"), '",')
-
   # convert partI and partsII details into ndjson file
   fPartIPartsIINdjson <- file.path(tempDir, "ctis_add_2.ndjson")
   on.exit(try(unlink(fPartIPartsIINdjson), silent = TRUE), add = TRUE)
   unlink(fPartIPartsIINdjson)
+  fPartIPartsIINdjsonCon <- file(fPartIPartsIINdjson, open = "at")
+  on.exit(try(close(fPartIPartsIINdjsonCon), silent = TRUE), add = TRUE)
 
   for (fn in tmp[["destfile"]]) {
     if (!file.exists(fn)) next
-    cat(
-      # files include id, ctNumber and others repeatedly
-      # only replace first instance for updating records
-      # sanitise texts removing various quotation marks
-      sub("\"id\":([0-9]+),", importString,
-          sub("(\"ctNumber\"):(\"[-0-9]+\"),", '\\1:\\2,"_id":\\2,',
-              mangleText(readLines(fn, warn = FALSE))
-          )),
-      file = fPartIPartsIINdjson,
-      append = TRUE,
-      sep = "\n")
+    jqr::jq(
+      textConnection(mangleText(readLines(fn, warn = FALSE))),
+      # add _id to enable docdb_update()
+      paste0(' .["_id"] = .ctNumber '),
+      flags = jqr::jq_flags(pretty = FALSE),
+      out = fPartIPartsIINdjsonCon
+    )
     message(". ", appendLF = FALSE)
   }
+  close(fPartIPartsIINdjsonCon)
 
   # address and mangle "applications" which has (as only field in ctis)
   # '"partIIInfo": "<integer number>": {...}' by replacing with array
@@ -282,15 +285,15 @@ ctrLoadQueryIntoDbCtis <- function(
   publicEventsMerger <- function(publicEvents) {
 
     # get event types that have data with ids of events
-    eventTypes <- jqr::jq(
+    events <- jqr::jq(
       publicEvents,
       " to_entries[] | select(.value | length > 0) | ([.key] + (.value[] | [.id])) ")
 
     # loop over event type
-    for (eventType in eventTypes) {
+    for (event in events) {
 
       # get ids
-      ids <- jqr::jq(eventType, " .[] ")
+      ids <- jqr::jq(event, " .[] ")
       ids[1] <- gsub("\"", "", ids[1])
 
       # get data
@@ -299,11 +302,13 @@ ctrLoadQueryIntoDbCtis <- function(
       eventData <- httr::GET(urls)
       if (httr::status_code(eventData) != 200L) next
       eventData <- suppressMessages(httr::content(eventData, as = "text"))
+      eventData <- mangleText(eventData)
 
       # update input json with event data
       eventData <- paste0(
-        " .", ids[1], " |= map( [select( .id == ", ids[2], ") | .details = ",
-        eventData, "], [select( .id != ", ids[2], ")] | select( . | length > 0) ) ")
+        " .", ids[1], " |= [( .[] | ",
+        "(select( .id == ", ids[2], ") | .details = ", eventData, "),",
+        " select( .id != ", ids[2], ") )]")
       publicEvents <- jqr::jq(publicEvents, eventData)
 
     }

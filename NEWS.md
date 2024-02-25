@@ -1,4 +1,11 @@
-# ctrdata 1.17.1
+# ctrdata 1.17.2
+
+## Bug fixes
+- Switch sequence of API endpoints used with `CTIS` 
+- Correct handling multiple public events with `CTIS`
+- Re-use `CTIS` downloads in a given session
+
+# ctrdata 1.17.1 (2024-02-05)
 
 ## Improvements
 - Additional `CTIS` field types and possibly documents (associated clinical trials)
