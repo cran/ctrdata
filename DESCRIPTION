@@ -1,7 +1,7 @@
 Package: ctrdata
 Type: Package
 Title: Retrieve and Analyze Clinical Trials in Public Registers
-Version: 1.17.2
+Version: 1.18.0
 Imports: jsonlite, httr, curl (>= 5.1.0), clipr, xml2, nodbi (>=
         0.10.0), stringi, tibble, lubridate, jqr, dplyr, zip, V8,
         readr, digest
@@ -38,8 +38,8 @@ Authors@R: person(given = "Ralf", family = "Herold", role = c("aut", "cre"),
         email = "ralf.herold@mailbox.org", comment = c(ORCID =
         "0000-0002-8148-6748"))
 Language: en-GB
-Packaged: 2024-02-25 11:59:08 UTC; ralfherold
+Packaged: 2024-05-13 20:33:40 UTC; ralfherold
 Author: Ralf Herold [aut, cre] (<https://orcid.org/0000-0002-8148-6748>)
 Maintainer: Ralf Herold <ralf.herold@mailbox.org>
 Repository: CRAN
-Date/Publication: 2024-02-25 12:10:02 UTC
+Date/Publication: 2024-05-13 20:53:29 UTC

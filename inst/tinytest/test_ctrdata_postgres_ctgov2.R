@@ -4,26 +4,32 @@
 if (!at_home()) exit_file("Reason: not at_home")
 source("setup_ctrdata.R")
 
-if (!checkMongoLocal()) exit_file("Reason: no local MongoDB")
-if (!checkInternet())   exit_file("Reason: no internet connectivity")
+if (!checkPostgres()) exit_file("Reason: no PostgreSQL")
+if (!checkInternet()) exit_file("Reason: no internet connectivity")
 
-#### CTGOV ####
+#### ISRCTN ####
 tf <- function() {
 
+  # test
+  expect_error(
+    dbQueryHistory(
+      nodbi::src_postgres()
+    ),
+    "Specify attribute"
+  )
+
   # create database object
-  dbc <- nodbi::src_mongo(
-    db = mongoLocalRwDb,
-    collection = mongoLocalRwCollection,
-    url = "mongodb://localhost")
+  dbc <- nodbi::src_postgres()
+  dbc[["collection"]] <- mongoLocalRwCollection
 
   # register clean-up
   on.exit(expr = {
     try({
-      dbc$con$drop()
-      dbc$con$disconnect()
+      RPostgres::dbRemoveTable(conn = dbc$con, name = dbc$collection)
+      RPostgres::dbDisconnect(conn = dbc$con)
     },
     silent = TRUE)
-  })
+  }, add = TRUE)
 
   # check server
   if (httr::status_code(
@@ -33,5 +39,6 @@ tf <- function() {
 
   # do tests
   source("ctrdata_ctgov2.R", local = TRUE)
+
 }
 tf()

@@ -186,14 +186,32 @@ expect_true(tmpTest$n >= 0L)
 expect_true(is.character(tmpTest$success) | is.null(tmpTest$success))
 rm(tmpTest, q, hist, json, date.from, date.to, date.today)
 
+# test
+expect_error(
+  suppressWarnings(
+    ctrLoadQueryIntoDb(
+      querytoupdate = 3.14159,
+      con = dbc)),
+  "needs to be an integer")
+
 #### ctrLoadQueryIntoDb results ####
 
 # get trials with results
 q <- paste0("https://www.clinicaltrialsregister.eu/ctr-search/search?query=",
             "2013-003420-37+OR+2009-011454-17+OR+2006-005357-29")
 
-# test
 if (!length(dbc$url) || grepl("localhost", dbc$url)) {
+  # test
+  expect_message(
+    suppressWarnings(
+      ctrLoadQueryIntoDb(
+        queryterm = q,
+        euctrresults = TRUE,
+        euctrresultshistory = TRUE,
+        documents.path = tempfile(),
+        con = dbc)),
+    "Created directory")
+  # test
   expect_message(
     suppressWarnings(
       ctrLoadQueryIntoDb(
@@ -204,6 +222,7 @@ if (!length(dbc$url) || grepl("localhost", dbc$url)) {
         con = dbc)),
     "Imported or updated results for 3")
 } else {
+  # test
   expect_message(
     suppressWarnings(
       ctrLoadQueryIntoDb(

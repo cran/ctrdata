@@ -21,7 +21,7 @@
 #' For "CTIS", \code{queryterm} can be an empty string to obtain
 #' all trial records. For automatically copying the user's
 #' query of a register in a web browser to the clipboard, see
-#' \ifelse{latex}{\out{\href{https://github.com/rfhb/ctrdata\#3-script-to-automatically-copy-users-query-from-web-browser}{here}}}{\href{https://github.com/rfhb/ctrdata#3-script-to-automatically-copy-users-query-from-web-browser}{here}}
+#' \ifelse{latex}{\out{\href{https://rfhb.github.io/ctrdata/#id_2-script-to-automatically-copy-users-query-from-web-browser}{here}}}{\href{https://rfhb.github.io/ctrdata/#id_2-script-to-automatically-copy-users-query-from-web-browser}{here}}
 #'
 #' @param register String with abbreviation of register to query,
 #' either "EUCTR", "CTGOV", "ISRCTN" or "CTIS". Not needed
@@ -54,7 +54,7 @@
 #' (see \code{documents.path}).
 #' If set to \code{NULL}, empty placeholder files are saved for
 #' every document that could be saved. Default is
-#' \code{"prot|sample|statist|sap_|p1ar|p2ars|ctalett|lay|^[0-9]+ "}.
+#' \code{"prot|sample|statist|sap_|p1ar|p2ars|icf|ctalett|lay|^[0-9]+ "}.
 #' Used with "CTGOV", "CTGOV2", "ISRCTN" and "CTIS" (but not "EUCTR",
 #' for which all available documents are saved in any case).
 #'
@@ -67,6 +67,18 @@
 #' @param euctrresultshistory If \code{TRUE}, also download
 #' available history of results publication in "EUCTR."
 #' This is quite time-consuming. Default is \code{FALSE}.
+#'
+#' @param ctgov2history For trials from CTGOV2, retrieve historic
+#' versions of the record. Default is \code{FALSE}, because this
+#' is a time-consuming operation. Use
+#' \code{n} for n from all versions (recommended),
+#' \code{1} for the first (original) version,
+#' \code{-1} for the last-but-one version,
+#' \code{"n:m"} for the nth to the mth versions, or
+#' \code{TRUE} for all versions
+#' of the trial record to be retrieved. Note that for register
+#' CTIS, historic versions are available in the `applications`
+#' field and are retrieved automatically.
 #'
 #' @param annotation.text Text to be including into the field
 #' "annotation" in the records retrieved with the query
@@ -155,8 +167,9 @@ ctrLoadQueryIntoDb <- function(
     forcetoupdate = FALSE,
     euctrresults = FALSE,
     euctrresultshistory = FALSE,
+    ctgov2history = FALSE,
     documents.path = NULL,
-    documents.regexp = "prot|sample|statist|sap_|p1ar|p2ars|ctalett|lay|^[0-9]+ ",
+    documents.regexp = "prot|sample|statist|sap_|p1ar|p2ars|icf|ctalett|lay|^[0-9]+ ",
     annotation.text = "",
     annotation.mode = "append",
     only.count = FALSE,
@@ -321,6 +334,7 @@ ctrLoadQueryIntoDb <- function(
     register = register,
     euctrresults = euctrresults,
     euctrresultshistory = euctrresultshistory,
+    ctgov2history = ctgov2history,
     documents.path = documents.path,
     documents.regexp = documents.regexp,
     annotation.text = annotation.text,

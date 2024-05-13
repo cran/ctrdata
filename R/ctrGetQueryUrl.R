@@ -10,7 +10,7 @@
 #' a suitable URL.
 #' For automatically copying the user's query of a register
 #' in a web browser to the clipboard, see
-#' \ifelse{latex}{\out{\href{https://github.com/rfhb/ctrdata\#3-script-to-automatically-copy-users-query-from-web-browser}{here}}}{\href{https://github.com/rfhb/ctrdata#3-script-to-automatically-copy-users-query-from-web-browser}{here}}.
+#' \ifelse{latex}{\out{\href{https://rfhb.github.io/ctrdata/#id_2-script-to-automatically-copy-users-query-from-web-browser}{here}}}{\href{https://rfhb.github.io/ctrdata/#id_2-script-to-automatically-copy-users-query-from-web-browser}{here}}.
 #' Can also contain a query term such as from
 #' \link{dbQueryHistory}()["query-term"].
 #'
@@ -105,15 +105,16 @@ ctrGetQueryUrl <- function(
   }
 
   # identify domain and register short name
-  registerFromUrl <- switch(sub("^https://([a-zA-Z.]+?)/.*", "\\1", url),
-                            "classic.clinicaltrials.gov" = "CTGOV",
-                            "www.clinicaltrials.gov" = "CTGOV2",
-                            "clinicaltrials.gov" = "CTGOV2",
-                            "euclinicaltrials.eu" = "CTIS",
-                            "www.clinicaltrialsregister.eu" = "EUCTR",
-                            "www.isrctn.com" = "ISRCTN",
-                            "isrctn.com" = "ISRCTN",
-                            "NONE"
+  registerFromUrl <- switch(
+    sub("^https://([a-zA-Z.]+?)/.*", "\\1", url),
+    "classic.clinicaltrials.gov" = "CTGOV",
+    "www.clinicaltrials.gov" = "CTGOV2",
+    "clinicaltrials.gov" = "CTGOV2",
+    "euclinicaltrials.eu" = "CTIS",
+    "www.clinicaltrialsregister.eu" = "EUCTR",
+    "www.isrctn.com" = "ISRCTN",
+    "isrctn.com" = "ISRCTN",
+    "NONE"
   )
 
   # check parameters expectations
@@ -202,6 +203,7 @@ ctrGetQueryUrl <- function(
     # remove empty parameters
     queryterm <- gsub("[a-z_0-9]+=&", "", queryterm)
     queryterm <- sub("&[a-z_0-9]+=$", "", queryterm)
+    queryterm <- sub("&Search=Apply", "", queryterm)
 
     # correct naked terms
     queryterm <- sub(

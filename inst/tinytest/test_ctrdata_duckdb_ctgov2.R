@@ -10,6 +10,14 @@ if (!checkInternet()) exit_file("Reason: no internet connectivity")
 #### CTGOV ####
 tf <- function() {
 
+  # test
+  expect_error(
+    dbQueryHistory(
+      nodbi::src_duckdb(
+        dbdir = ":memory:")),
+    "Specify parameter"
+  )
+
   # create database object
   dbc <- suppressWarnings(nodbi::src_duckdb(
     dbdir = ":memory:",
@@ -28,12 +36,12 @@ tf <- function() {
 
   # check server
   if (httr::status_code(
-    httr::HEAD("https://euclinicaltrials.eu/",
+    httr::HEAD("https://www.clinicaltrials.gov/",
                httr::timeout(10L))) != 200L
-  ) return(exit_file("Reason: CTIS not working"))
+  ) return(exit_file("Reason: CTGOV2 not working"))
 
   # do tests
-  source("ctrdata_ctis.R", local = TRUE)
+  source("ctrdata_ctgov2.R", local = TRUE)
 
 }
 tf()

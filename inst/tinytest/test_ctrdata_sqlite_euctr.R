@@ -10,6 +10,21 @@ if (!checkInternet()) exit_file("Reason: no internet connectivity")
 #### EUCTR ####
 tf <- function() {
 
+  # test
+  expect_error(
+    dbQueryHistory(con = iris),
+    "Please specify in parameter"
+  )
+
+  # test
+  expect_error(
+    dbQueryHistory(
+      nodbi::src_sqlite(
+        dbname = ":memory:")
+    ),
+    "Specify parameter"
+  )
+
   # create database object
   dbc <- suppressWarnings(nodbi::src_sqlite(
     dbname = ":memory:",

@@ -75,15 +75,36 @@ typeVars <- list(
   "verification_date"          = "ctrDateUs",
   #
   # - CTGOV2
-  "annotationSection.annotationModule.unpostedAnnotation.unpostedEvents.date" = "ctrDate",
+  "annotationSection.annotationModule.unpostedAnnotation.unpostedEvents.date"         = "ctrDate",
   "derivedSection.miscInfoModule.submissionTracking.estimatedResultsFirstSubmitDate"  = "ctrDate",
   "derivedSection.miscInfoModule.submissionTracking.firstMcpInfo.postDateStruct.date" = "ctrDate",
-  "derivedSection.miscInfoModule.submissionTracking.submissionInfos.releaseDate"   = "ctrDate",
-  "derivedSection.miscInfoModule.submissionTracking.submissionInfos.resetDate"     = "ctrDate",
-  "derivedSection.miscInfoModule.submissionTracking.submissionInfos.unreleaseDate" = "ctrDate",
-  "documentSection.largeDocumentModule.largeDocs.date"            = "ctrDate",
-  "documentSection.largeDocumentModule.largeDocs.uploadDate"      = "ctrDate",
+  "derivedSection.miscInfoModule.submissionTracking.submissionInfos.releaseDate"      = "ctrDate",
+  "derivedSection.miscInfoModule.submissionTracking.submissionInfos.resetDate"        = "ctrDate",
+  "derivedSection.miscInfoModule.submissionTracking.submissionInfos.unreleaseDate"    = "ctrDate",
+  "documentSection.largeDocumentModule.largeDocs.date"       = "ctrDate",
+  "documentSection.largeDocumentModule.largeDocs.uploadDate" = "ctrDate",
+  "history.documentSection.largeDocumentModule.largeDocs.date"            = "ctrDate",
+  "history.documentSection.largeDocumentModule.largeDocs.uploadDate"      = "ctrDate",
+  "history.history_version.version_date"                                  = "ctrDate",
+  "history.protocolSection.statusModule.completionDateStruct.date"        = "ctrDate",
+  "history.protocolSection.statusModule.dispFirstPostDateStruct.date"     = "ctrDate",
+  "history.protocolSection.statusModule.dispFirstSubmitDate"              = "ctrDate",
+  "history.protocolSection.statusModule.dispFirstSubmitQcDate"            = "ctrDate",
+  "history.protocolSection.statusModule.lastUpdatePostDateStruct.date"    = "ctrDate",
+  "history.protocolSection.statusModule.lastUpdateSubmitDate"             = "ctrDate",
+  "history.protocolSection.statusModule.primaryCompletionDateStruct.date" = "ctrDate",
+  "history.protocolSection.statusModule.resultsFirstPostDateStruct.date"  = "ctrDate",
+  "history.protocolSection.statusModule.resultsFirstSubmitDate"           = "ctrDate",
+  "history.protocolSection.statusModule.resultsFirstSubmitQcDate"         = "ctrDate",
+  "history.protocolSection.statusModule.startDateStruct.date"             = "ctrDate",
+  "history.protocolSection.statusModule.statusVerifiedDate"               = "ctrDate",
+  "history.protocolSection.statusModule.studyFirstPostDateStruct.date"    = "ctrDate",
+  "history.protocolSection.statusModule.studyFirstSubmitDate"             = "ctrDate",
+  "history.protocolSection.statusModule.studyFirstSubmitQcDate"           = "ctrDate",
   "protocolSection.statusModule.completionDateStruct.date"        = "ctrDate",
+  "protocolSection.statusModule.dispFirstPostDateStruct.date"     = "ctrDate",
+  "protocolSection.statusModule.dispFirstSubmitDate"              = "ctrDate",
+  "protocolSection.statusModule.dispFirstSubmitQcDate"            = "ctrDate",
   "protocolSection.statusModule.lastUpdatePostDateStruct.date"    = "ctrDate",
   "protocolSection.statusModule.lastUpdateSubmitDate"             = "ctrDate",
   "protocolSection.statusModule.primaryCompletionDateStruct.date" = "ctrDate",
@@ -103,6 +124,7 @@ typeVars <- list(
   "trialDesign.overallEndDate"    = "ctrDateTime",
   #
   # - CTIS
+  #
   "applications.ctMSCs.activeTrialPeriod.fromDate" = "ctrDate",
   "applications.ctMSCs.activeTrialPeriod.trialEndDate" = "ctrDate",
   "applications.ctMSCs.activeTrialPeriod.trialStartDate" = "ctrDate",
@@ -141,6 +163,9 @@ typeVars <- list(
   "applications.partI.assessmentOutcomeDate" = "ctrDate",
   "applications.partI.conclusionDate" = "ctrDate",
   "applications.partI.productRoleGroupInfos.linkedProducts.startDate" = "ctrDate",
+  "applications.partI.productRoleGroupInfos.linkedProducts.part1MedicinalProductRoleMscInfos.memberStateConcernedInfo.toDate" = "ctrDate",
+  "applications.partI.productRoleGroupInfos.linkedProducts.part1MedicinalProductRoleMscInfos.memberStateConcernedInfo.fromDate" = "ctrDate",
+  "applications.partI.productRoleGroupInfos.linkedProducts.part1MedicinalProductRoleMscInfos.memberStateConcernedInfo.firstDecisionDate" = "ctrDate",
   "applications.partI.productRoleGroupInfos.products.part1MedicinalProductRoleMscInfos.memberStateConcernedInfo.activeTrialPeriod.fromDate" = "ctrDate",
   "applications.partI.productRoleGroupInfos.products.part1MedicinalProductRoleMscInfos.memberStateConcernedInfo.activeTrialPeriod.trialStartDate" = "ctrDate",
   "applications.partI.productRoleGroupInfos.products.part1MedicinalProductRoleMscInfos.memberStateConcernedInfo.activeTrialRecruitmentPeriod.recruitmentEndDate" = "ctrDate",
@@ -202,6 +227,9 @@ typeVars <- list(
   "authorizedPartI.assessmentOutcomeDate" = "ctrDate",
   "authorizedPartI.conclusionDate" = "ctrDate",
   "authorizedPartI.productRoleGroupInfos.linkedProducts.startDate" = "ctrDate",
+  "authorizedPartI.productRoleGroupInfos.linkedProducts.part1MedicinalProductRoleMscInfos.memberStateConcernedInfo.firstDecisionDate" = "ctrDate",
+  "authorizedPartI.productRoleGroupInfos.linkedProducts.part1MedicinalProductRoleMscInfos.memberStateConcernedInfo.fromDate" = "ctrDate",
+  "authorizedPartI.productRoleGroupInfos.linkedProducts.part1MedicinalProductRoleMscInfos.memberStateConcernedInfo.toDate" = "ctrDate",
   "authorizedPartI.productRoleGroupInfos.products.part1MedicinalProductRoleMscInfos.memberStateConcernedInfo.activeTrialPeriod.fromDate" = "ctrDate",
   "authorizedPartI.productRoleGroupInfos.products.part1MedicinalProductRoleMscInfos.memberStateConcernedInfo.activeTrialPeriod.trialStartDate" = "ctrDate",
   "authorizedPartI.productRoleGroupInfos.products.part1MedicinalProductRoleMscInfos.memberStateConcernedInfo.activeTrialRecruitmentPeriod.recruitmentEndDate" = "ctrDate",
@@ -258,6 +286,8 @@ typeVars <- list(
   "coSponsors.fromDate" = "ctrDate",
   "eeaEndDate" = "ctrDate",
   "eeaStartDate" = "ctrDate",
+  "endDate" = "ctrDate",
+  "layperson.submissionDate" = "ctrDate",
   "memberStatesConcerned.activeTrialPeriod.fromDate" = "ctrDate",
   "memberStatesConcerned.activeTrialPeriod.trialEndDate" = "ctrDate",
   "memberStatesConcerned.activeTrialPeriod.trialStartDate" = "ctrDate",
@@ -277,6 +307,7 @@ typeVars <- list(
   "memberStatesConcerned.trialRestartDate" = "ctrDate",
   "mscTrialNotificationsInfoList.mscNotificationsListInfo.date" = "ctrDate",
   "mscTrialNotificationsInfoList.mscNotificationsListInfo.submitDate" = "ctrDate",
+  "mscTrialNotificationsInfoList.mscNotificationsListInfo.versions.versionDate" = "ctrDate",
   "primarySponsor.fromDate" = "ctrDate",
   "publicEvaluation.decisions.decisionDate" = "ctrDate",
   "publicEvaluation.partIAssessmentOutcomeDate" = "ctrDate",
@@ -313,6 +344,8 @@ typeVars <- list(
   "summary.submissionDate" = "ctrDate",
   "trialEndDate" = "ctrDate",
   "trialStartDate" = "ctrDate",
+  "trialGlobalEnd.endDate" = "ctrDate",
+  "trialGlobalEndDate" = "ctrDate",
   #
   #
   #### . factors / logical ####
@@ -612,10 +645,10 @@ typeVars <- list(
   "number_of_arms" = "ctrInt",
   "enrollment"     = "ctrInt",
   "rank"           = "ctrInt",
-  "clinical_results.baseline.analyzed_list.analyzed.count_list.count.value" = "ctrInt",
-  "clinical_results.baseline.measure_list.measure.class_list.class.analyzed_list.analyzed.count_list.count.value" = "ctrInt",
-  "clinical_results.outcome_list.outcome.measure.analyzed_list.analyzed.count_list.count.value" = "ctrInt",
-  "clinical_results.outcome_list.outcome.measure.class_list.class.analyzed_list.analyzed.count_list.count.value" = "ctrInt",
+  "clinical_results.baseline.analyzed_list.analyzed.count_list.count.value" = "ctrIntList",
+  "clinical_results.baseline.measure_list.measure.class_list.class.analyzed_list.analyzed.count_list.count.value" = "ctrIntList",
+  "clinical_results.outcome_list.outcome.measure.analyzed_list.analyzed.count_list.count.value" = "ctrIntList",
+  "clinical_results.outcome_list.outcome.measure.class_list.class.analyzed_list.analyzed.count_list.count.value" = "ctrIntList",
   #
   # - ISRCTN
   "participants.targetEnrolment"     = "ctrInt",
@@ -633,16 +666,17 @@ typeVars <- list(
   #
   "applications.partI.trialDetails.trialInformation.eligibilityCriteria.principalExclusionCriteria.number" = "ctrInt",
   "applications.partI.trialDetails.trialInformation.eligibilityCriteria.principalInclusionCriteria.number" = "ctrInt",
-  "applications.partI.trialDetails.trialInformation.endPoint.primaryEndPoints.number" = "ctrInt",
-  "applications.partI.trialDetails.trialInformation.endPoint.secondaryEndPoints.number" = "ctrInt",
+  "applications.partI.trialDetails.trialInformation.endPoint.primaryEndPoints.number"          = "ctrInt",
+  "applications.partI.trialDetails.trialInformation.endPoint.secondaryEndPoints.number"        = "ctrInt",
   "applications.partI.trialDetails.trialInformation.trialObjective.secondaryObjectives.number" = "ctrInt",
   "authorizedPartI.trialDetails.trialInformation.eligibilityCriteria.principalExclusionCriteria.number" = "ctrInt",
   "authorizedPartI.trialDetails.trialInformation.eligibilityCriteria.principalInclusionCriteria.number" = "ctrInt",
-  "authorizedPartI.trialDetails.trialInformation.endPoint.primaryEndPoints.number" = "ctrInt",
-  "authorizedPartI.trialDetails.trialInformation.endPoint.secondaryEndPoints.number" = "ctrInt",
+  "authorizedPartI.trialDetails.trialInformation.endPoint.primaryEndPoints.number"          = "ctrInt",
+  "authorizedPartI.trialDetails.trialInformation.endPoint.secondaryEndPoints.number"        = "ctrInt",
   "authorizedPartI.trialDetails.trialInformation.trialObjective.secondaryObjectives.number" = "ctrInt",
   #
   # - CTGOV2
+  "history.history_version.version_number" = "ctrInt",
   "protocolSection.designModule.enrollmentInfo.count" = "ctrInt",
   "resultsSection.baselineCharacteristicsModule.denoms.counts.value" = "ctrInt",
   "resultsSection.outcomeMeasuresModule.outcomeMeasures.denoms.counts.value" = "ctrInt"
@@ -689,7 +723,7 @@ ctgovVersion <- function(url, register) {
     "[?&]state=|[?&]city=|[?&]dist=|[?&]rsub=|",
     "[?&]type=|[?&]rslt=|[?&]gndr=|[?&]cntry=|",
     "[?&][a-z]+_[a-z]+="), url)) {
-    message("* Appears specific for CTGOV CLASSIC")
+    message("* Appears specific for CTGOV Classic website")
     return("CTGOV")
   }
 
@@ -698,7 +732,7 @@ ctgovVersion <- function(url, register) {
     # clear identifiers of CTGOV2
     "aggFilters|clinicaltrials[.]gov/(search|study)[/?]|",
     "[:][^/]|%3[aA]"), url)) {
-    message("* Appears specific for CTGOV REST API 2.0.0")
+    message("* Appears specific for CTGOV REST API 2.0")
     return("CTGOV2")
   }
 
@@ -766,7 +800,7 @@ ctrDb <- function(con) {
   if (inherits(con, "src_postgres")) {
 
     if (is.null(con$collection)) {
-      stop("Specify 'collection' with a table name, using ",
+      stop("Specify attribute 'collection' with a table name, using ",
            "<nodbi src_postgres object>[[\"collection\"]] <- \"test\"), ",
            "for package ctrdata to work.",
            call. = FALSE)
@@ -902,10 +936,11 @@ typeField <- function(dv, fn) {
   if (!is.null(ft)) ft <- switch(
     typeVars[[fn]],
     "ctrInt" = 'as.integer(x = x)',
+    "ctrIntList" = 'sapply(x, function(i) {i[i == "NA"] <- NA; as.integer(i)}, USE.NAMES = FALSE)',
     "ctrYesNo" = 'sapply(x, function(i) if (is.na(i)) NA else
-       switch(i, "Yes" = TRUE, "No" = FALSE, NA), simplify = TRUE)',
+       switch(i, "Yes" = TRUE, "No" = FALSE, NA), simplify = TRUE, USE.NAMES = FALSE)',
     "ctrFalseTrue" = 'if (is.numeric(x)) as.logical(x) else
-       sapply(x, function(i) switch(i, "true" = TRUE, "false" = FALSE, NA))',
+       sapply(x, function(i) switch(i, "true" = TRUE, "false" = FALSE, NA), USE.NAMES = FALSE)',
     "ctrDate" = 'as.Date(x, tryFormats =
        c("%Y-%m-%d", "%Y-%m", "%Y-%m-%d %H:%M:%S", "%Y-%m-%dT%H:%M:%S", "%Y-%m-%dT%H:%M:%S%z"))',
     "ctrDateUs" = 'as.Date(x, tryFormats = c("%b %e, %Y", "%Y-%m-%d", "%Y-%m"))',
@@ -1098,8 +1133,8 @@ ctrMultiDownload <- function(
 
   # does not error in case any of the individual requests fail
   # inspect the return value to find out which were successful
-  # make no more than 5 attempts to complete downloading
-  while (any(toDo) && numI < 5L) {
+  # make no more than 3 attempts to complete downloading
+  while (any(toDo) && numI < 3L) {
 
     args <- c(
       urls = list(utils::URLencode(downloadValue[toDo, "url", drop = TRUE])),
@@ -1188,10 +1223,11 @@ ctrTempDir <- function(verbose = FALSE) {
     if (length(.ctrdataenv$keeptempdir) &&
         !is.null(.ctrdataenv$keeptempdir)) {
       if (.ctrdataenv$keeptempdir) {
-        message("Since 'verbose = TRUE', not deleting ctrdata.tempdir ", tempDir)
+        message(
+          'ctrdata: "verbose = TRUE", not deleting temporary directory ', tempDir, "\r")
       } else {
-        try(unlink(tempDir, recursive = TRUE), silent = TRUE)
-        message("...deleted ctrdata.tempdir\r")
+        unlink(tempDir, recursive = TRUE)
+        message('ctrdata: deleted temporary directory\r')
       }
     }
     assign("keeptempdir", NULL, envir = .ctrdataenv)
@@ -1496,7 +1532,7 @@ dbCTRLoadJSONFiles <- function(dir, con, verbose) {
         # step into line by line mode
         fdLines <- file(tempFiles[tempFile], open = "rt", blocking = TRUE)
         fLineOut <- tempfile(pattern = "tmpOneLine", tmpdir = dir, fileext = ".ndjson")
-        on.exit(try(unlink(fLineOut), silent = TRUE), add = TRUE)
+        on.exit(unlink(fLineOut), add = TRUE)
         fTmp <- NULL
         while (TRUE) {
           tmpOneLine <- readLines(con = fdLines, n = 1L, warn = FALSE)

@@ -2,6 +2,7 @@
 
 # set server
 httr::set_config(httr::timeout(seconds = 60))
+suppressWarnings(require(tibble))
 
 #### ctrLoadQueryIntoDb ####
 
@@ -265,6 +266,7 @@ tmpFields <- suppressMessages(
   suppressWarnings(
     dbFindFields(
       namepart = ".*",
+      verbose = TRUE,
       con = dbc)))
 
 #### dbGetFieldsIntoDf ####

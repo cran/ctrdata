@@ -18,6 +18,7 @@ ctrLoadQueryIntoDbCtgov <- function(
     register,
     euctrresults,
     euctrresultshistory,
+    ctgov2history,
     documents.path,
     documents.regexp,
     annotation.text,
@@ -38,7 +39,7 @@ ctrLoadQueryIntoDbCtgov <- function(
   queryUSType2  <- "ct2/results?"
 
   ## inform user and prepare url for downloading
-  message("* Checking trials in CTGOV classic...")
+  message("* Checking trials using CTGOV Classic website...")
   ctgovdownloadcsvurl <- paste0(
     queryUSRoot, queryUSType1, "&", queryterm, queryupdateterm)
   #
@@ -143,7 +144,7 @@ ctrLoadQueryIntoDbCtgov <- function(
     fNdjson <- file.path(tempDir, paste0("ctgov_trials_", f, ".ndjson"))
     fNdjsonCon <- file(fNdjson, open = "at")
     on.exit(try(close(fNdjsonCon), silent = TRUE), add = TRUE)
-    on.exit(try(unlink(fNdjson), silent = TRUE), add = TRUE)
+    on.exit(unlink(fNdjson), add = TRUE)
 
     for (i in xmlFileList[[f]]) {
 
@@ -189,7 +190,7 @@ ctrLoadQueryIntoDbCtgov <- function(
   } # for f
 
   ## delete for any re-downloads
-  try(unlink(unlist(xmlFileList)), silent = TRUE)
+  unlink(unlist(xmlFileList))
 
   ## import -------------------------------------------------------------------
 
@@ -206,10 +207,10 @@ ctrLoadQueryIntoDbCtgov <- function(
 
     # temporary file for trial ids and file names
     downloadsNdjson <- file.path(tempDir, "ctgov_downloads.ndjson")
-    suppressMessages(unlink(downloadsNdjson))
+    unlink(downloadsNdjson)
     downloadsNdjsonCon <- file(downloadsNdjson, open = "at")
     on.exit(try(close(downloadsNdjsonCon), silent = TRUE), add = TRUE)
-    on.exit(try(unlink(downloadsNdjson), silent = TRUE), add = TRUE)
+    on.exit(unlink(downloadsNdjson), add = TRUE)
 
     # extract trial ids and file name and save in temporary file
     for (ndjsonFile in dir(
@@ -247,9 +248,9 @@ ctrLoadQueryIntoDbCtgov <- function(
   } # !is.null(documents.path)
 
   ## delete for any re-downloads
-  try(unlink(dir(
+  unlink(dir(
     path = tempDir, pattern = "ctgov_trials_[0-9]+.ndjson",
-    full.names = TRUE)), silent = TRUE)
+    full.names = TRUE))
 
   ## inform user -----------------------------------------------------
 
