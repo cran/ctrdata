@@ -1,10 +1,10 @@
 Package: ctrdata
 Type: Package
 Title: Retrieve and Analyze Clinical Trials in Public Registers
-Version: 1.18.0
+Version: 1.19.0
 Imports: jsonlite, httr, curl (>= 5.1.0), clipr, xml2, nodbi (>=
         0.10.0), stringi, tibble, lubridate, jqr, dplyr, zip, V8,
-        readr, digest
+        readr, digest, countrycode
 URL: https://cran.r-project.org/package=ctrdata,
         https://rfhb.github.io/ctrdata/
 BugReports: https://github.com/rfhb/ctrdata/issues
@@ -12,9 +12,8 @@ Description: A system for querying, retrieving and analyzing
         protocol- and results-related information on clinical trials from
         four public registers, the 'European Union Clinical Trials Register'
         ('EUCTR', <https://www.clinicaltrialsregister.eu/>), 
-        'ClinicalTrials.gov' ('CTGOV', using the classic interface at 
-        <https://classic.clinicaltrials.gov/>, and 'CTGOV2', using the 
-        current interface at <https://www.clinicaltrials.gov/>), the 
+        'ClinicalTrials.gov' (<https://clinicaltrials.gov/> and also 
+        translating queries the retired classic interface), the 
         'ISRCTN' (<http://www.isrctn.com/>) and the
         'European Union Clinical Trials Information System'
         ('CTIS', <https://euclinicaltrials.eu/>). 
@@ -38,8 +37,8 @@ Authors@R: person(given = "Ralf", family = "Herold", role = c("aut", "cre"),
         email = "ralf.herold@mailbox.org", comment = c(ORCID =
         "0000-0002-8148-6748"))
 Language: en-GB
-Packaged: 2024-05-13 20:33:40 UTC; ralfherold
+Packaged: 2024-06-30 12:41:40 UTC; ralfherold
 Author: Ralf Herold [aut, cre] (<https://orcid.org/0000-0002-8148-6748>)
 Maintainer: Ralf Herold <ralf.herold@mailbox.org>
 Repository: CRAN
-Date/Publication: 2024-05-13 20:53:29 UTC
+Date/Publication: 2024-06-30 12:50:02 UTC

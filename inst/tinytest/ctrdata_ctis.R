@@ -6,53 +6,31 @@
 expect_true(
   suppressWarnings(
     ctrLoadQueryIntoDb(
-      queryterm = "ageGroupCode=2",
-      register = "CTIS",
+      queryterm = 'https://euclinicaltrials.eu/ctis-public/search#searchCriteria={"containAll":"","containAny":"neuroblastoma","containNot":""}',
       only.count = TRUE,
       verbose = TRUE,
-      con = dbc)[["n"]] >= 13L))
+      con = dbc)[["n"]] >= 10L))
 
 # test
 expect_message(
   tmpTest <- suppressWarnings(
     ctrLoadQueryIntoDb(
-      queryterm = "ageGroupCode=2",
-      register = "CTIS",
+      queryterm = 'https://euclinicaltrials.eu/ctis-public/search#searchCriteria={"containAll":"","containAny":"neuroblastoma","containNot":""}',
       verbose = TRUE,
       con = dbc)),
   "Imported .* updated ")
 
 # test
-expect_true(tmpTest$n >= 13L)
+expect_true(tmpTest$n >= 10L)
 
 # test
-expect_true(all(c("2023-504071-24-00", "2022-502144-12-00") %in% tmpTest$success))
+expect_true(all(c("2023-503684-42-00", "2024-512095-35-00") %in% tmpTest$success))
 
 # test
 expect_true(length(tmpTest$failed) == 0L)
 
 # clean up
 rm(tmpTest)
-
-# test
-expect_true(suppressWarnings(
-  ctrLoadQueryIntoDb(
-    queryterm = "https://euclinicaltrials.eu/ct-public-api-services/services/ct/publiclookup?basicSearchInputAND=cancer&msc=528",
-    con = dbc))[["n"]] >= 9L)
-
-# test
-expect_true(suppressWarnings(
-  ctrLoadQueryIntoDb(
-    queryterm = "https://euclinicaltrials.eu/app/#/search?basicSearchInputAND=cancer&msc=528",
-    con = dbc))[["n"]] >= 9L)
-
-# test
-expect_true(
-  suppressWarnings(
-    ctrLoadQueryIntoDb(
-      queryterm = "basicSearchInputAND=infection&status=Ended",
-      register = "CTIS",
-      con = dbc))[["n"]] >= 2L)
 
 # test
 expect_true(
@@ -70,20 +48,6 @@ expect_message(
       con = dbc)),
   "[0-9]+ trials have been updated")
 
-# test
-expect_true(
-  suppressWarnings(
-    ctrLoadQueryIntoDb(
-      queryterm = "https://euclinicaltrials.eu/app/#/search?number=2022-500271-31-00",
-      con = dbc))[["n"]] == 1L)
-
-# test
-expect_true(
-  suppressWarnings(
-    ctrLoadQueryIntoDb(
-      queryterm = "https://euclinicaltrials.eu/app/#/search?number=2022-501559-99-00",
-      con = dbc))[["n"]] == 1L)
-
 
 #### documents.path ####
 
@@ -94,12 +58,12 @@ if (!length(dbc$url) || grepl("localhost", dbc$url)) {
   expect_message(
     suppressWarnings(
       ctrLoadQueryIntoDb(
-        queryterm = "basicSearchInputAND=leukemia",
-        register = "CTIS",
+        queryterm = 'https://euclinicaltrials.eu/ctis-public/search#searchCriteria={"containAll":"","containAny":"cancer","containNot":""}',
         documents.path = tmpDir,
+        documents.regexp = ".*",
         con = dbc
       )),
-    "Newly saved [1-9][0-9]+ document"
+    "Newly saved [0-9]+ document"
   )
 }
 
@@ -111,7 +75,7 @@ if (!length(dbc$url) || grepl("localhost", dbc$url)) {
 expect_message(
   suppressWarnings(
     ctrLoadQueryIntoDb(
-      queryterm = "https://euclinicaltrials.eu/ct-public-api-services/services/ct/publiclookup?basicSearchInputAND=cancer&msc=528",
+      queryterm = 'https://euclinicaltrials.eu/ctis-public/search#searchCriteria={"containAll":"","containAny":"neuroblastoma","containNot":""}',
       annotation.text = "just_this",
       annotation.mode = "replace",
       con = dbc)),
@@ -161,6 +125,13 @@ expect_equal(
         con = dbc))),
   "")
 
+# get all trials
+ctrLoadQueryIntoDb(
+  queryterm = "", 
+  register = "CTIS",
+  con = dbc
+)
+
 # get all field names
 tmpFields <- suppressMessages(
   suppressWarnings(
@@ -171,7 +142,38 @@ tmpFields <- suppressMessages(
 
 # test
 expect_true(
-  length(tmpFields) > 3000L)
+  length(tmpFields) > 800L)
+
+# debug
+if (FALSE){
+
+  # debug
+  View(data.frame(
+    register = names(tmpFields),
+    field = tmpFields))
+
+  # debug
+  for (f in sort(tmpFields[grepl("[.]inclu", tmpFields)])) message(
+    '"', f, '" = "ctrFalseTrue",')
+  for (f in sort(tmpFields[grepl("[.]has", tmpFields)])) message(
+    '"', f, '" = "ctrFalseTrue",')
+  for (f in sort(tmpFields[grepl("[.]is", tmpFields)])) message(
+    '"', f, '" = "ctrFalseTrue",')
+
+  # debug
+  for (f in sort(tmpFields[grepl("number", tmpFields, ignore.case = TRUE)])) message(
+    '"', f, '" = "ctrInt",')
+
+  # debug
+  for (f in sort(tmpFields[
+    grepl("count", tmpFields, ignore.case = TRUE) &
+    !grepl("country|countries", tmpFields, ignore.case = TRUE)])) message(
+      '"', f, '" = "ctrInt",')
+
+  # debug list top level fields
+  tmpFields[!grepl("[.]", tmpFields)]
+
+}
 
 #### dbGetFieldsIntoDf ####
 
@@ -187,10 +189,15 @@ for (i in unique(groupsNo)) {
 }
 
 tmpFields <- tmpFields[
-  grepl("date$", tmpFields, ignore.case = TRUE) &
-    !grepl("update$", tmpFields, ignore.case = TRUE) &
-    !grepl("^decisionDate$", tmpFields, ignore.case = TRUE)
+  (grepl("[.]date$", tmpFields, ignore.case = TRUE) |
+    grepl("Date$", tmpFields, ignore.case = FALSE)) & 
+    !grepl("^decisionDate$", tmpFields, ignore.case = FALSE)
 ]
+
+if (FALSE) {
+  # debug
+  for (f in sort(tmpFields)) message('"', f, '" = "ctrDate",')
+}
 
 groupsNo <- (length(tmpFields) %/% 49L) + 1L
 groupsNo <- rep(seq_len(groupsNo), 49L)

@@ -34,7 +34,7 @@ expect_message(
       queryterm = "SHOULDNOTEXISTATALL",
       register = "CTGOV",
       con = dbc)),
-  "no.*trials found")
+  "found 0 trials")
 
 # test
 expect_message(
@@ -94,15 +94,6 @@ expect_message(
   suppressWarnings(
     ctrLoadQueryIntoDb(
       querytoupdate = "last",
-      verbose = TRUE,
-      con = dbc)),
-  "no.*trials found")
-
-# test
-expect_message(
-  suppressWarnings(
-    ctrLoadQueryIntoDb(
-      querytoupdate = "last",
       forcetoupdate = TRUE,
       con = dbc)),
   "Imported or updated ")
@@ -127,42 +118,11 @@ expect_message(
       con = dbc)),
   "Imported or updated ")
 
-# manipulate history to test updating
-# implemented in dbCTRUpdateQueryHistory
-hist <- suppressWarnings(dbQueryHistory(con = dbc))
-hist[nrow(hist), "query-term"] <-
-  sub("(.*&lup_e=).*", "\\112%2F31%2F2011", hist[nrow(hist), "query-term"])
-
-# convert into json object
-json <- jsonlite::toJSON(list("queries" = hist))
-
-# update database
-expect_equal(
-  nodbi::docdb_update(
-    src = dbc,
-    key = dbc$collection,
-    value = as.character(json),
-    query = '{"_id": "meta-info"}'), 1L)
-
-# test
-tmpTest2 <- suppressWarnings(
-  dbQueryHistory(con = dbc))
-expect_message(
-  tmpTest <- suppressWarnings(
-    ctrLoadQueryIntoDb(
-      querytoupdate = "last",
-      verbose = TRUE,
-      con = dbc)),
-  "Imported or updated")
-
-# test
-expect_true(tmpTest$n > rev(tmpTest2[["query-records"]])[[1]])
-
-# test
-expect_true(length(tmpTest$failed) == 0L)
-
-
 #### ctrLoadQueryIntoDb results ####
+
+dbc <- nodbi::src_sqlite(
+  dbname = system.file("extdata", "demo.sqlite", package = "ctrdata"),
+  collection = "my_trials")
 
 # get results
 result <- suppressMessages(
@@ -186,12 +146,13 @@ result <- suppressMessages(
 
 # test
 expect_equal(
-  rev(
-    sort(
-      sapply(
-        result[["location"]],
-        function(x) length(x[["facility"]][["name"]]))))[1:2],
-  c(30, 1))
+  rev(sort(sapply(
+    result[["location"]],
+    function(x) {
+      if (all(is.na(x))) return(0L) else
+        length(x[["facility"]][["name"]])
+    })))
+  [1:2], c(12, 7))
 
 # test
 expect_true("character" == class(result[[
@@ -220,30 +181,11 @@ expect_true(
 # test
 expect_true(
   length(unlist(strsplit(
-    result[["location.facility.name"]], " / "))) >= 32L)
+    result[["location.facility.name"]], " / "))) >= 22L)
 
 # test
 expect_true("list" == class(result[[
   "clinical_results.baseline.group_list.group"]]))
-
-# test
-tmpTest <- c(
-  "clinical_results.outcome_list.outcome",
-  # these all would have come from auto-expansion:
-  "clinical_results.baseline",
-  "clinical_results.reported_events",
-  "clinical_results.participant_flow",
-  "clinical_results.point_of_contact",
-  "clinical_results.certain_agreements"
-  # not in the downloaded but in other trials:
-  # "clinical_results.limitations_and_caveats"
-)
-expect_true(
-  all(
-    sapply(tmpTest, function(i)
-      any(grepl(i, names(result))))
-  )
-)
 
 # convert to long
 df <- suppressMessages(
@@ -259,30 +201,7 @@ expect_identical(
 
 # test
 expect_true(
-  nrow(df) > 6000L
-)
-
-# select value from
-# measure in where
-df2 <- suppressMessages(
-  dfName2Value(
-    df = df,
-    valuename = paste0(
-      "clinical_results.*category_list.category.measurement_list.measurement.value|",
-      "clinical_results.outcome_list.outcome.measure.units"
-    ),
-    wherename = "clinical_results.outcome_list.outcome.measure.title",
-    wherevalue = "duration of response"
-  ))
-
-# test
-expect_true(
-  any("NCT01471782" %in% df2[["_id"]])
-)
-
-# test
-expect_true(
-  all(grepl("5", df2[["identifier"]][ df2[["_id"]] == "NCT01471782" ]))
+  nrow(df) > 1000L
 )
 
 # test
@@ -303,7 +222,7 @@ if (!length(dbc$url) || grepl("localhost", dbc$url)) {
   expect_message(
     suppressWarnings(
       ctrLoadQueryIntoDb(
-        queryterm = "cond=Neuroblastoma&type=Intr&recrs=e&phase=1&u_prot=Y&u_sap=Y&u_icf=Y",
+        queryterm = "cond=Neuroblastoma&type=Intr&recrs=e&phase=0&u_prot=Y&u_sap=Y&u_icf=Y",
         register = "CTGOV",
         documents.path = newTempDir(),
         documents.regexp = ".*",
@@ -356,9 +275,11 @@ expect_true(nrow(tmpData) > 0L)
 expect_true(ncol(tmpData) > 0L)
 
 expect_true(all(
-  unique(unlist(lapply(
-    tmpData[, -1, drop = FALSE],
-    function(i) sapply(i, function(ii) class(ii))))) %in%
+  unique(unlist(
+    lapply(
+      tmpData[, -1, drop = FALSE],
+      function(i) sapply(i, function(ii) class(ii)))
+  )) %in%
     c("Date", "POSIXct", "POSIXt")
 ))
 
@@ -368,4 +289,3 @@ expect_true(all(
 # tmpc <- sapply(result, class, USE.NAMES = FALSE)
 # tmpc <- unlist(tmpc)
 # tmpc <- table(tmpc)
-

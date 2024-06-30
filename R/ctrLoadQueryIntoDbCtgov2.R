@@ -84,13 +84,13 @@ ctrLoadQueryIntoDbCtgov2 <- function(
     #
     "filter.advanced" = list(
       "extract" = list(
-        "resFirstPost=([0-9-]+)_?([0-9-]*)(&.+|$)",
-        "primComp=([0-9-]+)_?([0-9-]*)(&.+|$)",
-        "studyComp=([0-9-]+)_?([0-9-]*)(&.+|$)",
-        "lastUpdPost=([0-9-]+)_?([0-9-]*)(&.+|$)",
-        "firstPost=([0-9-]+)_?([0-9-]*)(&.+|$)",
-        "start=([0-9-]+)_?([0-9-]*)(&.+|$)",
-        "ageRange=([0-9a-z]+)_?([0-9a-z]*)(&.+|$)"
+        "resFirstPost=([0-9-]*)_?([0-9-]*)(&.+|$)",
+        "primComp=([0-9-]*)_?([0-9-]*)(&.+|$)",
+        "studyComp=([0-9-]*)_?([0-9-]*)(&.+|$)",
+        "lastUpdPost=([0-9-]*)_?([0-9-]*)(&.+|$)",
+        "firstPost=([0-9-]*)_?([0-9-]*)(&.+|$)",
+        "start=([0-9-]*)_?([0-9-]*)(&.+|$)",
+        "ageRange=([0-9a-z]*)_?([0-9a-z]*)(&.+|$)"
       ),
       "replace" = list(
         "AREA[ResultsFirstPostDate]RANGE[\\1,\\2]",
@@ -129,6 +129,17 @@ ctrLoadQueryIntoDbCtgov2 <- function(
     ),
     #
     # other "query." terms
+    # the values apparently can include AREA expressions
+    #
+    # https://clinicaltrials.gov/find-studies/constructing-complex-search-queries#areaOp
+    # Declares which search area should be searched. Search areas are defined on the
+    # ClinicalTrials.gov Search Area page. In addition to specifying search areas,
+    # it is possible to specify a field from the study structure. Any field from the study
+    # structure is searchable.
+    #
+    # https://clinicaltrials.gov/data-api/api#extapi
+    # see /studies/ endpoint for relation of search areas to query parameters
+    #
     list(
       "extract" = "(cond|term|intr|titles|outc|spons|lead|id)=(.+)(&|$)",
       "replace" = "&query.\\1=\\2",
@@ -167,6 +178,7 @@ ctrLoadQueryIntoDbCtgov2 <- function(
   queryterm <- paste0(queryterm, collapse = "&")
 
   # adjust remaining quirks
+  queryterm <- sub("^&", "", queryterm)
   queryterm <- gsub("&&+", "&", queryterm)
   queryterm <- gsub("RANGE\\[,", "RANGE[MIN,", queryterm)
   queryterm <- stringi::stri_replace_all_regex(queryterm, "(RANGE\\[.+?),\\]", "$1,MAX]")
@@ -229,8 +241,12 @@ ctrLoadQueryIntoDbCtgov2 <- function(
   message("(1/3) Downloading in ",
           ceiling(resultsEuNumTrials / 1000L),
           " batch(es) (max. 1000 trials each; estimate: ",
-          format(resultsEuNumTrials * 0.1, digits = 2), " MB total)")
+          format(resultsEuNumTrials * 0.1, digits = 2), " Mb total)")
 
+  # register
+  on.exit(unlink(dir(tempDir, "ctgov_trials_[0-9]+.ndjson", full.names = TRUE)), add = TRUE)
+
+  # download and compile into ndjson
   while (TRUE) {
 
     # page url
@@ -259,7 +275,7 @@ ctrLoadQueryIntoDbCtgov2 <- function(
       "Download not successful for ", urlToDownload)
 
     # convert to ndjson
-    message("(2/3) Converting to NDJSON...")
+    message("(2/3) Converting to NDJSON...\r", appendLF = FALSE)
     fTrialsNdjson <- file.path(tempDir, paste0("ctgov_trials_", pageNumber,".ndjson"))
     jqr::jq(
       file(fTrialJson),
@@ -290,7 +306,7 @@ ctrLoadQueryIntoDbCtgov2 <- function(
 
   ## database import -----------------------------------------------------
 
-  message("(3/3) Importing records into database...")
+  message("\n(3/3) Importing records into database...")
 
   # dbCTRLoadJSONFiles operates on pattern = ".+_trials_.*.ndjson"
   imported <- dbCTRLoadJSONFiles(dir = tempDir, con = con, verbose = verbose)
@@ -338,7 +354,7 @@ ctrLoadQueryIntoDbCtgov2 <- function(
               " .history.changes[] | { ",
               '"_id": "', sub(".+_(NCT[0-9]+)[.]json", "\\1", i), '", ',
               "version_number: .version, version_date: .date }"
-            ))), verbose = FALSE)})
+            ))), pagesize = 5000L, verbose = FALSE)})
     #
     historyDf <- do.call(rbind, historyDf)
     if (verbose) {
@@ -491,6 +507,11 @@ ctrLoadQueryIntoDbCtgov2 <- function(
 
   if (!is.null(documents.path)) {
 
+    # user info
+    message(
+      "* Checking for documents...\n",
+      "- Getting links to documents")
+
     # temporary file for trial ids and file names
     downloadsNdjson <- file.path(tempDir, "ctgov2_downloads.ndjson")
     unlink(downloadsNdjson)
@@ -510,9 +531,11 @@ ctrLoadQueryIntoDbCtgov2 <- function(
       message(". ", appendLF = FALSE)
     }
     close(downloadsNdjsonCon)
+    message("\r", appendLF = FALSE)
 
     # get document trial id and file name
-    dlFiles <- jsonlite::stream_in(file(downloadsNdjson), verbose = FALSE)
+    dlFiles <- jsonlite::stream_in(
+      file(downloadsNdjson), pagesize = 5000L, verbose = FALSE)
 
     # check if any documents
     if (!nrow(dlFiles)) {

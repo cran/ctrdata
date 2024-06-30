@@ -1,13 +1,34 @@
-# ctrdata 1.18.0
+# ctrdata 1.19.0
+
+## Possibly breaking changes
+- `CTGOV` has retired on 2024-06-25 the classic website and API used by `ctrdata` since 2015. To support users, `ctrdata` now automatically translates and redirects queries to the current website. This helps with automatically updating previously loaded queries (`ctrLoadQueryIntoDb(querytoupdate = <n>)`), manually migrating queries and reproducible work on clinical trials information. This new functionality in `ctrdata` translates a user's search query URL from the classic website into a query for the current `CTGOV` website, for all search parameters. Since the structure and format of data differs between data retrieved from the current API and previously retrieved from the classic API, `ctrdata` will continue to identify the current API as `register = "CTGOV2"`, to support the analysis stage. In addition, `ctrdata` documentation continues to include examples of analyses with `CTGOV` data, as this may have been downloaded earlier. 
+
+- `CTIS` has been relaunched on 2024-06-17, and `ctrdata` has been fully updated to it. At the moment, `CTIS` provides basic searches and no search query URL. To support users, `ctrdata` includes an updated script that extracts a user's search parameters from the register search page to the clipboard and into the browser URL bar. In addition, the script triggers a search for trials when opening such a query URL, see https://rfhb.github.io/ctrdata/#id_2-script-to-automatically-copy-users-query-from-web-browser. File names of `CTIS` documents start now with the document type, e.g. `SbjctInfaICF - L1 SIS and ICF NL for publication.pdf`, since the prefix (document source) introduced in version 1.18.0 is no more applicable. 
+
+## Improvements 
+- Reduced size of demo database in package, addressing `CRAN` notes
+- Adapted `ctrFindActiveSubstanceSynonyms()` to `CTGOV2` API; this is now based on terms used in studies
+- Updated vignette and added inspecting a specific trial
+- Updated register information, adding caveats and issues
+- Updated estimated download sizes and user information
+- Avoided duplicate data and file retrievals
+- New attribute `ctrdata-collection` for data frames with trial information; same content as attribute `ctrdata-table`, which will be removed by end 2024
+- Split utils.R into files for functions and fields
+
+## Bug fixes
+- Correct partial date brackets for `CTGOV2`
+- Disable HTTP/2 multiplexing for `CTIS`
+
+# ctrdata 1.18.0 (2024-05-13)
 
 ## Possibly breaking change
 - File names for documents downloaded from `CTIS` now include the document type and use different separators (e.g., "parts2auth - SbjctInfaICF - ..." as abbreviation of "Subject information and informed consent form (for publication)", was previously "parts2auth_...")
 
 ## Improvements 
-- Add retrieval of historic versions of trial records from CTGOV2 (automatically retrieved from CTIS, not available for other registers)
-- Added typing of newly appearing fields from CTIS
+- Add retrieval of historic versions of trial records from `CTGOV2` (automatically retrieved from `CTIS`, not available for other registers)
+- Added typing of newly appearing fields from `CTIS`
 - Increase testing coverage to 93.7% locally
-- Added missing CI for the combination of DuckDB and CTGOV2
+- Added missing CI for the combination of `DuckDB` and `CTGOV2`
 
 ## Bug fixes
 - Correct typing certain fields as (lists of) integers
