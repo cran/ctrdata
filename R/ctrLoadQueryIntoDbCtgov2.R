@@ -72,6 +72,26 @@ ctrLoadQueryIntoDbCtgov2 <- function(
   queryterm <- queryterm[!grepl("^https://", queryterm)]
   queryterm <- queryterm[queryterm != ""]
 
+  # location - special cases:
+  # - if state and city identical, remove state
+  queryValues <- sub("(.+)=(.*)", "\\2", queryterm)
+  names(queryValues) <- sub("(.+)=(.*)", "\\1", queryterm)
+  if (!is.na(queryValues["state"]) &&
+      !is.na(queryValues["city"]) &&
+      (queryValues["state"] == queryValues["city"])) queryterm <-
+    queryterm[!grepl("state=", queryterm)]
+  # - if only locStr, warn user
+  if (!is.na(queryValues["locStr"]) &&
+      (is.na(queryValues["country"]) &
+       is.na(queryValues["state"]) &
+       is.na(queryValues["city"]))) stop(
+         "Parameter 'locStr' provided, but no 'country', 'state' or 'city'; ",
+         "please check in CTGOV; e.g., the name of a trial site should go ",
+         "into Facility Name in the webinterface or parameter 'locn' in the ",
+         "search URL.",
+         call. = FALSE
+       )
+
   # url to api
   apiParams <- list(
     #
@@ -108,12 +128,14 @@ ctrLoadQueryIntoDbCtgov2 <- function(
     "query.locn" = list(
       "extract" = list(
         "country=(.+)(&|$)",
-        "locStr=(.+)(&.+|$)",
+        "city=(.+)(&.+|$)",
+        "state=(.+)(&.+|$)",
         "locn=(.+)(&|$)"
       ),
       "replace" = list(
         "AREA[LocationCountry]\\1",
         "AREA[LocationCity]\\1",
+        "AREA[LocationState]\\1",
         "AREA[LocationFacility]\\1"
       ),
       "collapse" = ",",
