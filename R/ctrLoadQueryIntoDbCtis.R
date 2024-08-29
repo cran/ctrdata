@@ -7,11 +7,11 @@
 #' @keywords internal
 #' @noRd
 #'
-#' @importFrom jqr jq jq_flags
+#' @importFrom jqr jq jqr jq_flags
 #' @importFrom tools toTitleCase
 #' @importFrom nodbi docdb_update
 #' @importFrom jsonlite stream_in fromJSON
-#' @importFrom stringi stri_extract_all_regex stri_replace_all_fixed
+#' @importFrom stringi stri_extract_all_regex stri_replace_all_fixed stri_replace_all_regex
 #' @importFrom httr GET status_code content
 #' @importFrom digest digest
 #'
@@ -32,14 +32,6 @@ ctrLoadQueryIntoDbCtis <- function(
   ## create empty temporary directory
   tempDir <- ctrTempDir(verbose)
 
-  ## output mangle helper -----------------------------------------------
-
-  mangleText <- function(t) {
-
-    stringi::stri_replace_all_fixed(str = t, pattern = "'", replacement = "&apos;")
-
-  }
-
   ## ctis api -----------------------------------------------------------
 
   # https://euclinicaltrials.eu/ctis-public/assets/i18n/en.json
@@ -54,18 +46,18 @@ ctrLoadQueryIntoDbCtis <- function(
       # - 1 trial overview - post method
       "/search",
       #
-      # - 2 trial information - %s is ctNumber
-      "/retrieve/%s", # partI and partsII
+      # - 2 trial information, partI and partsII
+      "/retrieve/%s", # %s is ctNumber
       #
       # - 3 download files
-      "/documents/%s/%s/download" # trial _id, document[].uuid
+      "/documents/%s/%s/download" # %s are trial _id, document[].uuid
       #
     )
   )
 
   ## api_1: overviews ---------------------------------------------------------
 
-  # this is for importing overview (recruitment, status etc.) into database
+  # for importing overview (recruitment, status etc.) into database
   message("* Checking trials in CTIS...")
 
   # "HTTP server doesn't seem to support byte ranges. Cannot resume."
@@ -119,7 +111,7 @@ ctrLoadQueryIntoDbCtis <- function(
   }
 
   # inform user
-  message("\b\b\b, found ", overview$totalRecords, " trials")
+  message("\b\b\b, found ", overview$totalRecords, " trials ", appendLF = FALSE)
 
   # only count?
   if (only.count) {
@@ -218,7 +210,7 @@ ctrLoadQueryIntoDbCtis <- function(
   # this is imported as the main data into the database
 
   message("(2/4) Downloading and processing trial data... (",
-          "estimate: ", signif(length(idsTrials) * 309 / 4305, 1L), " Mb)")
+          "estimate: ", signif(length(idsTrials) * 405 / 5505, 1L), " Mb)")
 
   urls <- sprintf(ctisEndpoints[2], idsTrials)
 
@@ -227,7 +219,9 @@ ctrLoadQueryIntoDbCtis <- function(
   }
 
   # "HTTP server doesn't seem to support byte ranges. Cannot resume."
-  tmp <- ctrMultiDownload(urls, fPartIPartsIIJson(idsTrials), verbose = verbose)
+  tmp <- ctrMultiDownload(
+    urls, fPartIPartsIIJson(idsTrials),
+    multiplex = FALSE, verbose = verbose)
 
   # convert partI and partsII details into ndjson file(s),
   # each approximately 10MB for nRecords = 100L
@@ -245,17 +239,15 @@ ctrLoadQueryIntoDbCtis <- function(
         if (!file.exists(f)) return()
 
         cat(
-          jqr::jqr(
-            mangleText(readLines(f, warn = FALSE)),
-            # add _id to enable docdb_update()
-            ' .["_id"] = .ctNumber ',
-            flags = jqr::jq_flags(pretty = FALSE)
-          ),
-          file = file.path(
-            tempDir,
-            sprintf("ctis_trials_api2_%i.ndjson", g)),
-          sep = "\n",
-          append = TRUE)
+          stringi::stri_replace_all_regex(
+          readLines(f, warn = FALSE),
+          '^\\{"ctNumber": *"([-0-9]+)",',
+          '{"_id": "$1", "ctNumber": "$1",'),
+        file = file.path(
+          tempDir,
+          sprintf("ctis_trials_api2_%i.ndjson", g)),
+        sep = "\n",
+        append = TRUE)
 
       })
 
@@ -303,8 +295,8 @@ ctrLoadQueryIntoDbCtis <- function(
         jqr::jqr(
           file(f),
           ' ._id as $_id | .documents[] | { $_id,
-      title, uuid, documentType, documentTypeLabel,
-      fileType, associatedEntityId } ',
+            title, uuid, documentType, documentTypeLabel,
+            fileType, associatedEntityId } ',
           flags = jqr::jq_flags(pretty = FALSE)
         ),
         file = downloadsNdjson,
