@@ -643,21 +643,22 @@ typeField <- function(dv, fn) {
   # expand to function
   if (!is.null(ft)) ft <- switch(
     typeVars[[fn]],
-    "ctrInt" = 'as.integer(x = x)',
+    "ctrInt" = "as.integer(x = x)",
     "ctrIntList" = 'sapply(x, function(i) {i[i == "NA"] <- NA; as.integer(i)}, USE.NAMES = FALSE)',
     "ctrYesNo" = 'sapply(x, function(i) if (is.na(i)) NA else
        switch(i, "Yes" = TRUE, "No" = FALSE, NA), simplify = TRUE, USE.NAMES = FALSE)',
     "ctrFalseTrue" = 'if (is.numeric(x)) as.logical(x) else
        sapply(x, function(i) switch(i, "true" = TRUE, "false" = FALSE, NA), USE.NAMES = FALSE)',
     "ctrDate" = 'as.Date(x, tryFormats =
-       c("%Y-%m-%d", "%Y-%m", "%Y-%m-%d %H:%M:%S", "%Y-%m-%dT%H:%M:%S", "%d/%m/%Y", "%Y-%m-%dT%H:%M:%S%z"))',
+       c("%Y-%m-%d", "%Y-%m", "%Y-%m-%d %H:%M:%S", "%Y-%m-%dT%H:%M:%S",
+    "%d/%m/%Y", "%Y-%m-%dT%H:%M:%S%z"))',
     "ctrDateUs" = 'as.Date(x, tryFormats = c("%b %e, %Y", "%Y-%m-%d", "%Y-%m"))',
-    "ctrDateTime" = 'lubridate::ymd_hms(x)',
+    "ctrDateTime" = "lubridate::ymd_hms(x)",
     "ctrDifftime" = 'as.difftime(as.numeric(lubridate::duration(
        tolower(x)), units = "days"), units = "days")',
-    "ctrDifftimeDays" = 'lubridate::ddays(x = as.numeric(x))',
-    "ctrDifftimeMonths" = 'lubridate::dmonths(x = as.numeric(x))',
-    "ctrDifftimeYears" = 'lubridate::dyears(x = as.numeric(x))',
+    "ctrDifftimeDays" = "lubridate::ddays(x = as.numeric(x))",
+    "ctrDifftimeMonths" = "lubridate::dmonths(x = as.numeric(x))",
+    "ctrDifftimeYears" = "lubridate::dyears(x = as.numeric(x))",
     NULL
   )
 
@@ -673,10 +674,11 @@ typeField <- function(dv, fn) {
     # - convert html entities to text and symbols
     if (any(htmlEnt) && all(sapply(dv, typeof) == "character")) {
       dv[htmlEnt] <-
-        lapply(dv[htmlEnt], function(i)
-          sapply(i, function(ii)
-            xml2::xml_text(xml2::read_html(charToRaw(ii))),
-            USE.NAMES = FALSE))
+        lapply(dv[htmlEnt], function(i) {
+          sapply(i, function(ii) {
+            xml2::xml_text(xml2::read_html(charToRaw(ii)))
+          }, USE.NAMES = FALSE)
+        })
     }
 
     # - check if possible and convert to numeric
@@ -698,7 +700,9 @@ typeField <- function(dv, fn) {
         if (length(i) > 1L) {
           rowI <- paste0(i[!is.na(i)], collapse = " / ")
           if (nchar(rowI)) rowI else NA
-        } else if (length(i) && !is.na(i)) i else NA
+        } else {
+          if (length(i) && !is.na(i)) i else NA
+        }
       })
     }
 
@@ -756,7 +760,8 @@ typeField <- function(dv, fn) {
   # make original classes (e.g., Date) reappear
   if (!is.list(dv)) dv <- as.list(dv)
   if (all(sapply(dv, length) <= 1L)) {
-    return(do.call("c", dv))}
+    return(do.call("c", dv))
+  }
 
   # return
   return(dv)
@@ -795,8 +800,11 @@ addMetaData <- function(x, con) {
 #' ctrMultiDownload
 #'
 #' @param urls Vector of urls to be downloaded
-#'
+#' @param destfiles Vector of local file names into which to download
 #' @param progress Set to \code{FALSE} to not print progress bar
+#' @param resume Logical for dispatching to curl
+#' @param multipley Logical for using http/2
+#' @param verbose For debug message printing
 #'
 #' @keywords internal
 #' @noRd
@@ -805,6 +813,7 @@ addMetaData <- function(x, con) {
 #'
 #' @importFrom curl multi_download
 #' @importFrom utils URLencode
+#' @importFrom jsonlite fromJSON
 #'
 ctrMultiDownload <- function(
     urls,
@@ -851,8 +860,8 @@ ctrMultiDownload <- function(
   while (any(toDo) && numI < 3L) {
 
     args <- c(
-      urls = list(utils::URLencode(downloadValue[toDo, "url", drop = TRUE])),
-      destfiles = list(downloadValue[toDo, "destfile", drop = TRUE]),
+      urls = list(utils::URLencode(downloadValue$url[toDo])),
+      destfiles = list(downloadValue$destfile[toDo]),
       resume = canR,
       progress = progress,
       timeout = Inf,
@@ -861,8 +870,38 @@ ctrMultiDownload <- function(
         accept_encoding = "gzip,deflate,zstd,br")
     )
 
+    # do download
     res <- do.call(curl::multi_download, args)
 
+    # check if download successful and CDN is likely to be used
+    cdnCheck <- (res$status_code %in% c(200L, 206L, 416L)) &
+      !grepl("[.]json$", res$destfile) &
+      sapply(res$headers, function(x)
+        if (length(x) >= 1)
+          any(grepl("application/json", x))
+        else FALSE)
+
+    # replace url with CDN url
+    if (any(cdnCheck)) {
+
+      message("Redirecting to CDN...")
+
+      # get CDN url
+      res$url[cdnCheck] <- sapply(
+        res$destfile[cdnCheck],
+        function(x) jsonlite::fromJSON(x)$url,
+        USE.NAMES = FALSE,
+        simplify = TRUE)
+
+      # remove files containing CDN url
+      unlink(res$destfile[cdnCheck])
+
+      # reset status
+      res$status_code[cdnCheck] <- NA
+
+    }
+
+    # update input
     downloadValue[toDo, ] <- res
 
     if (any(grepl(
@@ -872,9 +911,9 @@ ctrMultiDownload <- function(
       stop("Download failed; last error: ", class(downloadValue), call. = FALSE)
     }
 
-    toDoThis <- is.na(downloadValue[["success"]]) |
-      !downloadValue[["success"]] |
-      !(downloadValue[["status_code"]] %in% c(200L, 206L, 416L))
+    toDoThis <- is.na(downloadValue$success) |
+      !downloadValue$success |
+      !(downloadValue$status_code %in% c(200L, 206L, 416L))
 
     # only count towards repeat attempts if
     # the set of repeated urls is unchanged
@@ -946,7 +985,7 @@ ctrTempDir <- function(verbose = FALSE) {
           'ctrdata: "verbose = TRUE", not deleting temporary directory ', tempDir, "\r")
       } else {
         unlink(tempDir, recursive = TRUE)
-        message('ctrdata: deleted temporary directory\r')
+        message("ctrdata: deleted temporary directory\r")
       }
     }
     assign("keeptempdir", NULL, envir = .ctrdataenv)
@@ -978,6 +1017,7 @@ ctrTempDir <- function(verbose = FALSE) {
 #' @param dlFiles data frame with columns _id, filename, url
 #' @param documents.path parameter from parent call
 #' @param documents.regexp parameter from parent call
+#' @param multiplex use http/2 or not
 #' @param verbose parameter from parent call
 #'
 #' @return number of documents
@@ -989,6 +1029,7 @@ ctrDocsDownload <- function(
     dlFiles,
     documents.path,
     documents.regexp,
+    multiplex = TRUE,
     verbose) {
 
   # check and create directory
@@ -1047,7 +1088,8 @@ ctrDocsDownload <- function(
   } else {
 
     # inform
-    message("- Applying 'documents.regexp' to ", nrow(dlFiles), " documents")
+    message("- Applying 'documents.regexp' to ",
+            nrow(dlFiles), " missing documents")
 
     # apply regexp
     dlFiles <- dlFiles[
@@ -1063,6 +1105,7 @@ ctrDocsDownload <- function(
     tmp <- ctrMultiDownload(
       urls = dlFiles$url[!dlFiles$fileexists],
       destfiles = dlFiles$filepathname[!dlFiles$fileexists],
+      multiplex = multiplex,
       verbose = verbose)
 
     # check results
@@ -1086,7 +1129,7 @@ ctrDocsDownload <- function(
     "= Newly saved %i ",
     ifelse(is.null(documents.regexp), "placeholder ", ""),
     "document(s) for %i trial(s); ",
-    "%i document(s) for %i trial(s) already existed in %s"),
+    "%i of such document(s) for %i trial(s) already existed in %s"),
     tmp,
     length(unique(dlFiles$`_id`)),
     sum(dlFiles$fileexists),
@@ -1252,7 +1295,6 @@ dbCTRLoadJSONFiles <- function(dir, con, verbose) {
         fdLines <- file(tempFiles[tempFile], open = "rt", blocking = TRUE)
         fLineOut <- tempfile(pattern = "tmpOneLine", tmpdir = dir, fileext = ".ndjson")
         on.exit(unlink(fLineOut), add = TRUE)
-        fTmp <- NULL
         while (TRUE) {
           tmpOneLine <- readLines(con = fdLines, n = 1L, warn = FALSE)
           if (length(tmpOneLine) == 0L || !nchar(tmpOneLine)) break
@@ -1271,8 +1313,8 @@ dbCTRLoadJSONFiles <- function(dir, con, verbose) {
 
       } else {
         nImported <- nImported + tmp
-        idSuccess <- c(idSuccess, annoDf[ , "_id", drop = TRUE])
-        idAnnotation <- c(idAnnotation, annoDf[ , "annotation", drop = TRUE])
+        idSuccess <- c(idSuccess, annoDf[, "_id", drop = TRUE])
+        idAnnotation <- c(idAnnotation, annoDf[, "annotation", drop = TRUE])
       }
 
       # close this file

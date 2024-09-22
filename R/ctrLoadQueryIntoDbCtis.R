@@ -83,7 +83,7 @@ ctrLoadQueryIntoDbCtis <- function(
             # handle empty search query terms
             ifelse(
               queryterm != "", queryterm,
-              'searchCriteria={"containAll":"","containAny":"","containNot":""}'),
+              'searchCriteria={}'),
           ),
           # remaining parameters needed for proper server response
           ',"sort":{"property":"decisionDate","direction":"DESC"}}'
@@ -102,7 +102,7 @@ ctrLoadQueryIntoDbCtis <- function(
 
   # get overview
   overview <- jsonlite::fromJSON(
-    jqr::jq(initialData, ' .pagination '))
+    jqr::jq(initialData, " .pagination "))
 
   # early exit
   if (overview$totalRecords == 0L) {
@@ -135,7 +135,7 @@ ctrLoadQueryIntoDbCtis <- function(
   nRecords <- 100L
 
   # main function for handling results
-  success <- function(x){
+  success <- function(x) {
 
     if (is.list(x)) x <- rawToChar(x$content)
 
@@ -163,21 +163,21 @@ ctrLoadQueryIntoDbCtis <- function(
   }
 
   # create POST requests
-  sapply(seq_len(overview$totalPages %/% nRecords + 1L), function(i)
+  sapply(seq_len(overview$totalPages %/% nRecords + 1L), function(i) {
     curl::multi_add(
       curl::new_handle(
         url = ctisEndpoints[1],
         postfields = paste0(
           # add pagination parameters
           paste0(
-            '{"pagination":{"page":', i, ',"size":', nRecords, '},'),
+            '{"pagination":{"page":', i, ',"size":', nRecords, "},"),
           # add search criteria
           sub(
             "searchCriteria=", '"searchCriteria":',
             # handle empty search query terms
             ifelse(
               queryterm != "", queryterm,
-              'searchCriteria={"containAll":"","containAny":"","containNot":""}'),
+              'searchCriteria={}'),
           ),
           # remaining parameters needed for proper server response
           ',"sort":{"property":"decisionDate","direction":"DESC"}}'
@@ -188,7 +188,7 @@ ctrLoadQueryIntoDbCtis <- function(
       data = NULL,
       pool = pool
     )
-  )
+  })
 
   # important on 2024-06-29 disable HTTP/2 multiplexing
   # as it leads to data loss with ctis servers
@@ -240,14 +240,14 @@ ctrLoadQueryIntoDbCtis <- function(
 
         cat(
           stringi::stri_replace_all_regex(
-          readLines(f, warn = FALSE),
-          '^\\{"ctNumber": *"([-0-9]+)",',
-          '{"_id": "$1", "ctNumber": "$1",'),
-        file = file.path(
-          tempDir,
-          sprintf("ctis_trials_api2_%i.ndjson", g)),
-        sep = "\n",
-        append = TRUE)
+            readLines(f, warn = FALSE),
+            '^\\{"ctNumber": *"([-0-9]+)",',
+            '{"_id": "$1", "ctNumber": "$1",'),
+          file = file.path(
+            tempDir,
+            sprintf("ctis_trials_api2_%i.ndjson", g)),
+          sep = "\n",
+          append = TRUE)
 
       })
 
@@ -279,7 +279,7 @@ ctrLoadQueryIntoDbCtis <- function(
   if (!is.null(documents.path)) {
 
     # 1 - get ids of lists (which include urls to download)
-    message("* Checking for documents...")
+    message("* Checking for documents: ", appendLF = FALSE)
 
     # 2 - create data frame with info on documents (url, name, extension etc.)
 
@@ -291,12 +291,14 @@ ctrLoadQueryIntoDbCtis <- function(
     # iterate to get docs information
     for (f in dir(tempDir, "ctis_trials_api2_[0-9]+.ndjson", full.names = TRUE)) {
 
+      message(". ", appendLF = FALSE)
+
       cat(
         jqr::jqr(
           file(f),
-          ' ._id as $_id | .documents[] | { $_id,
+          " ._id as $_id | .documents[] | { $_id,
             title, uuid, documentType, documentTypeLabel,
-            fileType, associatedEntityId } ',
+            fileType, associatedEntityId } ",
           flags = jqr::jq_flags(pretty = FALSE)
         ),
         file = downloadsNdjson,
@@ -313,7 +315,9 @@ ctrLoadQueryIntoDbCtis <- function(
 
     # check if any documents
     if (!nrow(dlFiles)) {
-      message("= No documents identified for downloading.")
+
+      message("\n= No documents identified for downloading.")
+
     } else {
 
       # remove duplicate files based on their title
@@ -345,46 +349,18 @@ ctrLoadQueryIntoDbCtis <- function(
         dlFiles$fileType)
 
       # calculate url
-      dlFiles$ctisurl <- sprintf(
+      dlFiles$url <- sprintf(
         ctisEndpoints[3], dlFiles$`_id`, dlFiles$uuid)
 
-      # get cdn download urls for CTIS urls
-      resList <- data.frame(ctisurl = NULL, url = NULL)
-      failure <- function(str) message(paste("Failed request:", str))
-      success <- function(x) {
-        if (x$status != 200L) return(NULL)
-        resList <<- rbind(
-          resList, cbind(
-            ctisurl = x$url,
-            url = jsonlite::fromJSON(rawToChar(x$content))$url
-          ))
-      }
-
-      pool <- curl::new_pool()
-      sapply(dlFiles$ctisurl, function(i)
-        curl::multi_add(
-          curl::new_handle(url = i),
-          done = success,
-          fail = failure,
-          data = NULL,
-          pool = pool
-        ))
-
-      # important on 2024-06-29 disable HTTP/2 multiplexing
-      # as it leads to data loss with ctis servers
-      curl::multi_set(multiplex = FALSE, pool = pool)
-
-      # go parallel
-      curl::multi_run(pool = pool)
-
-      # merge with original files list
-      dlFiles <- merge(dlFiles, resList)
-
       # do download
-      resFiles <- ctrDocsDownload(
-        dlFiles[!duplicated(dlFiles$filename),
-                c("_id", "filename", "url"), drop = FALSE],
-        documents.path, documents.regexp, verbose)
+      ctrDocsDownload(
+        dlFiles[
+          !duplicated(dlFiles$filename),
+          c("_id", "filename", "url"), drop = FALSE],
+        documents.path,
+        documents.regexp,
+        multiplex = FALSE,
+        verbose = verbose)
 
     } # if (!nrow(dlFiles))
 

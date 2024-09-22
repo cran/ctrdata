@@ -49,8 +49,9 @@ statusvalues <- list(
   "Firstvalues" = c("12", "23"),
   "Lastvalue"   = c("34"))
 
-df2 <- data.frame(var1 = c("A", "B", "C", NA),
-                  var2 = c("D", "E", "",  "G"))
+df2 <- data.frame(
+  var1 = c("A", "B", "C", NA),
+  var2 = c("D", "E", "",  "G"))
 
 # test
 expect_error(
@@ -313,7 +314,7 @@ expect_equal(
 expect_equal(
   ctrOpenSearchPagesInBrowser(
     url = "https://euclinicaltrials.eu/ctis-public/view/2023-508508-39-01"
-  ), "https://euclinicaltrials.eu/ctis-public/search?searchCriteria={\"containAll\":\"2023-508508-39-01\",\"containAny\":\"\",\"containNot\":\"\"}")
+  ), "https://euclinicaltrials.eu/ctis-public/search?searchCriteria={\"number\":\"2023-508508-39-01\"}")
 
 # test
 expect_equal(

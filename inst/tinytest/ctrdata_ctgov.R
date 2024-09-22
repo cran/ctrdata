@@ -107,8 +107,9 @@ expect_error(
   "'querytoupdate': specified query number.*not found")
 
 # new query
-q <- paste0("https://classic.clinicaltrials.gov/ct2/results?",
-            "term=osteosarcoma&type=Intr&phase=0&age=0&lup_e=")
+q <- paste0(
+  "https://classic.clinicaltrials.gov/ct2/results?",
+  "term=osteosarcoma&type=Intr&phase=0&age=0&lup_e=")
 
 # test
 expect_message(
@@ -122,7 +123,8 @@ expect_message(
 
 dbc <- nodbi::src_sqlite(
   dbname = system.file("extdata", "demo.sqlite", package = "ctrdata"),
-  collection = "my_trials")
+  collection = "my_trials",
+  RSQLite::SQLITE_RO)
 
 # get results
 result <- suppressMessages(
@@ -258,7 +260,7 @@ expect_true(
 
 groupsNo <- (length(tmpFields) %/% 49L) + 1L
 groupsNo <- rep(seq_len(groupsNo), 49L)
-groupsNo <- groupsNo[1:length(tmpFields)]
+groupsNo <- groupsNo[seq_along(tmpFields)]
 
 for (i in unique(groupsNo)) {
   message(i, " ", appendLF = FALSE)
@@ -267,8 +269,8 @@ for (i in unique(groupsNo)) {
   expect_true(ncol(tmpData) > 0L)
 }
 
-tmpFields <- tmpFields[grepl("date$",tmpFields, ignore.case = TRUE)]
-tmpFields <- tmpFields[1:min(length(tmpFields), 49L)]
+tmpFields <- tmpFields[grepl("date$", tmpFields, ignore.case = TRUE)]
+tmpFields <- tmpFields[1:min(seq_along(tmpFields), 49L)]
 
 tmpData <- dbGetFieldsIntoDf(fields = tmpFields, con = dbc)
 expect_true(nrow(tmpData) > 0L)
