@@ -1,3 +1,8 @@
+# ctrdata 1.19.4
+
+- Fix vignettes and update documentation website (pkgdown)
+- Make `dbFindFields()` more robust, specify scalar search fields to identify records
+
 # ctrdata 1.19.3
 
 - Improve Tampermonkey script (this serves to copy searches in any register to the clipboard, and also can open a `CTIS` search from an URL, see https://rfhb.github.io/ctrdata/#id_2-script-to-automatically-copy-users-query-from-web-browser
