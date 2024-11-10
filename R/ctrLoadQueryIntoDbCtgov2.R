@@ -36,7 +36,7 @@ ctrLoadQueryIntoDbCtgov2 <- function(
     # pageSize 0 delivers default 10
     "https://www.clinicaltrials.gov/api/v2/studies?format=json&countTotal=true&pageSize=1&%s",
     "https://www.clinicaltrials.gov/api/v2/studies?format=json&countTotal=true&pageSize=1000&%s",
-    "https://storage.googleapis.com/ctgov2-large-docs/%s/%s/%s",
+    "https://cdn.clinicaltrials.gov/large-docs/%s/%s/%s",
     "https://www.clinicaltrials.gov/api/int/studies/%s/history/%s",
     "https://www.clinicaltrials.gov/api/int/studies/%s?history=true"
   )
@@ -476,7 +476,10 @@ ctrLoadQueryIntoDbCtgov2 <- function(
         unlink(out)
 
         # put historic versions into top level array
-        cat(paste0('{"_id": "', i, '", "history": ['), file = out, append = TRUE)
+        cat(paste0('{"_id": "', i, '", "history": ['),
+            file = out,
+            sep = "",
+            append = TRUE)
 
         fToMerge <- tmp[["destfile"]][grepl(i, tmp[["destfile"]])]
 
@@ -484,7 +487,7 @@ ctrLoadQueryIntoDbCtgov2 <- function(
         for (ii in seq_along(fToMerge)) {
 
           if (!file.exists(fToMerge[ii]) || !file.size(fToMerge[ii]) > 10L) next
-          if (ii > 1L) cat(",", file = out, append = TRUE)
+          if (ii > 1L) cat(",", file = out, sep = "", append = TRUE)
 
           vn <- as.numeric(jqr::jq(file(fToMerge[ii]), ' .studyVersion')) + 1L
 
@@ -498,12 +501,13 @@ ctrLoadQueryIntoDbCtgov2 <- function(
             flags = jqr::jq_flags(pretty = FALSE)
             ),
             file = out,
+            sep = "",
             append = TRUE
           )
 
         }
 
-        cat(']}\n', file = out, append = TRUE)
+        cat("]}", file = out, sep = "\n", append = TRUE)
         message(". ", appendLF = FALSE)
 
       },

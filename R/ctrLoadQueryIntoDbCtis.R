@@ -111,10 +111,11 @@ ctrLoadQueryIntoDbCtis <- function(
   }
 
   # inform user
-  message("\b\b\b, found ", overview$totalRecords, " trials ", appendLF = FALSE)
+  message("\b\b\b, found ", overview$totalRecords, " trials ")
 
   # only count?
   if (only.count) {
+    message()
     # return
     return(list(
       n = overview$totalRecords,
@@ -155,8 +156,8 @@ ctrLoadQueryIntoDbCtis <- function(
         )
       ),
       file =  fTrialsNdjson,
-      append = TRUE,
-      sep = "\n")
+      sep = "\n",
+      append = TRUE)
 
     message(". ", appendLF = FALSE)
 
@@ -234,7 +235,7 @@ ctrLoadQueryIntoDbCtis <- function(
   for (g in unique(groupNo)) {
 
     sapply(
-      tmp[["destfile"]][groupNo == g], function(f) {
+      na.omit(tmp[["destfile"]][groupNo == g]), function(f) {
 
         if (!file.exists(f)) return()
 
@@ -255,8 +256,6 @@ ctrLoadQueryIntoDbCtis <- function(
 
   }
 
-  message("\r", appendLF = FALSE)
-
   ## database import -----------------------------------------------------
 
   message("(3/4) Importing records into database...")
@@ -270,9 +269,9 @@ ctrLoadQueryIntoDbCtis <- function(
   message(". ", appendLF = FALSE)
   updated <- nodbi::docdb_update(
     src = con, key = con$collection, query = "{}",
-    value = file.path(tempDir, "ctis_add_api1.ndjson"))
+    value = fTrialsNdjson)
 
-  message("")
+  message(" ")
 
   ## api_3: documents -------------------------------------------------------
 
@@ -307,6 +306,7 @@ ctrLoadQueryIntoDbCtis <- function(
 
       unlink(f)
     }
+    message(" ")
 
     # 3 - documents download
     dlFiles <- jsonlite::stream_in(
@@ -316,7 +316,7 @@ ctrLoadQueryIntoDbCtis <- function(
     # check if any documents
     if (!nrow(dlFiles)) {
 
-      message("\n= No documents identified for downloading.")
+      message("= No documents identified for downloading.")
 
     } else {
 
@@ -345,8 +345,9 @@ ctrLoadQueryIntoDbCtis <- function(
       # add destination file name
       dlFiles$filename <- paste0(
         dlFiles$prefix, " - ",
-        dlFiles$title, ".",
-        dlFiles$fileType)
+        dlFiles$title, " - ",
+        dlFiles$associatedEntityId,
+        ".", dlFiles$fileType)
 
       # calculate url
       dlFiles$url <- sprintf(
@@ -354,9 +355,7 @@ ctrLoadQueryIntoDbCtis <- function(
 
       # do download
       ctrDocsDownload(
-        dlFiles[
-          !duplicated(dlFiles$filename),
-          c("_id", "filename", "url"), drop = FALSE],
+        dlFiles[, c("_id", "filename", "url"), drop = FALSE],
         documents.path,
         documents.regexp,
         multiplex = FALSE,

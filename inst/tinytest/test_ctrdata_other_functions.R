@@ -301,6 +301,12 @@ expect_true(
 # test
 expect_equal(
   ctrOpenSearchPagesInBrowser(
+    url = "https://clinicaltrials.gov/expert-search?term=heart attack AND AREA[LocationCountry]United States AND AREA[LocationStatus]Recruiting"
+  ), "https://clinicaltrials.gov/expert-search?term=heart attack AND AREA[LocationCountry]United States AND AREA[LocationStatus]Recruiting")
+
+# test
+expect_equal(
+  ctrOpenSearchPagesInBrowser(
     url = "https://www.clinicaltrials.gov/search?cond=neuroblastoma&intr=Investigational%20drug&aggFilters=ages:child,status:com&rank=200&sort=EnrollmentCount%3Adesc%2CNumArmGroups"
   ), "https://clinicaltrials.gov/search?cond=neuroblastoma&intr=Investigational drug&aggFilters=ages:child,status:com")
 
@@ -450,7 +456,6 @@ dF <- data.frame(
 dL <- suppressMessages(
   dfTrials2Long(dF)
 )
-
 dL2 <- dfTrials2Long(
   df = dF[, 4:1]
 )
@@ -497,3 +502,4 @@ expect_true(
 
 # cleanup
 rm(dF, dL)
+
