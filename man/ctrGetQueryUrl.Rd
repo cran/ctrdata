@@ -14,7 +14,9 @@ For automatically copying the user's query of a register
 in a web browser to the clipboard, see
 \ifelse{latex}{\out{\href{https://rfhb.github.io/ctrdata/#id_2-script-to-automatically-copy-users-query-from-web-browser}{here}}}{\href{https://rfhb.github.io/ctrdata/#id_2-script-to-automatically-copy-users-query-from-web-browser}{here}}.
 Can also contain a query term such as from
-\link{dbQueryHistory}()["query-term"].}
+\link{dbQueryHistory}()["query-term"].
+Can also be an identifier of a trial, which based on its
+format will indicate to which register it relates.}
 
 \item{register}{Optional name of register (one of "EUCTR", "CTGOV2"
 "ISRCTN" or "CTIS") in case `url` is a query term but not a full URL}
@@ -50,11 +52,19 @@ ctrGetQueryUrl(
     )
 )
 
+# other examples
 ctrGetQueryUrl("https://www.clinicaltrialsregister.eu/ctr-search/trial/2007-000371-42/results")
 ctrGetQueryUrl("https://euclinicaltrials.eu/ctis-public/view/2022-500041-24-00")
 ctrGetQueryUrl("https://classic.clinicaltrials.gov/ct2/show/NCT01492673?cond=neuroblastoma")
 ctrGetQueryUrl("https://clinicaltrials.gov/ct2/show/NCT01492673?cond=neuroblastoma")
 ctrGetQueryUrl("https://clinicaltrials.gov/study/NCT01467986?aggFilters=ages:child")
 ctrGetQueryUrl("https://www.isrctn.com/ISRCTN70039829")
+
+# using identifiers of single trials
+ctrGetQueryUrl("70039829")
+ctrGetQueryUrl("ISRCTN70039829")
+ctrGetQueryUrl("NCT00617929")
+ctrGetQueryUrl("2022-501142-30-00")
+ctrGetQueryUrl("2012-003632-23")
 
 }

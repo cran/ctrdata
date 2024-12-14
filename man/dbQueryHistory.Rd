@@ -7,8 +7,9 @@
 dbQueryHistory(con, verbose = FALSE)
 }
 \arguments{
-\item{con}{A connection object, see section
-`Databases` in \link{ctrdata}.}
+\item{con}{A database connection object, created with
+\code{nodbi}. See section `1 - Database connection` in
+\link{ctrdata}.}
 
 \item{verbose}{If \code{TRUE}, prints additional information
 (default \code{FALSE}).}
@@ -28,8 +29,8 @@ Show history of queries loaded into a database collection
 
 dbc <- nodbi::src_sqlite(
     dbname = system.file("extdata", "demo.sqlite", package = "ctrdata"),
-    collection = "my_trials"
-)
+    collection = "my_trials",
+   RSQLite::SQLITE_RO)
 
 dbQueryHistory(con = dbc)
 

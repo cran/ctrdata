@@ -28,8 +28,9 @@ record of trials, where available.}
 that are conducted exclusively in third countries, that is, outside
 the European Union. Ignored if \code{prefermemberstate} is set to "3RD".}
 
-\item{con}{A connection object, see section
-`Databases` in \link{ctrdata}.}
+\item{con}{A database connection object, created with
+\code{nodbi}. See section `1 - Database connection` in
+\link{ctrdata}.}
 
 \item{verbose}{If \code{TRUE}, prints out the fields of registers used to
 find corresponding trial records}
@@ -56,9 +57,9 @@ Such differences are not considered by this function.
 
 dbc <- nodbi::src_sqlite(
     dbname = system.file("extdata", "demo.sqlite", package = "ctrdata"),
-    collection = "my_trials"
-)
+    collection = "my_trials",
+   RSQLite::SQLITE_RO)
 
-dbFindIdsUniqueTrials(con = dbc)
+dbFindIdsUniqueTrials(con = dbc)[1:10]
 
 }

@@ -150,7 +150,7 @@ tf <- function() {
   expect_error(
     ctrdata:::ctrDb(
       con = NULL
-    ), "specify in parameter 'con' a database connection")
+    ), "connection object .+ nodbi")
 
   # test if database connection
   # is opened by ctrDb
@@ -383,6 +383,9 @@ tf <- function() {
 
   # https://clinicaltrials.gov/study/NCT04903899?cond=neuroblastoma
 
+  opts <- options()
+  options(browser = NULL)
+
   # for debugging
   ctrOpenSearchPagesInBrowser(url = queryurls[[4]][1])
   sapply(sapply(queryurls, "[[", 1),
@@ -396,6 +399,8 @@ tf <- function() {
         url = qt[[1]]))[[1]] == qt[[2]]},
       logical(1L))
   ))
+
+  options(opts)
 
   # clean up
   rm(queryurls)

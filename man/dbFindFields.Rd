@@ -11,8 +11,9 @@ dbFindFields(namepart = ".*", con, sample = TRUE, verbose = FALSE)
 including Perl-style) to be searched among all field names (keys)
 in the collection, case-insensitive. The default `".*"` lists all fields.}
 
-\item{con}{A connection object, see section
-`Databases` in \link{ctrdata}.}
+\item{con}{A database connection object, created with
+\code{nodbi}. See section `1 - Database connection` in
+\link{ctrdata}.}
 
 \item{sample}{If \code{TRUE} (default), uses a sample of only 5 trial
 records per register to identify fields, to rapidly return a possibly
@@ -39,6 +40,7 @@ previously loaded into a collection
 a value in the collection can be returned.
 Set \code{sample = FALSE} to force screening all records in the
 collection for field names, see below.
+See \link{ctrShowOneTrial} to interactively find fields.
 }
 \details{
 The full names of child fields are returned in dot notation (e.g.,
@@ -56,8 +58,8 @@ Note: When \code{dbFindFields} is first called after
 
 dbc <- nodbi::src_sqlite(
     dbname = system.file("extdata", "demo.sqlite", package = "ctrdata"),
-    collection = "my_trials"
-)
+    collection = "my_trials",
+   RSQLite::SQLITE_RO)
 
 dbFindFields(namepart = "date", con = dbc)[1:5]
 

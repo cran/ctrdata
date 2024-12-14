@@ -19,7 +19,8 @@
 #' the sought variable(s).
 #'
 #' @param fields Vector of one or more strings, with names of sought fields.
-#' See function \link{dbFindFields} for how to find names of fields.
+#' See function \link{dbFindFields} for how to find names of fields and
+#' \link{ctrShowOneTrial} for interactively selecting field names.
 #' Dot path notation ("field.subfield") without indices is supported.
 #' If compatibility with `nodbi::src_postgres()` is needed, specify fewer
 #' than 50 fields, consider also using parent fields e.g., `"a.b"` instead
@@ -41,7 +42,6 @@
 #'
 #' @importFrom nodbi docdb_query
 #' @importFrom stats na.omit
-#' @importFrom tibble as_tibble
 #'
 #' @export
 #'
@@ -49,7 +49,8 @@
 #'
 #' dbc <- nodbi::src_sqlite(
 #'    dbname = system.file("extdata", "demo.sqlite", package = "ctrdata"),
-#'    collection = "my_trials")
+#'    collection = "my_trials",
+#'    RSQLite::SQLITE_RO)
 #'
 #' # get fields that are nested within another field
 #' # and can have multiple values with the nested field
@@ -63,8 +64,10 @@
 #'   fields = "keyword",
 #'   con = dbc)
 #'
-dbGetFieldsIntoDf <- function(fields = "",
-                              con, verbose = FALSE, ...) {
+dbGetFieldsIntoDf <- function(
+    fields = "",
+    con,
+    verbose = FALSE, ...) {
 
   # check fields
   if (!is.vector(fields) ||
@@ -80,6 +83,14 @@ dbGetFieldsIntoDf <- function(fields = "",
 
   # remove NA, NULL if included in fields
   fields <- fields[!is.null(fields) & !is.na(fields)]
+
+  # early return if only _id is requested
+  if (length(fields) == 1L &&
+      fields == "_id") {
+    message('Only "_id" requested, calling dbFindIdsUniqueTrials()')
+    dfi <- dbFindIdsUniqueTrials(con = con)
+    return(dfi)
+  }
 
   # remove _id if included in fields
   fields <- unique(fields["_id" != fields])
@@ -191,7 +202,7 @@ dbGetFieldsIntoDf <- function(fields = "",
   dfi <- addMetaData(
     dfi[order(dfi[["_id"]]), , drop = FALSE],
     con = con)
-  
+
   # reset row numbering
   row.names(dfi) <- NULL
 

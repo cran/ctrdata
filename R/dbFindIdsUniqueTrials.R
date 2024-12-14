@@ -46,10 +46,10 @@
 #'
 #' dbc <- nodbi::src_sqlite(
 #'     dbname = system.file("extdata", "demo.sqlite", package = "ctrdata"),
-#'     collection = "my_trials"
-#' )
+#'     collection = "my_trials",
+#'    RSQLite::SQLITE_RO)
 #'
-#' dbFindIdsUniqueTrials(con = dbc)
+#' dbFindIdsUniqueTrials(con = dbc)[1:10]
 #'
 dbFindIdsUniqueTrials <- function(
     preferregister = c("EUCTR", "CTGOV", "CTGOV2", "ISRCTN", "CTIS"),

@@ -11,24 +11,21 @@ studies, and for obtaining documents, from public registers
 }
 \section{1 - Database connection}{
 
-Package \code{ctrdata} retrieves trial information and stores it in a
-database collection, which has to be given as a connection object
-to parameter \code{con} for several ctrdata functions; this
-connection object is created in almost identical ways for
-these supported backends:\tabular{ll}{
+Package \code{ctrdata} retrieves trial information and stores it in a database
+collection. Therefore, a database connection object has to be given to
+parameter \code{con} for several \code{ctrdata} functions.
+The connection object is built using \code{nodbi} which allows to use
+different database backends.
+Specifying a \code{collection = "<my collection's name>"} is
+necessary for package \code{ctrdata}.
+A connection object (here called \code{dbc}) is created in almost identical
+ways for these supported backends:\tabular{ll}{
    \emph{Database} \tab \emph{Connection object} \cr
    MongoDB \tab \code{dbc <- \link[nodbi:src_mongo]{nodbi::src_mongo}(db = "my_db", collection = "my_coll")} \cr
+   DuckDB \tab \code{dbc <- \link[nodbi:src_duckdb]{nodbi::src_duckdb}(dbname = "my_db", collection = "my_coll")} \cr
    SQLite \tab \code{dbc <- \link[nodbi:src_sqlite]{nodbi::src_sqlite}(dbname = "my_db", collection = "my_coll")} \cr
    PostgreSQL \tab \code{dbc <- \link[nodbi:src_postgres]{nodbi::src_postgres}(dbname = "my_db"); dbc[["collection"]] <- "my_coll"} \cr
-   DuckDB \tab \code{dbc <- \link[nodbi:src_duckdb]{nodbi::src_duckdb}(dbname = "my_db", collection = "my_coll")} \cr
 }
-
-
-Use a connection object with a \code{ctrdata} function, for example
-\link{dbQueryHistory}, or other packages, for example
-\link[mongolite:mongo]{mongolite::mongo} or \link[nodbi:docdb_query]{nodbi::docdb_query}.
-Use a demo database:
-\code{dbc <- nodbi::src_sqlite(dbname = system.file("extdata", "demo.sqlite", package = "ctrdata"), collection = "my_trials")}
 }
 
 \section{2 - Operate on a clinical trial register}{
@@ -43,10 +40,11 @@ see
 \section{3 - Get a data frame from the database collection}{
 
 
+\link{ctrShowOneTrial} (show widget to explore structure, fields and data of a trial),
 \link{dbFindFields} (find names of fields of interest in trial records in a collection),
 \link{dbGetFieldsIntoDf} (create a data frame with fields of interest from collection),
 \link{dbFindIdsUniqueTrials} (get de-duplicated identifiers of
-clinical trials' records that can be used to subset a data frame).
+clinical trials' records to subset a data frame).
 }
 
 \section{4 - Operate on a data frame with trial information}{

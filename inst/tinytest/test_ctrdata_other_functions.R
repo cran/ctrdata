@@ -449,7 +449,7 @@ expect_error(
 dF <- data.frame(
   "_id" = paste0("NCT1234567", 1:5),
   alpha1 = 1:5,
-  beta = 1:5,
+  be2t3a = 1:5,
   gamma_1 = 1:5,
   check.names = FALSE
 )
@@ -503,3 +503,14 @@ expect_true(
 # cleanup
 rm(dF, dL)
 
+#### ctrShowOneTrial ####
+
+id <- "NCT00617929"
+id <- "2012-003632-23"
+id <- "80181452"
+id <- "2022-501142-30-00"
+
+df <- ctrShowOneTrial(identifier = id)
+
+expect_true(is.list(df))
+expect_length(df, 1L)

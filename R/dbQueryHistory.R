@@ -15,7 +15,6 @@
 #' (default \code{FALSE}).
 #'
 #' @importFrom nodbi docdb_query
-#' @importFrom tibble as_tibble
 #'
 #' @export
 #'
@@ -23,8 +22,8 @@
 #'
 #' dbc <- nodbi::src_sqlite(
 #'     dbname = system.file("extdata", "demo.sqlite", package = "ctrdata"),
-#'     collection = "my_trials"
-#' )
+#'     collection = "my_trials",
+#'    RSQLite::SQLITE_RO)
 #'
 #' dbQueryHistory(con = dbc)
 #'
@@ -82,9 +81,7 @@ dbQueryHistory <- function(con, verbose = FALSE) {
   }
 
   # return
-  if (any("tibble" == .packages())) {
-    return(tibble::as_tibble(hist))
-  }
+  if (any("tibble" == .packages())) return(tibble::as_tibble(hist))
   return(hist)
 }
 # end ctrQueryHistoryInDb

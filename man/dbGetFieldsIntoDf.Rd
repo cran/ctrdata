@@ -8,15 +8,17 @@ dbGetFieldsIntoDf(fields = "", con, verbose = FALSE, ...)
 }
 \arguments{
 \item{fields}{Vector of one or more strings, with names of sought fields.
-See function \link{dbFindFields} for how to find names of fields.
+See function \link{dbFindFields} for how to find names of fields and
+\link{ctrShowOneTrial} for interactively selecting field names.
 Dot path notation ("field.subfield") without indices is supported.
 If compatibility with `nodbi::src_postgres()` is needed, specify fewer
 than 50 fields, consider also using parent fields e.g., `"a.b"` instead
 of `c("a.b.c.d", "a.b.c.e")`, accessing sought fields with
 \link{dfTrials2Long} followed by \link{dfName2Value} or other R functions.}
 
-\item{con}{A connection object, see section
-`Databases` in \link{ctrdata}.}
+\item{con}{A database connection object, created with
+\code{nodbi}. See section `1 - Database connection` in
+\link{ctrdata}.}
 
 \item{verbose}{Printing additional information if set to \code{TRUE};
 (default \code{FALSE}).}
@@ -51,7 +53,8 @@ the sought variable(s).
 
 dbc <- nodbi::src_sqlite(
    dbname = system.file("extdata", "demo.sqlite", package = "ctrdata"),
-   collection = "my_trials")
+   collection = "my_trials",
+   RSQLite::SQLITE_RO)
 
 # get fields that are nested within another field
 # and can have multiple values with the nested field

@@ -16,7 +16,6 @@
 #'
 #' @return A vector, with the type of the columns to be merged
 #'
-#' @importFrom tibble as_tibble
 #' @importFrom dplyr c_across mutate rowwise
 #'
 #' @export
@@ -25,8 +24,8 @@
 #'
 #' dbc <- nodbi::src_sqlite(
 #'     dbname = system.file("extdata", "demo.sqlite", package = "ctrdata"),
-#'     collection = "my_trials"
-#' )
+#'     collection = "my_trials",
+#'    RSQLite::SQLITE_RO)
 #'
 #' df <- dbGetFieldsIntoDf(
 #'     fields = c("overall_status", "x5_trial_status"),

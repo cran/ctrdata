@@ -34,7 +34,7 @@ conduct of trials, their availability for patients and to facilitate
 using their detailed results for research and meta-analyses. `ctrdata`
 is a package for the [R](https://www.r-project.org/) system, but other
 systems and tools can be used with the databases created with the
-package. This README was reviewed on 2024-11-09 for version 1.19.4.9000.
+package. This README was reviewed on 2024-12-08 for version 1.19.5.9000.
 
 ## Main features
 
@@ -53,8 +53,9 @@ package. This README was reviewed on 2024-11-09 for version 1.19.4.9000.
   Information from different registers can be accumulated in a single
   collection. Uses `DuckDB`, `PostgreSQL`, `RSQLite` or `MongoDB`, via R
   package `nodbi`: see section
-  [Databases](#databases-that-can-be-used-with-ctrdata) below. Easily
-  re-run any previous query in a collection to retrieve and update trial
+  [Databases](#databases-that-can-be-used-with-ctrdata) below.
+  Interactively browse through trial structure and data. Easily re-run
+  any previous query in a collection to retrieve and update trial
   records.
 - For analyses, convenience functions in `ctrdata` allow find synonyms
   of an active substance, to identify unique (de-duplicated) trial
@@ -152,6 +153,7 @@ overview](https://rfhb.github.io/ctrdata/reference/index.html).
 | `ctrFindActiveSubstanceSynonyms()` | Find synonyms and alternative names for an active substance |
 | `ctrGetQueryUrl()` | Import from clipboard the URL of a search in one of the registers |
 | `ctrLoadQueryIntoDb()` | **Retrieve (download) or update, and annotate, information on trials from a register and store in a collection in a database** |
+| `ctrShowOneTrial()` | 🔔 Show full structure and all data of a trial, interactively select fields of interest for `dbGetFieldsIntoDf()` |
 | `dbQueryHistory()` | Show the history of queries that were downloaded into the collection |
 | `dbFindIdsUniqueTrials()` | **Get the identifiers of de-duplicated trials in the collection** |
 | `dbFindFields()` | Find names of variables (fields) in the collection |
@@ -1100,14 +1102,4 @@ src="https://raw.githubusercontent.com/rfhb/ctrdata/master/docs/reference/figure
 alt="Example JSON representation in MongoDB" />
 <figcaption aria-hidden="true">Example JSON representation in
 MongoDB</figcaption>
-</figure>
-
-### PostgreSQL
-
-<figure>
-<img
-src="https://raw.githubusercontent.com/rfhb/ctrdata/master/docs/reference/figures/README-ctrdata_json_postgresql.jpg"
-alt="Example JSON representation in PostgreSQL" />
-<figcaption aria-hidden="true">Example JSON representation in
-PostgreSQL</figcaption>
 </figure>
