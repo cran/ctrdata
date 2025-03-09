@@ -12,6 +12,11 @@ countriesEUCTR <- c(
   "DE", "GR", "HU", "IE", "IT", "LV", "LT", "LU", "MT", "NL",
   "PL", "PT", "RO", "SK", "SE", "SI", "ES", "GB", "IS", "LI",
   "NO", "3RD")
+countriesActive <- c(
+  "AT", "BE", "BG", "HR", "CY", "CZ", "DK", "EE", "FI", "FR",
+  "DE", "GR", "HU", "IE", "IT", "LV", "LT", "LU", "MT", "NL",
+  "PL", "PT", "RO", "SK", "SE", "SI", "ES",       "IS", "LI",
+  "NO", "3RD")
 #
 # regexpr
 # - queryterm and urls
@@ -27,8 +32,8 @@ regIsrctn <- "[0-9][0-9]{7}"
 # - CTIS e.g. 2022-501549-57-00
 regCtis <- "[0-9]{4}-[0-9]{6}-[0-9]{2}-[0-9]{2}"
 #
-# register list
-registerList <- c("EUCTR", "CTGOV", "ISRCTN", "CTIS", "CTGOV2")
+# register list, order important
+registerList <- c("EUCTR", "CTGOV", "CTGOV2", "ISRCTN", "CTIS")
 
 
 #### functions ####
@@ -1156,7 +1161,9 @@ ctrDocsDownload <- function(
         "(excluding ", sum(duplicateFiles), " ",
         "files with duplicate names for saving, e.g. ",
         paste0(
-          sample(dlFiles$filepathname[duplicateFiles], 3),
+          sample(
+            dlFiles$filepathname[duplicateFiles],
+            min(length(dlFiles$filepathname[duplicateFiles]), 3L)),
           collapse = ", "),
         ") ", appendLF = FALSE)
       dlFiles <- dlFiles[!duplicateFiles, , drop = FALSE]
@@ -1325,7 +1332,7 @@ dbCTRLoadJSONFiles <- function(dir, con, verbose) {
       ## delete and import ----------------------------------------------------
 
       # delete any existing records
-      try({
+      tmp <- try({
         nodbi::docdb_delete(
           src = con,
           key = con$collection,
@@ -1333,6 +1340,14 @@ dbCTRLoadJSONFiles <- function(dir, con, verbose) {
             '{"_id": {"$in": [',
             paste0('"', ids, '"', collapse = ","), ']}}'))
       }, silent = TRUE)
+
+      # early exit
+      if (inherits(tmp, "try-error") &&
+          grepl("read.?only", tmp)) stop(
+            "Database is read-only, cannot load trial records.\n",
+            "Change database connection in parameter 'con = ...'",
+            call. = FALSE
+          )
 
       ## import
       tmp <- try({
@@ -1539,3 +1554,59 @@ dbCTRUpdateQueryHistory <- function(
             '")', call. = FALSE, immediate. = FALSE)
   }
 } # end dbCTRUpdateQueryHistory
+
+
+#' dfOrTibble
+#'
+#' @return tibble or data frame, depending on loaded packages
+#'
+#' @param df data frame input
+#'
+#' @keywords internal
+#' @noRd
+#'
+#' @importFrom tibble as_tibble
+#'
+dfOrTibble <- function(df) {
+
+  if (any(sapply(
+    .packages(), function(i)
+      any(i == c("tibble", "magrittr", "tidyr", "dplyr")))
+    )) {
+
+    return(tibble::as_tibble(df))
+
+  } else {
+
+    return(df)
+
+  }
+
+} # end dfOrTibble
+
+
+#' fctChkFlds
+#'
+#' Calls for its side effect to stop if arguments
+#' are not conforming to expectations (flds needs
+#' to be a subset of dfFlds)
+#'
+#' @param dfFlds names of fields of a data frame
+#' @param flds fields needed for a function
+#'
+#' @keywords internal
+#' @noRd
+#'
+fctChkFlds <- function(dfFlds, flds) {
+
+  flds <- unlist(flds, use.names = FALSE)
+
+  flds <- flds[!sapply(flds, function(i) any(i == dfFlds))]
+
+  if (length(flds)) stop(
+    "Fields missing in 'df':\n", paste0(flds, "\n"),
+    call. = FALSE)
+
+  return(invisible(NULL))
+
+}

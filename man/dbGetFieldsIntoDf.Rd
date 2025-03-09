@@ -4,7 +4,7 @@
 \alias{dbGetFieldsIntoDf}
 \title{Create data frame of specified fields from database collection}
 \usage{
-dbGetFieldsIntoDf(fields = "", con, verbose = FALSE, ...)
+dbGetFieldsIntoDf(fields = "", calculate = "", con, verbose = FALSE, ...)
 }
 \arguments{
 \item{fields}{Vector of one or more strings, with names of sought fields.
@@ -15,6 +15,10 @@ If compatibility with `nodbi::src_postgres()` is needed, specify fewer
 than 50 fields, consider also using parent fields e.g., `"a.b"` instead
 of `c("a.b.c.d", "a.b.c.e")`, accessing sought fields with
 \link{dfTrials2Long} followed by \link{dfName2Value} or other R functions.}
+
+\item{calculate}{Vector of one or more strings, which are names of functions
+to calculate certain trial concepts from fields in the collection across
+different registers.}
 
 \item{con}{A database connection object, created with
 \code{nodbi}. See section `1 - Database connection` in
@@ -52,9 +56,9 @@ the sought variable(s).
 \examples{
 
 dbc <- nodbi::src_sqlite(
-   dbname = system.file("extdata", "demo.sqlite", package = "ctrdata"),
-   collection = "my_trials",
-   RSQLite::SQLITE_RO)
+  dbname = system.file("extdata", "demo.sqlite", package = "ctrdata"),
+  collection = "my_trials",
+  flags = RSQLite::SQLITE_RO)
 
 # get fields that are nested within another field
 # and can have multiple values with the nested field
@@ -67,5 +71,29 @@ dbGetFieldsIntoDf(
 dbGetFieldsIntoDf(
   fields = "keyword",
   con = dbc)
+
+# calculate new field(s) from data across trials
+df <- dbGetFieldsIntoDf(
+  fields = "keyword",
+  calculate = c("f.statusRecruitment", "f.isUniqueTrial", "f.startDate"),
+  con = dbc)
+
+table(df$.statusRecruitment, exclude = NULL)
+
+\dontrun{
+library(dplyr)
+library(ggplot2)
+
+df \%>\%
+  filter(.isUniqueTrial) \%>\%
+  count(.statusRecruitment)
+
+df \%>\%
+  filter(.isUniqueTrial) \%>\%
+  ggplot() +
+  stat_ecdf(aes(
+    x = .startDate,
+    colour = .statusRecruitment))
+}
 
 }

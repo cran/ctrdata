@@ -8,7 +8,9 @@ if (!checkSqlite()) exit_file("Reason: no SQLite")
 tf <- function() {
 
   if (Sys.info()[["sysname"]] != "Linux") {
-    clipr::clear_clip()
+
+    try(clipr::clear_clip(allow_non_interactive = TRUE), silent = TRUE)
+
   }
 
   ## database in memory
@@ -115,7 +117,7 @@ tf <- function() {
             ctrLoadQueryIntoDb(
               queryterm = "",
               con = dbc))),
-        "Cannot use 'queryterm' ")
+        "'queryterm'")
     }
   }
 
@@ -342,7 +344,6 @@ tf <- function() {
   #### clipboard ####
   if (Sys.info()[["sysname"]] != "Linux") {
 
-    clipr::clear_clip()
     clipr::write_clip(
       queryurls[[1]][1],
       allow_non_interactive = TRUE)

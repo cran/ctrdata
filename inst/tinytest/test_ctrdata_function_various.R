@@ -56,8 +56,7 @@ df2 <- data.frame(
 # test
 expect_error(
   suppressWarnings(
-    dfMergeVariablesRelevel(list("var1", "var2"))),
-  "no appli")
+    dfMergeVariablesRelevel(list("var1", "var2"))))
 
 # test
 expect_message(
@@ -78,7 +77,7 @@ expect_true(
 
 # test
 expect_equal(
-  suppressWarnings(
+  suppressMessages(
     nchar(dfMergeVariablesRelevel(
       df = df1,
       colnames = c("var1", "var2")))),
@@ -86,14 +85,14 @@ expect_equal(
 
 # test
 expect_error(
-  suppressWarnings(
+  suppressMessages(
     dfMergeVariablesRelevel(
       df = cbind(df1, df1),
       colnames = 1:3)))
 
 # test
 expect_error(
-  suppressWarnings(
+  suppressMessages(
     dfMergeVariablesRelevel(
       df = df1,
       colnames = c("var1", "var2"),
@@ -102,16 +101,16 @@ expect_error(
 
 # test
 expect_equal(
-  sum(grepl(" / ", suppressWarnings(suppressMessages(
+  sum(grepl(" / ", suppressMessages(
     dfMergeVariablesRelevel(
-      df = df2, colnames = c("var1", "var2")))))), 2L)
+      df = df2, colnames = c("var1", "var2"))))), 2L)
 
 # test
 expect_equal(
-  sum(grepl(" / ", suppressWarnings(suppressMessages(
+  sum(grepl(" / ", suppressMessages(
     dfMergeVariablesRelevel(
       df = df2,
-      colnames = 'matches("var")'))))), 2L)
+      colnames = 'matches("var")')))), 2L)
 
 
 #### ctrGetQueryUrl ####
@@ -144,11 +143,11 @@ expect_warning(
 expect_equal(
   suppressMessages(
     ctrGetQueryUrl(
-      url = "query=cancer&status=completed",
+      url = "query=cancer&resultsstatus=trials-with-results",
       register = "EUCTR")),
   suppressMessages(
     ctrGetQueryUrl(
-      url = "cancer&status=completed",
+      url = "cancer&resultsstatus=trials-with-results",
       register = "EUCTR"))
 )
 
@@ -269,7 +268,7 @@ expect_message(
   "Found search query")
 
 q <- paste0("https://www.clinicaltrialsregister.eu/ctr-search/",
-            "search?query=&age=under-18&status=completed")
+            "search?query=&age=under-18&resultsstatus=trials-with-results")
 
 tmpTest <- suppressMessages(
   ctrGetQueryUrl(
@@ -320,7 +319,7 @@ expect_equal(
 expect_equal(
   ctrOpenSearchPagesInBrowser(
     url = "https://euclinicaltrials.eu/ctis-public/view/2023-508508-39-01"
-  ), "https://euclinicaltrials.eu/ctis-public/search?searchCriteria={\"number\":\"2023-508508-39-01\"}")
+  ), "https://euclinicaltrials.eu/ctis-public/search#searchCriteria={\"number\":\"2023-508508-39-01\"}")
 
 # test
 expect_equal(
@@ -411,12 +410,14 @@ expect_error(
     df = list(1L)),
   "Parameter df is not a data frame"
 )
+
 # test
 expect_error(
   ctrdata:::dfFindUniqueEuctrRecord(
     df = iris),
   "Data frame does not include"
 )
+
 # test
 expect_error(
   ctrdata:::dfFindUniqueEuctrRecord(
@@ -503,7 +504,10 @@ expect_true(
 # cleanup
 rm(dF, dL)
 
+
 #### ctrShowOneTrial ####
+
+if (!checkInternet()) exit_file("Reason: no internet connectivity")
 
 id <- "NCT00617929"
 id <- "2012-003632-23"

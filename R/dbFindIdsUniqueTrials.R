@@ -13,12 +13,16 @@
 #' (and, for "EUCTR", between records for different Member States).
 #' Such differences are not considered by this function.
 #'
+#' Note that the trial concept ".isUniqueTrial" (which uses this function)
+#' can be calculated at the time of creating a data frame with
+#' \link{dbGetFieldsIntoDf}, which often may be the preferred approach.
+#'
 #' @param preferregister A vector of the order of preference for
 #' registers from which to generate unique _id's, default
-#' \code{c("EUCTR", "CTGOV", "CTGOV2", "ISRCTN", "CTIS")}
+#' \code{c("CTGOV2", "EUCTR", "CTGOV", "ISRCTN", "CTIS")}
 #'
 #' @param prefermemberstate Code of single EU Member State for which records
-#' should returned. If not available, a record for DE or lacking this, any
+#' should returned. If not available, a record for BE or lacking this, any
 #' random Member State's record for the trial will be returned.
 #' For a list of codes of EU  Member States, please see vector
 #' \code{countriesEUCTR}. Specifying "3RD" will return the Third Country
@@ -45,18 +49,34 @@
 #' @examples
 #'
 #' dbc <- nodbi::src_sqlite(
-#'     dbname = system.file("extdata", "demo.sqlite", package = "ctrdata"),
-#'     collection = "my_trials",
-#'    RSQLite::SQLITE_RO)
+#'   dbname = system.file("extdata", "demo.sqlite", package = "ctrdata"),
+#'   collection = "my_trials",
+#'   flags = RSQLite::SQLITE_RO)
 #'
 #' dbFindIdsUniqueTrials(con = dbc)[1:10]
 #'
+#' # alternative as of ctrdata version 1.21.0,
+#' # using defaults of dbFindIdsUniqueTrials()
+#' df <- dbGetFieldsIntoDf(
+#'   fields = "keyword",
+#'   calculate = "f.isUniqueTrial",
+#'   con = dbc)
+#'
+#' # using base R
+#' df[df[[".isUniqueTrial"]], ]
+#'
+#' \dontrun{
+#' library(dplyr)
+#' df %>% filter(.isUniqueTrial)
+#' }
+#'
 dbFindIdsUniqueTrials <- function(
-    preferregister = c("EUCTR", "CTGOV", "CTGOV2", "ISRCTN", "CTIS"),
-    prefermemberstate = "DE",
+    preferregister = c("CTGOV2", "EUCTR", "CTGOV", "ISRCTN", "CTIS"),
+    prefermemberstate = "BE",
     include3rdcountrytrials = TRUE,
     con,
     verbose = FALSE) {
+
   # parameter checks
   if (!all(preferregister %in% registerList)) {
     stop("'preferregister' unknown: ", preferregister, call. = FALSE)
@@ -65,6 +85,7 @@ dbFindIdsUniqueTrials <- function(
       !any(prefermemberstate == countriesEUCTR)) {
     stop("'prefermemberstate' unknown: ", prefermemberstate, call. = FALSE)
   }
+
   # complete if preferregister does not have all
   preferregister <- unique(preferregister)
   preferregister <- union(preferregister, registerList)
@@ -72,6 +93,82 @@ dbFindIdsUniqueTrials <- function(
   # objective: create a vector of database record identifiers (_id)
   # that represent unique records of clinical trials, based on user's
   # preferences for selecting the preferred from any multiple records
+
+  # create mapping table
+  listofIds <- .dbMapIdsTrials(
+    preferregister = preferregister,
+    con = con,
+    verbose = verbose)
+
+  # keep attributes when selecting
+  attribsids <- attributes(listofIds)
+  listofIds <- listofIds[, c("_id", "EUCTR", "ctrname")]
+  names(listofIds)[2] <- "a2_eudract_number"
+
+  # find unique, preferred country version of euctr
+  listofIds <- dfFindUniqueEuctrRecord(
+    df = listofIds,
+    prefermemberstate = prefermemberstate,
+    include3rdcountrytrials = include3rdcountrytrials
+  )
+
+  # prepare output
+  listofIds <- setNames(
+    object = listofIds[["_id"]],
+    nm = listofIds[["ctrname"]]
+  )
+  listofIds <- sort(listofIds)
+
+  # count
+  countIds <- table(names(listofIds))
+
+  # sort by user's input
+  countIds <- countIds[preferregister]
+  countIds[is.na(countIds)] <- 0L
+  countIds <- setNames(countIds, preferregister)
+
+  # append attributes
+  attributes(listofIds) <- c(
+    attributes(listofIds),
+    attribsids[startsWith(names(attribsids), "ctrdata-")]
+  )
+
+  # avoid returning list() if none found
+  if (length(listofIds) == 0L) listofIds <- character()
+
+  # inform user
+  message(
+    "- Keeping ", paste0(countIds, collapse = " / "), " records",
+    " from ", paste0(names(countIds), collapse = " / ")
+  )
+
+  # inform user
+  message(
+    "= Returning keys (_id) of ", length(listofIds),
+    " records in collection \"", con$collection, "\""
+  )
+
+  # return
+  return(listofIds)
+}
+
+
+
+#' create table with mapping of _id to all other ids
+#'
+#' @return vector
+#'
+#' @inheritParams dbFindIdsUniqueTrials
+#'
+#' @importFrom stats na.omit
+#'
+#' @keywords internal
+#' @noRd
+#'
+.dbMapIdsTrials <- function(
+    preferregister = c("CTGOV2", "EUCTR", "CTGOV", "ISRCTN", "CTIS"),
+    con,
+    verbose = FALSE) {
 
   ## check database connection
   if (is.null(con$ctrDb)) con <- ctrDb(con = con)
@@ -97,7 +194,10 @@ dbFindIdsUniqueTrials <- function(
     # ctis
     "ctNumber",
     "eudraCtInfo.eudraCtCode",
-    "authorizedPartI.trialDetails.clinicalTrialIdentifiers.secondaryIdentifyingNumbers.nctNumber.number",
+    # "authorizedPartI.trialDetails.clinicalTrialIdentifiers.secondaryIdentifyingNumbers.nctNumber.number",                # ctis1
+    # "authorizedPartI.trialDetails.clinicalTrialIdentifiers.secondaryIdentifyingNumbers.whoUniversalTrialNumber.number",  # ctis1
+    "authorizedApplication.authorizedPartI.trialDetails.clinicalTrialIdentifiers.secondaryIdentifyingNumbers.nctNumber.number", # ctis2
+    # "authorizedApplication.authorizedPartI.trialDetails.clinicalTrialIdentifiers.secondaryIdentifyingNumbers.whoUniversalTrialNumber.number", # ctis2
     # ctgov2
     "protocolSection.identificationModule.nctId",
     "protocolSection.identificationModule.secondaryIdInfos.id",
@@ -134,7 +234,7 @@ dbFindIdsUniqueTrials <- function(
     # get identifiers
     listofIds <- try(
       suppressMessages(suppressWarnings(
-        dbGetFieldsIntoDf(
+        .dbGetFieldsIntoDf(
           fields = fields,
           con = con,
           verbose = FALSE
@@ -165,14 +265,11 @@ dbFindIdsUniqueTrials <- function(
   # inform user
   message("\b\b\b, ", nrow(listofIds), " found in collection")
 
-  # copy attributes
-  attribsids <- attributes(listofIds)
-
   # target fields for adding cols for mangling below
   fields <- c(
     "_id",
     "ctrname",
-    # euctr
+    # euctr 8
     "a2_eudract_number",
     "a52_us_nct_clinicaltrialsgov_registry_number",
     "trialInformation.usctnIdentifier",
@@ -181,7 +278,7 @@ dbFindIdsUniqueTrials <- function(
     "a51_isrctn_international_standard_randomised_controlled_trial_number",
     "trialInformation.isrctnIdentifier",
     "a41_sponsors_protocol_code_number",
-    # ctgov
+    # ctgov 8
     "id_info.secondary_id",
     "id_info.org_study_id",
     "id_info.nct_id",
@@ -190,18 +287,20 @@ dbFindIdsUniqueTrials <- function(
     "id_info.secondary_id",
     "id_info.secondary_id",
     "id_info.org_study_id",
-    # isrctn
+    # isrctn 5
     "externalRefs.eudraCTNumber",
     "externalRefs.clinicalTrialsGovNumber",
     "externalRefs.clinicalTrialsGovNumber",
     "isrctn",
     "externalRefs.protocolSerialNumber",
-    # ctis
+    # ctis 4
     "ctNumber",
     "eudraCtInfo.eudraCtCode",
-    "authorizedPartI.trialDetails.clinicalTrialIdentifiers.secondaryIdentifyingNumbers.nctNumber.number",
-    "authorizedPartI.trialDetails.clinicalTrialIdentifiers.secondaryIdentifyingNumbers.nctNumber.number",
-    # ctgov2
+    # "authorizedPartI.trialDetails.clinicalTrialIdentifiers.secondaryIdentifyingNumbers.nctNumber.number", # ctis1
+    # "authorizedPartI.trialDetails.clinicalTrialIdentifiers.secondaryIdentifyingNumbers.nctNumber.number", # ctis1
+    "authorizedApplication.authorizedPartI.trialDetails.clinicalTrialIdentifiers.secondaryIdentifyingNumbers.nctNumber.number", # ctis2
+    "authorizedApplication.authorizedPartI.trialDetails.clinicalTrialIdentifiers.secondaryIdentifyingNumbers.nctNumber.number", # ctis2
+    # ctgov2 6
     "protocolSection.identificationModule.nctId",
     "protocolSection.identificationModule.nctId",
     "protocolSection.identificationModule.secondaryIdInfos.id",
@@ -233,16 +332,17 @@ dbFindIdsUniqueTrials <- function(
   # for mapping identifiers across registers
   names(listofIds) <- c(
     "_id", "ctrname",
-    # euctr
-    "euctr.1", "ctgov.1a", "ctgov.1b", "ctgov2.1a", "ctgov2.1b", "isrctn.1a", "isrctn.1b", "sponsor.1",
-    # ctgov
+    # euctr 8
+    "euctr.1", "ctgov.1a", "ctgov.1b", "ctgov2.1a", "ctgov2.1b", "isrctn.1a",
+    "isrctn.1b", "sponsor.1",
+    # ctgov 8
     "euctr.2a", "euctr.2b", "ctgov.2a", "ctgov2.2", "ctgov.2b", "isrctn.2",
     "sponsor.2a", "sponsor.2b",
-    # isrctn
+    # isrctn 5
     "euctr.3", "ctgov.3", "ctgov2.3", "isrctn.3", "sponsor.3",
-    # ctis
+    # ctis 4
     "ctis.1", "euctr.4", "ctgov.4", "ctgov2.4",
-    # ctgov2
+    # ctgov2 6
     "ctgov2.5", "ctgov.5a", "euctr.5", "sponsor.4a", "ctgov.5b", "sponsor.4b"
   )
 
@@ -367,64 +467,20 @@ dbFindIdsUniqueTrials <- function(
     }
 
     # add to output set
-    outSet <- rbind(outSet, tmp,
-                    make.row.names = FALSE,
-                    stringsAsFactors = FALSE
+    outSet <- rbind(
+      outSet, tmp,
+      make.row.names = FALSE,
+      stringsAsFactors = FALSE
     )
   }
-  rm(tmp)
 
-  # keep necessary columns
-  listofIds <- outSet[, c("_id", "EUCTR", "ctrname")]
-  names(listofIds)[2] <- "a2_eudract_number"
-  rm(outSet)
-
-  # find unique, preferred country version of euctr
-  listofIds <- dfFindUniqueEuctrRecord(
-    df = listofIds,
-    prefermemberstate = prefermemberstate,
-    include3rdcountrytrials = include3rdcountrytrials
-  )
-
-  # prepare output
-  listofIds <- setNames(
-    object = listofIds[["_id"]],
-    nm = listofIds[["ctrname"]]
-  )
-
-  listofIds <- sort(listofIds)
-
-  # count
-  countIds <- table(names(listofIds))
-
-  # sort by user's input
-  countIds <- countIds[preferregister]
-  countIds[is.na(countIds)] <- 0L
-  countIds <- setNames(countIds, preferregister)
-
-  # append attributes
-  attributes(listofIds) <- c(
-    attributes(listofIds),
-    attribsids[startsWith(names(attribsids), "ctrdata-")]
-  )
-
-  # avoid returning list() if none found
-  if (length(listofIds) == 0) listofIds <- character()
-
-  # inform user
-  message(
-    "- Keeping ", paste0(countIds, collapse = " / "), " records",
-    " from ", paste0(names(countIds), collapse = " / ")
-  )
-  message(
-    "= Returning keys (_id) of ", length(listofIds),
-    " records in collection \"", con$collection, "\""
-  )
+  # add meta data
+  outSet <- addMetaData(outSet, con = con)
 
   # return
-  return(listofIds)
+  return(outSet)
+
 }
-# end dbFindIdsUniqueTrials
 
 
 
@@ -450,9 +506,10 @@ dbFindIdsUniqueTrials <- function(
 #' @noRd
 #
 dfFindUniqueEuctrRecord <- function(
-    df = NULL,
-    prefermemberstate = "DE",
-    include3rdcountrytrials = TRUE) {
+    df = df,
+    prefermemberstate = prefermemberstate,
+    include3rdcountrytrials = include3rdcountrytrials) {
+
   # check parameters
   if (!any(class(df) %in% "data.frame")) {
     stop("Parameter df is not a data frame.", call. = FALSE)
@@ -466,7 +523,7 @@ dfFindUniqueEuctrRecord <- function(
     )
   }
   #
-  if (nrow(df) == 0) {
+  if (nrow(df) == 0L) {
     stop("Data frame does not contain records (0 rows).",
          call. = FALSE
     )
@@ -479,7 +536,7 @@ dfFindUniqueEuctrRecord <- function(
          call. = FALSE
     )
   }
-
+  #
   # notify it mismatching parameters
   if (prefermemberstate == "3RD" && !include3rdcountrytrials) {
     warning("Preferred EUCTR version set to 3RD country trials, but ",
@@ -527,22 +584,34 @@ dfFindUniqueEuctrRecord <- function(
     recordnames <- nms[indexofrecords]
     #
     # fnd should be only a single string, may need to be checked
-    if (sum(fnd <- grepl(prefermemberstate, recordnames)) != 0) {
+    if (sum(fnd <- grepl(prefermemberstate, recordnames)) != 0L) {
       result <- recordnames[!fnd]
       return(result)
     }
     #
-    if (sum(fnd <- grepl("DE", recordnames)) != 0) {
-      result <- recordnames[!fnd]
-      return(result)
-    }
+    # to exclude inactive country / ex member state records
+    includeRecordnames <- sub(
+      "^.+-([3A-Z]+)$", "\\1", recordnames) %in% countriesActive
     #
-    # default is to list all but first record
+    # default is to list all but first record.
     # the listed records are the duplicates
     # 3RD country trials would be listed first
     # hence selected, which is not desirable
     # unless chosen as prefermemberstate
-    return(rev(sort(recordnames))[-1])
+    result <- recordnames[includeRecordnames]
+    #
+    if (length(result) <= 1L && any(!includeRecordnames)) return(
+      recordnames[!includeRecordnames]
+    )
+    #
+    if (length(result) > 1L && any(!includeRecordnames)) return(
+      c(recordnames[!includeRecordnames],
+        sample(recordnames[includeRecordnames])[-1])
+    )
+    # else
+    return(
+      sample(recordnames[includeRecordnames])[-1]
+    )
   }
 
   # finds per trial the desired record;

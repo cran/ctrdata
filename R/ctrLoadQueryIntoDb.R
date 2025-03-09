@@ -69,9 +69,9 @@
 #' available results are always retrieved and loaded into the
 #' collection.)
 #'
-#' @param euctrresultshistory If \code{TRUE}, also download
-#' available history of results publication in "EUCTR."
-#' This is quite time-consuming. Default is \code{FALSE}.
+#' @param euctrresultshistory If \code{TRUE}, download results and also
+#' the available history of results publication in "EUCTR."
+#' This somewhat time-consuming. Default is \code{FALSE}.
 #'
 #' @param ctgov2history For trials from CTGOV2, retrieve historic
 #' versions of the record. Default is \code{FALSE}, because this
@@ -119,6 +119,11 @@
 #' collection name, as well as the query history of this database
 #' collection) to facilitate documentation.
 #'
+#' @export
+#'
+#' @importFrom httr set_config user_agent
+#' @importFrom utils packageDescription
+#'
 #' @examples
 #' \dontrun{
 #'
@@ -162,11 +167,6 @@
 #'   con = dbc
 #' )
 #' }
-#'
-#' @export
-#'
-#' @importFrom httr set_config user_agent
-#' @importFrom utils packageDescription
 #'
 ctrLoadQueryIntoDb <- function(
     queryterm = NULL,
@@ -213,6 +213,8 @@ ctrLoadQueryIntoDb <- function(
          call. = FALSE
     )
   }
+  if (euctrresultshistory) euctrresults <- TRUE
+
 
   ## obtain queryterm register --------------------------------------------
 

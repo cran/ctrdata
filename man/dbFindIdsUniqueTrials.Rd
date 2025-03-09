@@ -5,8 +5,8 @@
 \title{Get identifiers of deduplicated trial records}
 \usage{
 dbFindIdsUniqueTrials(
-  preferregister = c("EUCTR", "CTGOV", "CTGOV2", "ISRCTN", "CTIS"),
-  prefermemberstate = "DE",
+  preferregister = c("CTGOV2", "EUCTR", "CTGOV", "ISRCTN", "CTIS"),
+  prefermemberstate = "BE",
   include3rdcountrytrials = TRUE,
   con,
   verbose = FALSE
@@ -15,10 +15,10 @@ dbFindIdsUniqueTrials(
 \arguments{
 \item{preferregister}{A vector of the order of preference for
 registers from which to generate unique _id's, default
-\code{c("EUCTR", "CTGOV", "CTGOV2", "ISRCTN", "CTIS")}}
+\code{c("CTGOV2", "EUCTR", "CTGOV", "ISRCTN", "CTIS")}}
 
 \item{prefermemberstate}{Code of single EU Member State for which records
-should returned. If not available, a record for DE or lacking this, any
+should returned. If not available, a record for BE or lacking this, any
 random Member State's record for the trial will be returned.
 For a list of codes of EU  Member States, please see vector
 \code{countriesEUCTR}. Specifying "3RD" will return the Third Country
@@ -52,14 +52,33 @@ function to provide a vector of identifiers of deduplicated trials.
 Note that the content of records may differ between registers
 (and, for "EUCTR", between records for different Member States).
 Such differences are not considered by this function.
+
+Note that the trial concept ".isUniqueTrial" (which uses this function)
+can be calculated at the time of creating a data frame with
+\link{dbGetFieldsIntoDf}, which often may be the preferred approach.
 }
 \examples{
 
 dbc <- nodbi::src_sqlite(
-    dbname = system.file("extdata", "demo.sqlite", package = "ctrdata"),
-    collection = "my_trials",
-   RSQLite::SQLITE_RO)
+  dbname = system.file("extdata", "demo.sqlite", package = "ctrdata"),
+  collection = "my_trials",
+  flags = RSQLite::SQLITE_RO)
 
 dbFindIdsUniqueTrials(con = dbc)[1:10]
+
+# alternative as of ctrdata version 1.21.0,
+# using defaults of dbFindIdsUniqueTrials()
+df <- dbGetFieldsIntoDf(
+  fields = "keyword",
+  calculate = "f.isUniqueTrial",
+  con = dbc)
+
+# using base R
+df[df[[".isUniqueTrial"]], ]
+
+\dontrun{
+library(dplyr)
+df \%>\% filter(.isUniqueTrial)
+}
 
 }

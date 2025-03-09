@@ -51,13 +51,13 @@
 #' @examples
 #'
 #' dbc <- nodbi::src_sqlite(
-#'     dbname = system.file("extdata", "demo.sqlite", package = "ctrdata"),
-#'     collection = "my_trials",
-#'    RSQLite::SQLITE_RO)
+#'   dbname = system.file("extdata", "demo.sqlite", package = "ctrdata"),
+#'   collection = "my_trials",
+#'   flags = RSQLite::SQLITE_RO)
 #'
 #' dbFindFields(namepart = "date", con = dbc)[1:5]
 #'
-#' # view all 3350+ fields from all registers:
+#' # view all 1880+ fields from all registers:
 #'
 #' allFields <- dbFindFields(con = dbc, sample = FALSE)
 #'

@@ -108,11 +108,11 @@ expect_equal(
 
 # get some more trials
 tmp <- ctrLoadQueryIntoDb(
-  queryterm = "https://euclinicaltrials.eu/ctis-public/search#searchCriteria={%22status%22:[8]}",
+  queryterm = 'https://euclinicaltrials.eu/ctis-public/search#searchCriteria={"containAny":"cancer","status":[8]}',
   con = dbc
 )
 # test
-expect_true(tmp$n > 450L)
+expect_true(tmp$n > 125L)
 
 # get all field names
 tmpFields <- suppressMessages(
@@ -124,7 +124,7 @@ tmpFields <- suppressMessages(
 
 # test
 expect_true(
-  length(tmpFields) > 900L)
+  length(tmpFields) > 950L)
 
 # debug
 if (FALSE){
@@ -173,6 +173,7 @@ for (i in unique(groupsNo)) {
 # dates
 tmpFields <- tmpFields[
   (grepl("[.]date$", tmpFields, ignore.case = TRUE) |
+     grepl("^startDateEU$", tmpFields, ignore.case = TRUE) |
      grepl("Date$", tmpFields, ignore.case = FALSE)) &
     !grepl("^decisionDate$", tmpFields, ignore.case = FALSE)
 ]
@@ -216,7 +217,7 @@ expect_message(
   " [0-9]+ records")
 
 # test
-expect_true(length(res) >= 20L)
+expect_true(length(res) >= 150L)
 
 
 #### documents.path ####
@@ -228,7 +229,7 @@ if (!length(dbc$url) || grepl("localhost", dbc$url)) {
   expect_message(
     suppressWarnings(
       ctrLoadQueryIntoDb(
-        queryterm = 'https://euclinicaltrials.eu/ctis-public/search#searchCriteria={"containAny":"cancer","status":[3]}',
+        queryterm = 'https://euclinicaltrials.eu/ctis-public/search#searchCriteria={%22containAny%22:%22antibody%22,%22status%22:[8],%22ageGroupCode%22:[2]}',
         documents.path = tmpDir,
         documents.regexp = "icf",
         con = dbc

@@ -37,9 +37,9 @@
 #'
 #' # Open all queries that were loaded into demo collection
 #' dbc <- nodbi::src_sqlite(
-#'     dbname = system.file("extdata", "demo.sqlite", package = "ctrdata"),
-#'     collection = "my_trials",
-#'    RSQLite::SQLITE_RO)
+#'   dbname = system.file("extdata", "demo.sqlite", package = "ctrdata"),
+#'   collection = "my_trials",
+#'   flags = RSQLite::SQLITE_RO)
 #'
 #' dbh <- dbQueryHistory(con = dbc)
 #'
@@ -156,7 +156,7 @@ ctrOpenSearchPagesInBrowser <- function(
         "CTGOV" = ctgovClassicToCurrent(url),
         "CTGOV2" = paste0("https://clinicaltrials.gov/search?", url),
         "CTGOV2expert" = paste0("https://clinicaltrials.gov/expert-search?", url),
-        "CTIS" = paste0("https://euclinicaltrials.eu/ctis-public/search?", url),
+        "CTIS" = paste0("https://euclinicaltrials.eu/ctis-public/search#", url),
         "EUCTR" = paste0("https://www.clinicaltrialsregister.eu/ctr-search/search?", url, "#tabs"),
         "ISRCTN" = paste0("https://www.isrctn.com/search?", url)
       )

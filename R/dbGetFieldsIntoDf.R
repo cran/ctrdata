@@ -27,10 +27,14 @@
 #' of `c("a.b.c.d", "a.b.c.e")`, accessing sought fields with
 #' \link{dfTrials2Long} followed by \link{dfName2Value} or other R functions.
 #'
-#' @param verbose Printing additional information if set to \code{TRUE};
-#' (default \code{FALSE}).
+#' @param calculate Vector of one or more strings, which are names of functions
+#' to calculate certain trial concepts from fields in the collection across
+#' different registers.
 #'
 #' @inheritParams ctrDb
+#'
+#' @param verbose Printing additional information if set to \code{TRUE};
+#' (default \code{FALSE}).
 #'
 #' @param ... Do not use (captures deprecated parameter \code{stopifnodata})
 #'
@@ -40,17 +44,17 @@
 #' The maximum number of rows of the returned data frame is equal to,
 #' or less than the number of trial records in the database collection.
 #'
-#' @importFrom nodbi docdb_query
-#' @importFrom stats na.omit
-#'
 #' @export
+#'
+#' @importFrom dplyr full_join
+#' @importFrom stats na.omit
 #'
 #' @examples
 #'
 #' dbc <- nodbi::src_sqlite(
-#'    dbname = system.file("extdata", "demo.sqlite", package = "ctrdata"),
-#'    collection = "my_trials",
-#'    RSQLite::SQLITE_RO)
+#'   dbname = system.file("extdata", "demo.sqlite", package = "ctrdata"),
+#'   collection = "my_trials",
+#'   flags = RSQLite::SQLITE_RO)
 #'
 #' # get fields that are nested within another field
 #' # and can have multiple values with the nested field
@@ -64,10 +68,44 @@
 #'   fields = "keyword",
 #'   con = dbc)
 #'
+#' # calculate new field(s) from data across trials
+#' df <- dbGetFieldsIntoDf(
+#'   fields = "keyword",
+#'   calculate = c("f.statusRecruitment", "f.isUniqueTrial", "f.startDate"),
+#'   con = dbc)
+#'
+#' table(df$.statusRecruitment, exclude = NULL)
+#'
+#' \dontrun{
+#' library(dplyr)
+#' library(ggplot2)
+#'
+#' df %>%
+#'   filter(.isUniqueTrial) %>%
+#'   count(.statusRecruitment)
+#'
+#' df %>%
+#'   filter(.isUniqueTrial) %>%
+#'   ggplot() +
+#'   stat_ecdf(aes(
+#'     x = .startDate,
+#'     colour = .statusRecruitment))
+#' }
+#'
 dbGetFieldsIntoDf <- function(
     fields = "",
+    calculate = "",
     con,
     verbose = FALSE, ...) {
+
+  # handle changed signature
+  if (inherits(calculate, "docdb_src")) {
+    warning(
+      "The second parameter of dbGetFieldsIntoDf() has changed, please use ",
+      "the named parameter con = ... to specify the database connection. "
+    )
+    con <- calculate
+  }
 
   # check fields
   if (!is.vector(fields) ||
@@ -96,12 +134,16 @@ dbGetFieldsIntoDf <- function(
   fields <- unique(fields["_id" != fields])
 
   # check if valid fields
-  if (any(fields == "") || (length(fields) == 0)) {
-    stop("'fields' contains empty elements; ",
-         "please provide a vector of strings of field names. ",
-         "Function dbFindFields() can be used to find field names. ",
+  if ((all(calculate == "" | is.na(calculate)) || (length(calculate) == 0L)) &&
+      (all(fields == "" | is.na(fields)) || (length(fields) == 0L))) {
+    stop("'fields' and 'calculate' are empty; ",
+         "please provide a vector of strings in one or both arguments. ",
+         "Function dbFindFields() helps to find fields in the collection. ",
          call. = FALSE)
   }
+
+  # notify user for potential backend
+  # compatibility issues with PostgreSQL
   if (length(fields) > 49L) {
     message(
       "If compatibility with nodbi::src_postgres() is needed, specify fewer ",
@@ -110,6 +152,151 @@ dbGetFieldsIntoDf <- function(
       "and sought fields can be extracted with dfTrials2Long() followed by ",
       "dfName2Value() or other R functions.")
   }
+
+  # nullify if empty
+  fields <- fields[fields != ""]
+  calculate <- calculate[calculate != ""]
+
+  # get all functions
+  fcts <- as.character(utils::ls.str(
+    getNamespace("ctrdata"),
+    all.names = TRUE,
+    pattern = "^f[.][a-z]"))
+
+  # check if function exists
+  stopifnot(!length(calculate) || all(calculate %in% fcts))
+
+  # get all unique fields needed for fcts
+  fctFields <- sapply(
+    calculate, function(i) do.call(i, list()),
+    simplify = FALSE)
+
+  # merge fields with fields needed for fcts
+  getFields <- unique(unlist(c(fields, fctFields)))
+
+  # inform user
+  message("Querying database (", length(getFields), " fields)...")
+
+  # get data
+  out <- try(.dbGetFieldsIntoDf(
+    fields = getFields,
+    con = con,
+    verbose = verbose, ...),
+    silent = TRUE)
+
+  # check and propagate error
+  if (inherits(out, "try-error") &&
+      grepl("No records with values", out)) stop(out, call. = FALSE)
+
+  # check errors if they can be handled by iterating
+  if (inherits(out, "try-error")) {
+
+    # PostgreSQL
+    if (grepl("fewer than 50 fields", out)) maxFields <- 49L
+
+    # SQLite Error : too many arguments on function json_object
+    if (grepl("too many arguments", out)) maxFields <- 100L
+
+    # propagate other errors
+    if (!exists("maxFields")) stop(out[1], call. = FALSE)
+
+    # switch to iterating
+    message(
+      "Database reports too many fields to obtain or ",
+      "calculate, switching to iterating over fields...")
+
+    # first get fields
+    if (!length(fields)) fields <- "_id"
+
+    # safe guard against many fields
+    iFields <- seq_along(fields) %/% maxFields + 1L
+    for (i in seq_len(max(iFields))) {
+
+      outi <- try(.dbGetFieldsIntoDf(
+        fields = unique(unlist(fields[iFields == i])),
+        con = con,
+        verbose = verbose, ...),
+        silent = TRUE)
+
+      if (i == 1L) {
+        out <- outi
+      } else {
+        out <- dplyr::full_join(
+          out,
+          outi[, c("_id", i), drop = FALSE],
+          by = "_id")
+      }
+
+    }
+
+    # second, run functions
+    for (i in calculate) {
+
+      # inform user
+      message(
+        "Calculating ", i,
+        "...                            \r",
+        appendLF = FALSE)
+
+      outi <- .dbGetFieldsIntoDf(
+        fields = unique(unlist(fctFields[i])),
+        con = con,
+        verbose = verbose, ...)
+
+      # calculate trial concept
+      outi <- do.call(i, list(outi))
+      # full join because outi has only
+      # _id and newly calculated columns
+      out <- dplyr::full_join(
+        out, outi, by = "_id")
+
+    }
+
+  } else {
+
+    # run functions
+    for (i in calculate) {
+
+      # calculate trial concept
+      outi <- do.call(i, list(out))
+      # full join because outi has only
+      # _id and newly calculated columns
+      out <- dplyr::full_join(
+        out, outi, by = "_id")
+
+    }
+
+    # remove fields only needed for functions
+    rmFields <- setdiff(unlist(fctFields), c("_id", fields))
+    rmFields <- na.omit(match(rmFields, names(out)))
+    if (length(rmFields)) out <- out[ , -rmFields]
+
+  }
+
+  # return
+  return(dfOrTibble(out))
+
+}
+
+
+#' .dbGetFieldsIntoDf
+#'
+#' internal workhorse
+#'
+#' @return tibble or data frame, depending on loaded packages
+#'
+#' @inheritParams dbGetFieldsIntoDf
+#'
+#' @importFrom nodbi docdb_query
+#' @importFrom stats na.omit
+#'
+#' @keywords internal
+#' @noRd
+#'
+.dbGetFieldsIntoDf <- function(
+    fields = "",
+    con,
+    verbose = FALSE, ...) {
 
   # check database connection
   if (is.null(con$ctrDb)) con <- ctrDb(con = con)
@@ -124,7 +311,8 @@ dbGetFieldsIntoDf <- function(
 
   # early exit
   if (is.null(dfi) || !ncol(dfi)) stop(
-    "No records with values for any specified field."
+    "No records with values for any specified field.",
+    call. = FALSE
   )
 
   # user info
@@ -132,8 +320,9 @@ dbGetFieldsIntoDf <- function(
 
   # warn
   notFound <- setdiff(fields, names(dfi))
-  if (length(notFound)) warning("No data could be extracted for '",
-                                paste0(notFound, collapse = "', '"), "'.")
+  if (length(notFound)) warning(
+    "No data could be extracted for '",
+    paste0(notFound, collapse = "', '"), "'.")
 
   # recursively widen results if a column is a data frame
   # by adding the data frame's columns as result columns.
@@ -207,7 +396,6 @@ dbGetFieldsIntoDf <- function(
   row.names(dfi) <- NULL
 
   # return
-  if (any("tibble" == .packages())) return(tibble::as_tibble(dfi))
   return(dfi)
 
 } # end dbGetFieldsIntoDf

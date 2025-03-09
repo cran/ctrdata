@@ -22,29 +22,39 @@ A vector, with the type of the columns to be merged
 \description{
 Merge variables in a data frame such as returned by \link{dbGetFieldsIntoDf}
 into a new variable, and optionally also map its values to new levels.
+See \link{ctrdata-trial-concepts} for pre-defined cross-register concepts
+that are already implemented based on merging fields from different
+registers and calculating a new field.
 }
 \examples{
 
 dbc <- nodbi::src_sqlite(
-    dbname = system.file("extdata", "demo.sqlite", package = "ctrdata"),
-    collection = "my_trials",
-   RSQLite::SQLITE_RO)
+  dbname = system.file("extdata", "demo.sqlite", package = "ctrdata"),
+  collection = "my_trials",
+  flags = RSQLite::SQLITE_RO)
 
 df <- dbGetFieldsIntoDf(
-    fields = c("overall_status", "x5_trial_status"),
-    con = dbc
+  fields = c(
+    "f11_trial_has_subjects_under_18",
+    "protocolSection.eligibilityModule.stdAges",
+    "participants.ageRange"
+  ),
+  con = dbc
 )
 
-statusvalues <- list(
-    "ongoing" = c("Recruiting", "Active", "Ongoing"),
-    "completed" = c("Completed", "Prematurely Ended", "Terminated"),
-    "other" = c("Withdrawn", "Suspended", "No longer available")
+newValues <- list(
+  "paediatric" = c("Neonate", "Child", "CHILD / ADULT",
+                   "CHILD / ADULT / OLDER_ADULT", "TRUE"),
+  "adultOnly" = c("Adult", "Senior"),
+  "other" = c("Not Specified", "All", "Mixed", "Other")
 )
 
-dfMergeVariablesRelevel(
+table(
+  dfMergeVariablesRelevel(
     df = df,
-    colnames = 'contains("status")',
-    levelslist = statusvalues
+    colnames = 'matches("age|18")',
+    levelslist = newValues
+  )
 )
 
 }

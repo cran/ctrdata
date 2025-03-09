@@ -29,9 +29,9 @@
 #' @examples
 #'
 #' dbc <- nodbi::src_sqlite(
-#'    dbname = system.file("extdata", "demo.sqlite", package = "ctrdata"),
-#'    collection = "my_trials",
-#'    RSQLite::SQLITE_RO)
+#'   dbname = system.file("extdata", "demo.sqlite", package = "ctrdata"),
+#'   collection = "my_trials",
+#'   flags = RSQLite::SQLITE_RO)
 #'
 #' dfwide <- dbGetFieldsIntoDf(
 #'   fields = "clinical_results.participant_flow",
@@ -101,7 +101,7 @@ dfTrials2Long <- function(df) {
       o <- lapply(seq_along(ci), function(ct) {
 
         o <- unlist(flattenDf(ci[ct]))
-        o <- na.omit(o) # TODO
+        o <- na.omit(o)
         if (is.null(o) || !length(o)) return(NULL)
 
         # check identifiers added by unlist
@@ -215,7 +215,6 @@ dfTrials2Long <- function(df) {
     " unique names of variables")
 
   # output
-  if (any("tibble" == .packages())) return(tibble::as_tibble(out))
-  return(out)
+  return(dfOrTibble(out))
 
 } # end dfTrials2Long
