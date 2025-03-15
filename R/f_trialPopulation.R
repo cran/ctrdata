@@ -5,7 +5,8 @@
 #'
 #' Trial concept calculated: inclusion and exclusion criteria as well as
 #' age groups that can participate in a trial, based on from protocol-related
-#' information.
+#' information. (See \link{dfMergeVariablesRelevel} example for healthy
+#' volunteers.)
 #'
 #' @param df data frame such as from \link{dbGetFieldsIntoDf}. If `NULL`,
 #' prints fields needed in `df` for calculating this trial concept, which can
@@ -58,16 +59,20 @@ f.trialPopulation <- function(df = NULL) {
       "f11_trial_has_subjects_under_18",
       "f12_adults_1864_years",
       "f13_elderly_65_years"
+      # "f31_healthy_volunteers"
     ),
     "ctgov" = c(
       "eligibility.criteria.textblock",
       "eligibility.maximum_age",
       "eligibility.minimum_age"
+      # "eligibility.healthy_volunteers"
     ),
     "ctgov2" = c(
       "protocolSection.eligibilityModule.maximumAge",
       "protocolSection.eligibilityModule.minimumAge",
-      "protocolSection.eligibilityModule.eligibilityCriteria"
+      "protocolSection.eligibilityModule.eligibilityCriteria",
+      "protocolSection.eligibilityModule.stdAges"
+      # "protocolSection.eligibilityModule.healthyVolunteers"
     ),
     "isrctn" = c(
       "participants.ageRange",
@@ -76,6 +81,10 @@ f.trialPopulation <- function(df = NULL) {
     ),
     "ctis" = c(
       "ageGroup",
+      # ctis1
+      "authorizedPartI.trialDetails.trialInformation.eligibilityCriteria.principalInclusionCriteria.principalInclusionCriteria",
+      "authorizedPartI.trialDetails.trialInformation.eligibilityCriteria.principalExclusionCriteria.principalExclusionCriteria",
+      # ctis2
       "authorizedApplication.authorizedPartI.trialDetails.trialInformation.eligibilityCriteria.principalInclusionCriteria.principalInclusionCriteria",
       "authorizedApplication.authorizedPartI.trialDetails.trialInformation.eligibilityCriteria.principalExclusionCriteria.principalExclusionCriteria"
     ))
@@ -205,6 +214,22 @@ f.trialPopulation <- function(df = NULL) {
         .default = .data$.trialPopulationAgeGroup
       ),
       #
+      #
+      .trialPopulationAgeGroup = dplyr::case_when(
+        !is.na(.data$.trialPopulationAgeGroup) ~ .data$.trialPopulationAgeGroup,
+        # CHILD / ADULT / OLDER_ADULT
+        grepl("CHILD", .data$protocolSection.eligibilityModule.stdAges) &
+          grepl("ADULT", .data$protocolSection.eligibilityModule.stdAges) &
+          grepl("OLDER_ADULT", .data$protocolSection.eligibilityModule.stdAges) ~ "P+A+E",
+        grepl("CHILD", .data$protocolSection.eligibilityModule.stdAges) &
+          grepl("ADULT", .data$protocolSection.eligibilityModule.stdAges) ~ "P+A",
+        grepl("ADULT", .data$protocolSection.eligibilityModule.stdAges) &
+          grepl("OLDER_ADULT", .data$protocolSection.eligibilityModule.stdAges) ~ "A+E",
+        grepl("CHILD", .data$protocolSection.eligibilityModule.stdAges) ~ "P",
+        grepl("ADULT", .data$protocolSection.eligibilityModule.stdAges) ~ "A",
+        grepl("OLDER_ADULT", .data$protocolSection.eligibilityModule.stdAges) ~ "E"
+      ),
+      #
       protocolSection.eligibilityModule.eligibilityCriteria = gsub(
         "[\n\r]+", "", .data$protocolSection.eligibilityModule.eligibilityCriteria),
       #
@@ -277,12 +302,24 @@ f.trialPopulation <- function(df = NULL) {
         .default = .data$.trialPopulationAgeGroup
       ),
       #
+      # ctis1
+      .trialPopulationInclusion = dplyr::if_else(
+        is.na(.data$authorizedPartI.trialDetails.trialInformation.eligibilityCriteria.principalInclusionCriteria.principalInclusionCriteria),
+        .data$.trialPopulationInclusion,
+        .data$authorizedPartI.trialDetails.trialInformation.eligibilityCriteria.principalInclusionCriteria.principalInclusionCriteria
+      ),
+      #
+      .trialPopulationExclusion = dplyr::if_else(
+        is.na(.data$authorizedPartI.trialDetails.trialInformation.eligibilityCriteria.principalExclusionCriteria.principalExclusionCriteria),
+        .data$.trialPopulationExclusion,
+        .data$authorizedPartI.trialDetails.trialInformation.eligibilityCriteria.principalExclusionCriteria.principalExclusionCriteria
+      ),
+      # ctis2
       .trialPopulationInclusion = dplyr::if_else(
         is.na(.data$authorizedApplication.authorizedPartI.trialDetails.trialInformation.eligibilityCriteria.principalInclusionCriteria.principalInclusionCriteria),
         .data$.trialPopulationInclusion,
         .data$authorizedApplication.authorizedPartI.trialDetails.trialInformation.eligibilityCriteria.principalInclusionCriteria.principalInclusionCriteria
       ),
-      #
       .trialPopulationExclusion = dplyr::if_else(
         is.na(.data$authorizedApplication.authorizedPartI.trialDetails.trialInformation.eligibilityCriteria.principalExclusionCriteria.principalExclusionCriteria),
         .data$.trialPopulationExclusion,

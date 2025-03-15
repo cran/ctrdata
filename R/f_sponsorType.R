@@ -93,9 +93,11 @@ f.sponsorType <- function(df = NULL) {
   #### . EUCTR ####
   df %>% dplyr::mutate(
     #
-    out = dplyr::case_when(
-      .data$b1_sponsor.b31_and_b32_status_of_the_sponsor == "Commercial" ~ stc,
-      .data$b1_sponsor.b31_and_b32_status_of_the_sponsor == "Non-Commercial" ~ stn
+    out = dplyr::case_match(
+      as.character(.data$b1_sponsor.b31_and_b32_status_of_the_sponsor),
+      "Commercial" ~ stc,
+      "Non-Commercial" ~ stn,
+      .default = NA_character_
     )
   ) %>%
     dplyr::pull("out") -> df$euctr
@@ -105,10 +107,11 @@ f.sponsorType <- function(df = NULL) {
   df %>% dplyr::mutate(
     #
     out = dplyr::case_match(
-      .data$sponsors.lead_sponsor.agency_class,
+      as.character(.data$sponsors.lead_sponsor.agency_class),
       c("NIH", "U.S. Fed") ~ stn,
       c("Industry") ~ stc,
-      c("Indiv", "Ambig", "Other", "Unknown") ~ sto
+      c("Indiv", "Ambig", "Other", "Unknown") ~ sto,
+      .default = NA_character_
     )
   ) %>%
     dplyr::pull("out") -> df$ctgov
@@ -131,10 +134,11 @@ f.sponsorType <- function(df = NULL) {
   df %>% dplyr::mutate(
     #
     out = dplyr::case_match(
-      .data$protocolSection.sponsorCollaboratorsModule.leadSponsor.class,
+      as.character(.data$protocolSection.sponsorCollaboratorsModule.leadSponsor.class),
       c("NIH", "FED", "OTHER_GOV") ~ stn,
       c("INDUSTRY") ~ stc,
-      c("INDIV", "AMBIG", "OTHER", "UNKNOWN") ~ sto
+      c("INDIV", "AMBIG", "OTHER", "UNKNOWN") ~ sto,
+      .default = NA_character_
     )
   ) %>%
     dplyr::pull("out") -> df$ctgov2
@@ -144,8 +148,9 @@ f.sponsorType <- function(df = NULL) {
   df %>% dplyr::mutate(
     #
     out = dplyr::case_match(
-      .data$ctrname,
-      "ISRCTN" ~ sto
+      as.character(.data$ctrname),
+      "ISRCTN" ~ sto,
+      .default = NA_character_
     )
   ) %>%
     dplyr::pull("out") -> df$isrctn
@@ -190,7 +195,8 @@ f.sponsorType <- function(df = NULL) {
       out = dplyr::case_when(
         .data$helper4 ~ stn,
         !.data$helper4 ~ stc,
-        !is.na(.data$helper4) ~ sto
+        !is.na(.data$helper4) ~ sto,
+        .default = NA_character_
       )
     ) %>%
     dplyr::pull("out") -> df$ctis
