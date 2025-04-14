@@ -87,6 +87,12 @@
 #' CTIS, historic versions were available in the `applications`
 #' field only before the register's relaunch on 2024-06-17.
 #'
+#' @param ctishistory If \code{TRUE}, and only when using \code{querytoupdate},
+#' move the current CTIS record into an array \code{history} with the record
+#' which holds one or more historic versions, before updating the rest of the
+#' record from CTIS. Default is \code{FALSE}, because this is a time-consuming
+#' operation. See "Historic versions" in \code{vignette("ctrdata_summarise")}.
+#'
 #' @param annotation.text Text to be including into the field
 #' "annotation" in the records retrieved with the query
 #' that is to be loaded into the collection.
@@ -178,6 +184,7 @@ ctrLoadQueryIntoDb <- function(
     euctrresults = FALSE,
     euctrresultshistory = FALSE,
     ctgov2history = FALSE,
+    ctishistory = TRUE, # TODO
     documents.path = NULL,
     documents.regexp = "prot|sample|statist|sap_|p1ar|p2ars|icf|ctalett|lay|^[0-9]+ ",
     annotation.text = "",
@@ -294,6 +301,7 @@ ctrLoadQueryIntoDb <- function(
   } # if not querytoupdate
 
   # check annotation parameters
+  annotation.text <- as.character(annotation.text)
   if (annotation.text != "" &&
       !any(annotation.mode == c("append", "prepend", "replace"))) {
     stop("'annotation.mode' incorrect", call. = FALSE)
@@ -319,6 +327,8 @@ ctrLoadQueryIntoDb <- function(
     rerunparameters <- ctrRerunQuery(
       querytoupdate = querytoupdate,
       forcetoupdate = forcetoupdate,
+      ctishistory = ctishistory,
+      only.count = only.count,
       con = con,
       verbose = verbose,
       queryupdateterm = queryupdateterm
@@ -332,9 +342,7 @@ ctrLoadQueryIntoDb <- function(
     failed <- rerunparameters$failed
     #
     # early exit if ctrRerunQuery failed
-    if (failed) {
-      return(invisible(emptyReturn))
-    }
+    if (!is.null(failed)) return(failed)
     #
   } # if querytermtoupdate
 
@@ -350,6 +358,7 @@ ctrLoadQueryIntoDb <- function(
     euctrresults = euctrresults,
     euctrresultshistory = euctrresultshistory,
     ctgov2history = ctgov2history,
+    ctishistory = ctishistory,
     documents.path = documents.path,
     documents.regexp = documents.regexp,
     annotation.text = annotation.text,
@@ -361,17 +370,19 @@ ctrLoadQueryIntoDb <- function(
   )
 
   # call core functions
-  imported <- switch(as.character(params$register),
-                     "CTGOV2" = do.call(ctrLoadQueryIntoDbCtgov2, params),
-                     "EUCTR" = do.call(ctrLoadQueryIntoDbEuctr, params),
-                     "ISRCTN" = do.call(ctrLoadQueryIntoDbIsrctn, params),
-                     "CTIS" = do.call(ctrLoadQueryIntoDbCtis, params)
+  imported <- switch(
+    as.character(params$register),
+    "CTGOV2" = do.call(ctrLoadQueryIntoDbCtgov2, params),
+    "EUCTR" = do.call(ctrLoadQueryIntoDbEuctr, params),
+    "ISRCTN" = do.call(ctrLoadQueryIntoDbIsrctn, params),
+    "CTIS" = do.call(ctrLoadQueryIntoDbCtis, params)
   )
 
   ## annotate records ---------------------------------------------------------
 
   # add annotations
-  if ((annotation.text != "") &&
+  if (!only.count &&
+      (annotation.text != "") &&
       (length(imported$success) > 0L)) {
     # dispatch
     dbCTRAnnotateQueryRecords(
@@ -392,11 +403,8 @@ ctrLoadQueryIntoDb <- function(
 
   ## finalise
 
-  # only count?
-  if (only.count) {
-    # return number of trials
-    return(imported)
-  }
+  # early exit if only count
+  if (only.count) {return(imported)}
 
   # add query parameters to database
   if (imported$n > 0L || !is.null(querytoupdate)) {

@@ -19,15 +19,14 @@ data frame with columns `_id` and new columns:
 }
 \description{
 Trial concept calculated: inclusion and exclusion criteria as well as
-age groups that can participate in a trial, based on from protocol-related
-information. (See \link{dfMergeVariablesRelevel} example for healthy
-volunteers.)
+age groups that can participate in a trial, based on protocol-related
+information. Since CTGOV uses single text field for eligibility criteria,
+text extraction is used to separate in- and exclusion criteria.
+(See \link{dfMergeVariablesRelevel} with an example for healthy volunteers.)
 }
 \examples{
 # fields needed
 f.trialPopulation()
-
-\dontrun{
 
 # apply trial concept when creating data frame
 dbc <- nodbi::src_sqlite(
@@ -36,6 +35,6 @@ dbc <- nodbi::src_sqlite(
 trialsDf <- dbGetFieldsIntoDf(
   calculate = "f.trialPopulation",
   con = dbc)
-}
+trialsDf
 
 }

@@ -248,6 +248,67 @@ knitr::opts_chunk$set(
 # # [13] "f.statusRecruitment"          "f.trialObjectives"            "f.trialPhase"
 # # [16] "f.trialPopulation"
 
+## ----results='asis'-----------------------------------------------------------
+# '
+# [
+#   {
+#    "_id":"NCT01234567",
+#    "title": "Current title",
+#    "clinical_results": ...,
+#    ...,
+#    "history": [
+#      {
+#       "history_version": {
+#         "version_number": 1,
+#         "version_date": "2020-21-22 10:11:12"},
+#       "title": "Original title",
+#       "clinical_results": ...,
+#       ...
+#      },
+#      {
+#       "history_version": {
+#         "version_number": 2,
+#         "version_date": "2021-22-23 11:13:13"},
+#       "title": "Later title",
+#       "clinical_results": ...,
+#       ...
+#      }
+#    ]
+#   },
+#   {
+#    "_id":"2022-502051-56-00",
+#    "title": "Current title",
+#    "ctrname": "CTIS",
+#    "lastUpdated": "2025-04-07"
+#    "authorizedPartsII": ...,
+#    ...,
+#    "history": [
+#      {
+#       "history_version": {
+#         "version_number": 0,
+#         "version_date": "2025-04-06"},
+#       "title": "Intermediate title",
+#       "ctrname": "CTIS",
+#       "lastUpdated": "2025-04-06"
+#       "authorizedPartsII": ...,
+#       ...
+#      },
+#      {
+#       "history_version": {
+#         "version_number": 0,
+#         "version_date": "2025-04-05"},
+#       "title": "Original title",
+#       "ctrname": "CTIS",
+#       "lastUpdated": "2025-04-05"
+#       "authorizedPartsII": ...,
+#       ...
+#      }
+#    ]
+#   },
+#   ...
+# ]
+# '
+
 ## ----sample_size_over_time----------------------------------------------------
 # # Load previous query (above), specifying that
 # # for each trial, 5 versions should be retrieved

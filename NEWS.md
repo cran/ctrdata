@@ -1,3 +1,17 @@
+# ctrdata 1.22.0
+
+## Improvements
+- When using `querytoupdate` for CTIS, set `ctishistory = TRUE` to create historic versions from previously downloaded trial record, see `vignette("ctrdata_summarise")`
+- Trial concept `f.trialObjectives()` improved with structured data from CTIS and EUCTR
+- `ctrGenerateQueries()` now defaults to interventional trials with medicines
+- `ctrGenerateQueries()` additionally provides a CTGOV expert search query
+- `ctrGenerateQueries()` now also covers countries of trial conduct 
+
+## Bug fix
+- Fixed for `ISRCTN` API term mangling
+- Fixed digesting marginal cases in notifications in `f.statusRecruitment()`
+- Fixed `ctrGenerateQueries` to handle 'or' as needed for certain filters
+
 # ctrdata 1.21.1
 
 ## Bug fix 

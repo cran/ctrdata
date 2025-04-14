@@ -15,8 +15,9 @@ ctrGenerateQueries(
   startAfter = NULL,
   completedBefore = NULL,
   completedAfter = NULL,
+  onlyMedIntervTrials = TRUE,
   onlyWithResults = FALSE,
-  registers = c("EUCTR", "ISRCTN", "CTIS", "CTGOV2")
+  countries = NULL
 )
 }
 \arguments{
@@ -38,9 +39,11 @@ category, not the union set of "phase 2" and "phase 3")}
 which includes "ended early" but this cannot be searched; use trial concept
 \link{f.statusRecruitment} to identify this status)}
 
-\item{startBefore}{String that can be interpreted as date, see example}
+\item{startBefore}{String that can be interpreted as date (for EUCTR, when
+trial was first registered)}
 
-\item{startAfter}{String that can be interpreted as date}
+\item{startAfter}{String that can be interpreted as date (for EUCTR, when
+trial was first registered)}
 
 \item{completedBefore}{String that can be interpreted as date (does not work
 with EUCTR)}
@@ -48,9 +51,12 @@ with EUCTR)}
 \item{completedAfter}{String that can be interpreted as date (does not work
 with EUCTR)}
 
+\item{onlyMedIntervTrials}{Logical, default \code{TRUE}, which indicates if
+queries should search only for medicine interventional clinical trial}
+
 \item{onlyWithResults}{Logical}
 
-\item{registers}{Vector of register names, default all registers}
+\item{countries}{Vector of country names, two- or three-letter ISO 3166 codes}
 }
 \value{
 Named vector of URLs for finding trials in the registers and as
@@ -61,9 +67,8 @@ input to functions \link{ctrLoadQueryIntoDb} and
 From high-level search terms provided by the user, generate specific queries
 for each registers with which ctrdata works, see \link{ctrdata-registers}.
 Search terms that are expanded to concepts such as from MeSH and MedDRA
-by the search implementations in registers include the
-'intervention' and 'condition', see \link{ctrdata-registers}.
-Logical operators only work with 'searchPhrase'.
+by the search implementations in registers include the 'intervention' and
+'condition'. Logical operators only work with 'searchPhrase'.
 }
 \examples{
 
@@ -77,7 +82,8 @@ sapply(urls, ctrOpenSearchPagesInBrowser)
 
 urls <- ctrGenerateQueries(
   searchPhrase = "antibody AND covid",
-  recruitment = "completed")
+  recruitment = "completed",
+  )
 
 # count trials found
 sapply(urls, ctrLoadQueryIntoDb, only.count = TRUE)
@@ -91,7 +97,8 @@ urls <- ctrGenerateQueries(
    "basket OR platform OR umbrella OR master protocol OR ",
    "multiarm OR multistage OR subprotocol OR substudy OR ",
    "multi-arm OR multi-stage OR sub-protocol OR sub-study"),
- startAfter = "2010-01-01")
+ startAfter = "01/31/2010",
+ countries = c("DE", "US", "United Kingdom"))
 
 # open queries in register web interface
 sapply(urls, ctrOpenSearchPagesInBrowser)

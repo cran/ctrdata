@@ -4,9 +4,10 @@
 #' Calculate in- and exclusion criteria and age groups
 #'
 #' Trial concept calculated: inclusion and exclusion criteria as well as
-#' age groups that can participate in a trial, based on from protocol-related
-#' information. (See \link{dfMergeVariablesRelevel} example for healthy
-#' volunteers.)
+#' age groups that can participate in a trial, based on protocol-related
+#' information. Since CTGOV uses single text field for eligibility criteria,
+#' text extraction is used to separate in- and exclusion criteria.
+#' (See \link{dfMergeVariablesRelevel} with an example for healthy volunteers.)
 #'
 #' @param df data frame such as from \link{dbGetFieldsIntoDf}. If `NULL`,
 #' prints fields needed in `df` for calculating this trial concept, which can
@@ -28,8 +29,6 @@
 #' # fields needed
 #' f.trialPopulation()
 #'
-#' \dontrun{
-#'
 #' # apply trial concept when creating data frame
 #' dbc <- nodbi::src_sqlite(
 #'   dbname = system.file("extdata", "demo.sqlite", package = "ctrdata"),
@@ -37,7 +36,7 @@
 #' trialsDf <- dbGetFieldsIntoDf(
 #'   calculate = "f.trialPopulation",
 #'   con = dbc)
-#' }
+#' trialsDf
 #'
 f.trialPopulation <- function(df = NULL) {
 
@@ -335,9 +334,9 @@ f.trialPopulation <- function(df = NULL) {
   df %>%
     dplyr::select(c(
       "_id",
+      ".trialPopulationAgeGroup",
       ".trialPopulationInclusion",
-      ".trialPopulationExclusion",
-      ".trialPopulationAgeGroup"
+      ".trialPopulationExclusion"
     )) -> df
 
   # factorise

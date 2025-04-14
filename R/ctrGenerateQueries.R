@@ -6,9 +6,8 @@
 #' From high-level search terms provided by the user, generate specific queries
 #' for each registers with which ctrdata works, see \link{ctrdata-registers}.
 #' Search terms that are expanded to concepts such as from MeSH and MedDRA
-#' by the search implementations in registers include the
-#' 'intervention' and 'condition', see \link{ctrdata-registers}.
-#' Logical operators only work with 'searchPhrase'.
+#' by the search implementations in registers include the 'intervention' and
+#' 'condition'. Logical operators only work with 'searchPhrase'.
 #'
 #' @param searchPhrase String with optional logical operators ("AND", "OR")
 #' that will be searched in selected fields of registers that can handle logical
@@ -22,14 +21,18 @@
 #' @param recruitment String, one of "ongoing", "completed", "other" (
 #' which includes "ended early" but this cannot be searched; use trial concept
 #' \link{f.statusRecruitment} to identify this status)
-#' @param startBefore String that can be interpreted as date, see example
-#' @param startAfter String that can be interpreted as date
+#' @param startBefore String that can be interpreted as date (for EUCTR, when
+#' trial was first registered)
+#' @param startAfter String that can be interpreted as date (for EUCTR, when
+#' trial was first registered)
 #' @param completedBefore String that can be interpreted as date (does not work
 #' with EUCTR)
 #' @param completedAfter String that can be interpreted as date (does not work
 #' with EUCTR)
+#' @param onlyMedIntervTrials Logical, default \code{TRUE}, which indicates if
+#' queries should search only for medicine interventional clinical trial
 #' @param onlyWithResults Logical
-#' @param registers Vector of register names, default all registers
+#' @param countries Vector of country names, two- or three-letter ISO 3166 codes
 #'
 #' @returns Named vector of URLs for finding trials in the registers and as
 #' input to functions \link{ctrLoadQueryIntoDb} and
@@ -49,7 +52,8 @@
 #'
 #' urls <- ctrGenerateQueries(
 #'   searchPhrase = "antibody AND covid",
-#'   recruitment = "completed")
+#'   recruitment = "completed",
+#'   )
 #'
 #' # count trials found
 #' sapply(urls, ctrLoadQueryIntoDb, only.count = TRUE)
@@ -63,7 +67,8 @@
 #'    "basket OR platform OR umbrella OR master protocol OR ",
 #'    "multiarm OR multistage OR subprotocol OR substudy OR ",
 #'    "multi-arm OR multi-stage OR sub-protocol OR sub-study"),
-#'  startAfter = "2010-01-01")
+#'  startAfter = "01/31/2010",
+#'  countries = c("DE", "US", "United Kingdom"))
 #'
 #' # open queries in register web interface
 #' sapply(urls, ctrOpenSearchPagesInBrowser)
@@ -79,17 +84,43 @@ ctrGenerateQueries <- function(
     startAfter = NULL,
     completedBefore = NULL,
     completedAfter = NULL,
+    onlyMedIntervTrials = TRUE,
     onlyWithResults = FALSE,
-    registers = c("EUCTR", "ISRCTN", "CTIS", "CTGOV2")
+    countries = NULL
 ) {
 
   # check
-  stopifnot(all(registers %in% registerList[registerList != "CTGOV"]))
+  stopifnot(all(countries %in% unlist(countryTable)))
 
+  # helper for date conversions
+  queryDate <- function(x) {
+
+    x <- lubridate::as_date(x, format = c(
+      "%Y-%m-%d %H:%M:%OS",
+      "%Y/%m/%d %H:%M:%OS",
+      "%Y-%m-%d %H:%M",
+      "%Y/%m/%d %H:%M",
+      "%Y-%m-%d",
+      "%Y/%m/%d",
+      "%m/%d/%Y",
+      "%d/%m/%Y",
+      "%d.%m.%Y"
+    ))
+
+    return(strftime(x, format = "%Y-%m-%d"))
+  }
+
+  # map to row in table
+  countryIndex <- seq_len(nrow(countryTable))[apply(
+    countryTable, 1, function(r)
+      length(intersect(unlist(r), countries)) > 0L)]
 
   #### start ####
   urls <- c(
     "CTGOV2" = "https://clinicaltrials.gov/search?",
+    # https://clinicaltrials.gov/find-studies/constructing-complex-search-queries
+    # https://clinicaltrials.gov/data-api/about-api/search-areas
+    "CTGOV2expert" = "https://clinicaltrials.gov/expert-search?term=",
     "EUCTR" = "https://www.clinicaltrialsregister.eu/ctr-search/search?query=",
     "ISRCTN" = "https://www.isrctn.com/search?",
     "CTIS" = "https://euclinicaltrials.eu/ctis-public/search#searchCriteria={"
@@ -112,6 +143,8 @@ ctrGenerateQueries <- function(
 
     searchPhraseC <- gsub("( OR | AND )", ", ", searchPhrase)
 
+    searchPhraseD <- stringi::stri_extract_all_regex(searchPhrase, "( OR | AND )")[[1]][1]
+
     if (grepl(" AND ", searchPhrase) && grepl(" OR ", searchPhrase)) {
       warning(
         'Cannot use both "AND" and "OR" with CTIS. ',
@@ -127,6 +160,13 @@ ctrGenerateQueries <- function(
     # "basket" OR "platform" OR "umbrella" OR "master protocol" OR "multiarm" OR "multistage" OR "subprotocol" OR "substudy" OR "multi-arm" OR "multi-stage" OR "sub-protocol" OR "sub-study"
     # title search 2372
     # https://clinicaltrials.gov/search?titles=%22basket%22%20OR%20%22platform%22%20OR%20%22umbrella%22%20OR%20%22master%20protocol%22%20OR%20%22multiarm%22%20OR%20%22multistage%22%20OR%20%22subprotocol%22%20OR%20%22substudy%22%20OR%20%22multi-arm%22%20OR%20%22multi-stage%22%20OR%20%22sub-protocol%22%20OR%20%22sub-study%22
+
+    # ctgov2expert
+    urls["CTGOV2expert"] <- paste0(
+      urls["CTGOV2expert"], " AND (",
+      paste0('AREA[TitleSearch]"', searchPhraseA, '"', collapse = searchPhraseD),
+      ") "
+    )
 
     # ctis
     urls["CTIS"] <- paste0(
@@ -170,6 +210,9 @@ ctrGenerateQueries <- function(
     urls["CTGOV2"] <- paste0(
       urls["CTGOV2"], "cond=", condition)
 
+    urls["CTGOV2expert"] <- paste0(
+      urls["CTGOV2expert"], ' AND AREA[ConditionSearch]"', condition, '" ')
+
     urls["CTIS"] <- paste0(
       urls["CTIS"], '"medicalCondition":"', condition, '",')
 
@@ -188,6 +231,10 @@ ctrGenerateQueries <- function(
     urls["CTGOV2"] <- paste0(
       urls["CTGOV2"], "&intr=", intervention)
 
+    # ctgov2expert
+    urls["CTGOV2expert"] <- paste0(
+      urls["CTGOV2expert"], ' AND AREA[InterventionSearch]"', intervention, '" ')
+
     urls["CTIS"] <- paste0(
       urls["CTIS"], '"containAll":"', intervention, '",')
 
@@ -205,7 +252,7 @@ ctrGenerateQueries <- function(
 
     stopifnot(is.atomic(phase) && length(phase) == 1L)
 
-    # see also f.trialPhase
+    # see also f_trialPhase.R
 
     urls["CTGOV2"] <- paste0(
       urls["CTGOV2"], "&aggFilters=phase:", c(
@@ -220,6 +267,21 @@ ctrGenerateQueries <- function(
         "phase 1+2+3+4" = "0 1 2 3 4"
       )[phase]
     )
+
+    # https://clinicaltrials.gov/data-api/about-api/study-data-structure#enum-Phase
+    urls["CTGOV2expert"] <- paste0(
+      urls["CTGOV2expert"], ' AND (', c(
+        "phase 1" = 'AREA[Phase]"EARLY_PHASE1" OR AREA[Phase]"PHASE1"',
+        "phase 1+2" = 'AREA[Phase]"EARLY_PHASE1" OR AREA[Phase]"PHASE1" OR AREA[Phase]"PHASE2"',
+        "phase 2" = 'AREA[Phase]"PHASE2"',
+        "phase 2+3" = 'AREA[Phase]"PHASE2" OR AREA[Phase]"PHASE3"',
+        "phase 3" = 'AREA[Phase]"PHASE3"',
+        "phase 3+4" = 'AREA[Phase]"PHASE3" OR AREA[Phase]"PHASE4"',
+        "phase 1+2+3" = 'AREA[Phase]"EARLY_PHASE1" OR AREA[Phase]"PHASE1" OR AREA[Phase]"PHASE2" OR AREA[Phase]"PHASE3"',
+        "phase 4" = 'AREA[Phase]"PHASE4"',
+        "phase 1+2+3+4" = 'AREA[Phase]"EARLY_PHASE1" OR AREA[Phase]"PHASE1" OR AREA[Phase]"PHASE2" OR AREA[Phase]"PHASE3" OR AREA[Phase]"PHASE4"'
+      )[phase],
+      ') ')
 
     urls["CTIS"] <- paste0(
       urls["CTIS"], '"trialPhaseCode":[', c(
@@ -281,6 +343,18 @@ ctrGenerateQueries <- function(
       )[population]
     )
 
+    # https://clinicaltrials.gov/data-api/about-api/study-data-structure#enum-StandardAge
+    urls["CTGOV2expert"] <- paste0(
+      urls["CTGOV2expert"], ' AND (', c(
+        "P" = 'AREA[StdAge]"CHILD"',
+        "A" = 'AREA[StdAge]"ADULT"',
+        "E" = 'AREA[StdAge]"OLDER_ADULT"',
+        "P+A" = 'AREA[StdAge]"CHILD" OR AREA[StdAge]"ADULT"',
+        "A+E" = 'AREA[StdAge]"ADULT" OR AREA[StdAge]"OLDER_ADULT"',
+        "P+A+E" = 'AREA[StdAge]"CHILD" OR AREA[StdAge]"ADULT" OR AREA[StdAge]"OLDER_ADULT"'
+      )[phase],
+      ') ')
+
     urls["CTIS"] <- paste0(
       urls["CTIS"], '"ageGroupCode":[', c(
         # 1 = in utero
@@ -333,6 +407,23 @@ ctrGenerateQueries <- function(
       )[recruitment]
     )
 
+    # https://clinicaltrials.gov/data-api/about-api/study-data-structure#enum-RecruitmentStatus
+    urls["CTGOV2expert"] <- paste0(
+      urls["CTGOV2expert"], ' AND (', c(
+        "ongoing" = paste0(
+          'AREA[OverallStatus]"ACTIVE_NOT_RECRUITING" OR ',
+          'AREA[OverallStatus]"ENROLLING_BY_INVITATION" OR ',
+          'AREA[OverallStatus]"RECRUITING"'),
+        "completed" = 'AREA[OverallStatus]"COMPLETED"',
+        "other" = paste0(
+          'AREA[OverallStatus]"NOT_YET_RECRUITING" OR ',
+          'AREA[OverallStatus]"SUSPENDED" OR ',
+          'AREA[OverallStatus]"TERMINATED" OR ',
+          'AREA[OverallStatus]"WITHDRAWN" OR ',
+          'AREA[OverallStatus]"AVAILABLE"')
+      )[recruitment],
+      ') ')
+
     urls["CTIS"] <- paste0(
       urls["CTIS"], '"status":[', c(
         "ongoing" = "2,3,4,6,7",
@@ -361,14 +452,21 @@ ctrGenerateQueries <- function(
   #### startAfter ####
   if (!is.null(startAfter)) {
 
-    startAfter <- strftime(startAfter, format = "%Y-%m-%d")
+    startAfter <- queryDate(startAfter)
 
     urls["CTGOV2"] <- paste0(
       urls["CTGOV2"], "&start=", startAfter, "_")
 
+    urls["CTGOV2expert"] <- paste0(
+      urls["CTGOV2expert"], " AND AREA[StartDate]RANGE[",
+      startAfter, ",MAX] ")
+
     urls["CTIS"] <- paste0(
       urls["CTIS"], '"eeaStartDateFrom":"', startAfter, '",')
 
+    # https://www.clinicaltrialsregister.eu/doc/How_to_Search_EU_CTR.pdf
+    # date when the trial was first entered into the EudraCT database
+    # by a national competent authority or third country data provider
     urls["EUCTR"] <- paste0(
       urls["EUCTR"], "&dateFrom=", startAfter)
 
@@ -381,12 +479,17 @@ ctrGenerateQueries <- function(
   #### startBefore ####
   if (!is.null(startBefore)) {
 
-    startBefore <- strftime(startBefore, format = "%Y-%m-%d")
+    startBefore <- queryDate(startBefore)
 
     urls["CTGOV2"] <- ifelse(
       grepl("&start=", urls["CTGOV2"]),
       sub("(&start=[-0-9]+_)", paste0("\\1", startBefore), urls["CTGOV2"]),
       paste0(urls["CTGOV2"], "&start=_", startBefore))
+
+    urls["CTGOV2expert"] <- ifelse(
+      grepl("StartDate", urls["CTGOV2expert"]),
+      sub("(AREA\\[StartDate\\]RANGE\\[[-0-9]+,)MAX", paste0("\\1", startBefore), urls["CTGOV2expert"]),
+      paste0(urls["CTGOV2expert"], " AREA[StartDate]RANGE[MAX,",startBefore, "] "))
 
     urls["CTIS"] <- paste0(
       urls["CTIS"], '"eeaStartDateTo":"', startBefore, '",')
@@ -403,10 +506,14 @@ ctrGenerateQueries <- function(
   #### completedAfter ####
   if (!is.null(completedAfter)) {
 
-    completedAfter <- strftime(completedAfter, format = "%Y-%m-%d")
+    completedAfter <- queryDate(completedAfter)
 
     urls["CTGOV2"] <- paste0(
       urls["CTGOV2"], "&primComp=", completedAfter, "_")
+
+    urls["CTGOV2expert"] <- paste0(
+      urls["CTGOV2expert"], " AND AREA[CompletionDate]RANGE[",
+      completedAfter, ",MAX] ")
 
     urls["CTIS"] <- paste0(
       urls["CTIS"], '"eeaEndDateFrom":"', completedAfter, '",')
@@ -420,12 +527,17 @@ ctrGenerateQueries <- function(
   #### completedBefore ####
   if (!is.null(completedBefore)) {
 
-    completedBefore <- strftime(completedBefore, format = "%Y-%m-%d")
+    completedBefore <- queryDate(completedBefore)
 
     urls["CTGOV2"] <- ifelse(
       grepl("&primComp=", urls["CTGOV2"]),
       sub("(&primComp=[-0-9]+_)", paste0("\\1", completedBefore), urls["CTGOV2"]),
       paste0(urls["CTGOV2"], "&primComp=_", completedBefore))
+
+    urls["CTGOV2expert"] <- ifelse(
+      grepl("CompletionDate", urls["CTGOV2expert"]),
+      sub("(AREA\\[CompletionDate\\]RANGE\\[[-0-9]+,)MAX", paste0("\\1", completedBefore), urls["CTGOV2expert"]),
+      paste0(urls["CTGOV2expert"], " AREA[CompletionDate]RANGE[MAX,",completedBefore, "] "))
 
     urls["CTIS"] <- paste0(
       urls["CTIS"], '"eeaEndDateTo":"', completedBefore, '",')
@@ -436,11 +548,40 @@ ctrGenerateQueries <- function(
   }
 
 
+  #### onlyMedIntervTrials ####
+  if (onlyMedIntervTrials)  {
+
+    # not needed for CTIS, EUCTR
+
+    urls["CTGOV2"] <- paste0(
+      urls["CTGOV2"], "&aggFilters=studyType:int")
+
+    urls["CTGOV2expert"] <- paste0(
+      urls["CTGOV2expert"], "AND (AREA[StudyType]INTERVENTIONAL) ")
+
+    urls["ISRCTN"] <- paste0(
+      urls["ISRCTN"],
+      "&filters=primaryStudyDesign:Interventional",
+      if (is.null(phase)) paste0(
+        # this was found to implement boolean or
+        # phases as proxy for investigational medicines
+        "&filters=phase:Phase 0,phase:Phase I,",
+        "phase:Phase II,phase:Phase III,phase:Phase IV,",
+        "phase:Phase I/II,phase:Phase II/III,phase:Phase III/IV"
+      )
+    )
+
+  }
+
+
   #### onlyWithResults ####
   if (onlyWithResults) {
 
     urls["CTGOV2"] <- paste0(
       urls["CTGOV2"], "&aggFilters=results:with")
+
+    urls["CTGOV2expert"] <- paste0(
+      urls["CTGOV2expert"], "AND (NOT AREA[ResultsFirstPostDate]MISSING) ")
 
     urls["CTIS"] <- paste0(
       urls["CTIS"], '"hasClinicalStudyReport":true,')
@@ -453,10 +594,58 @@ ctrGenerateQueries <- function(
 
   }
 
-  # finalising CTIS
-  urls["CTIS"] <- paste0(sub(",$", "", urls["CTIS"]), '}')
 
-  # finalising CTGOV2
+  #### countries ####
+  if (!is.null(countries)) {
+
+    urls["CTGOV2expert"] <- paste0(
+      urls["CTGOV2expert"], " AND (",
+      paste0(
+        'AREA[LocationCountry]"',
+        countryTable[countryIndex, 2],
+        collapse = '" OR '
+      ), '") '
+    )
+
+    if (length(countryIndex) == 1L) {
+
+      urls["CTGOV2"] <- paste0(
+        urls["CTGOV2"],
+        "&country=", countryTable[countryIndex, 2][1]
+      )
+
+    } else {
+
+      urls["CTGOV2"] <- urls["CTGOV2expert"]
+
+    }
+
+    urls["CTIS"] <- paste0(
+      urls["CTIS"], '"msc":[',
+      paste0(countryTable[countryIndex, 1], collapse = ","),
+      '],')
+
+    tmpC <- countryTable[countryIndex, 3]
+    urls["EUCTR"] <- paste0(
+      urls["EUCTR"],
+      paste0(
+        "&country=",
+        c(tolower(tmpC[tmpC %in% countriesEUCTR]),
+          if(!all(tmpC %in% countriesEUCTR)) "3rd"),
+        collapse = "")
+    )
+
+    urls["ISRCTN"] <- paste0(
+      urls["ISRCTN"],
+      paste0("&filters=recruitmentCountry:", countryTable[countryIndex, 2], collapse = "")
+    )
+
+  }
+
+
+  #### finalising ####
+
+  # CTGOV2
   ctgov2Filter <- stringi::stri_extract_all_regex(
     urls["CTGOV2"], "[,&]aggFilters=[^,&]+")[[1]]
   if (!all(is.na(ctgov2Filter))) urls["CTGOV2"] <- paste0(
@@ -465,20 +654,29 @@ ctrGenerateQueries <- function(
     "&aggFilters=",
     paste0(sub("&aggFilters=", "", ctgov2Filter), collapse = ","))
 
-  # finalising ISRCTN
+  # CTGOVexpert
+  urls["CTGOV2"] <- sub("search[?]term= AND ", "search?term=", urls["CTGOV2"])
+  urls["CTGOV2expert"] <- sub("search[?]term= AND ", "search?term=", urls["CTGOV2expert"])
+
+  # CTIS
+  urls["CTIS"] <- paste0(sub(",$", "", urls["CTIS"]), '}')
+
+  # ISRCTN
   isrctnFilter <- stringi::stri_extract_all_regex(
-    urls["ISRCTN"], "[,&]filters=[^,&]+")[[1]]
+    urls["ISRCTN"], "[,&]filters=[^&]+")[[1]]
   if (!all(is.na(isrctnFilter))) urls["ISRCTN"] <- paste0(
     stringi::stri_replace_all_regex(
-      urls["ISRCTN"], "[,&]filters=[^,&]+", "")[[1]],
+      urls["ISRCTN"], "[,&]filters=[^&]+", "")[[1]],
     "&filters=",
     paste0(sub("&filters=", "", isrctnFilter), collapse = ","))
   if (!grepl("q=", urls["ISRCTN"])) urls["ISRCTN"] <-
-    paste0(urls["ISRCTN"], "&q=")
+    sub("[?]([&])?", "?&q=\\1", urls["ISRCTN"])
 
-  # select but put CTIS last so that it would open
-  # last and run script to retrieve the results
-  urls <- urls[registerList[registerList %in% registers]]
+  # all prettify normalise
+  urls <- trimws(gsub("  +", " ", urls))
+
+  # put CTIS last so that it would open
+  urls <- urls[c("EUCTR", "ISRCTN", "CTGOV2", "CTGOV2expert", "CTIS")]
 
   # named vector
   return(urls)

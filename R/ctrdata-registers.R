@@ -2,7 +2,7 @@
 #'
 #' Registers of the four clinical trial registers from which package
 #' \link{ctrdata} can retrieve, aggregate and analyse protocol- and
-#' result-related information as well as documents, last updated 2025-03-09.
+#' result-related information as well as documents, last updated 2025-04-13.
 #'
 #' @section 1 - Overview:
 #'
@@ -12,14 +12,14 @@
 #' to be added (can be loaded by `ctrdata`).
 #'
 #' - **CTIS**: The EU Clinical Trials Information System, launched in 2023,
-#' holds more than 8,700 publicly accessible clinical trials, including
+#' holds more than 8,900 publicly accessible clinical trials, including
 #' around 100 with results or a report (only as PDF files).
 #' _No results in a structured electronic format are foreseeably available_,
 #' thus `ctrdata` cannot load any CTIS results.
 #' (To automatically get CTIS search query URLs, see
 #' \ifelse{latex}{\out{\href{https://rfhb.github.io/ctrdata/\#id_2-script-to-automatically-copy-users-query-from-web-browser}{here}}}{\href{https://rfhb.github.io/ctrdata/#id_2-script-to-automatically-copy-users-query-from-web-browser}{here}})
 #'
-#' - **CTGOV2**: ClinicalTrials.gov holds more than 529,000 interventional and
+#' - **CTGOV2**: ClinicalTrials.gov holds more than 533,000 interventional and
 #' observational studies, including almost 66,000 interventional studies with
 #' results (can be loaded by `ctrdata`).
 #'
@@ -53,14 +53,17 @@
 #' | Expert / advanced search | \href{https://www.clinicaltrialsregister.eu/ctr-search/search}{link} | \href{https://clinicaltrials.gov/expert-search}{link} | \href{https://www.isrctn.com/editAdvancedSearch}{link} | \href{https://euclinicaltrials.eu/ctis-public/search}{link} |
 #' | Glossary / related information | \href{https://www.clinicaltrialsregister.eu/doc/EU_Clinical_Trials_Register_Glossary.pdf}{link} | \href{https://clinicaltrials.gov/study-basics/glossary}{link} | \href{https://www.who.int/clinical-trials-registry-platform/network/who-data-set}{link} | \href{https://accelerating-clinical-trials.europa.eu/}{link} |
 #' | FAQ, caveats, issues | \href{https://www.clinicaltrialsregister.eu/doc/EU_CTR_FAQ.pdf}{link} | \href{https://clinicaltrials.gov/policy/faq}{link}, \href{https://clinicaltrials.gov/about-site/selected-publications}{link} | \href{https://www.isrctn.com/page/faqs}{link} | \href{https://euclinicaltrials.eu/website-outages-and-system-releases/}{link} |
-#' | Data dictionaries / definitions / structure reference | \href{https://eudract.ema.europa.eu/result.html}{link} | \href{https://cdn.clinicaltrials.gov/documents/xsd/public.xsd}{link}, \href{https://clinicaltrials.gov/data-about-studies/study-data-structure}{link}, \href{https://cdn.clinicaltrials.gov/documents/tutorial/content/index.html}{link} | \href{https://www.isrctn.com/page/definitions}{link} | \href{https://www.ema.europa.eu/en/human-regulatory-overview/research-development/clinical-trials-human-medicines/clinical-trials-information-system-ctis-training-support}{link} |
+#' | Data dictionaries / definitions / structure reference | \href{https://eudract.ema.europa.eu/result.html}{link}, \href{https://eudract.ema.europa.eu/docs/technical/EudraCT%20protocol%20related%20data%20dictionary.xls}{link}, \href{https://eudract.ema.europa.eu/docs/technical/V7_V8_Country_List_20210804.xlsx}{link} | \href{https://cdn.clinicaltrials.gov/documents/xsd/public.xsd}{link}, \href{https://clinicaltrials.gov/data-about-studies/study-data-structure}{link}, \href{https://cdn.clinicaltrials.gov/documents/tutorial/content/index.html}{link} | \href{https://www.isrctn.com/page/definitions}{link} | \href{https://www.ema.europa.eu/en/human-regulatory-overview/research-development/clinical-trials-human-medicines/clinical-trials-information-system-ctis-training-support}{link} (XLSX files) |
 #' | Example* | \ifelse{latex}{\out{\href{https://www.clinicaltrialsregister.eu/ctr-search/search?query=Infections\&age=newborn\&age=preterm-new-born-infants}{link}}}{\href{https://www.clinicaltrialsregister.eu/ctr-search/search?query=Infections&age=newborn&age=preterm-new-born-infants}{link}} | \ifelse{latex}{\out{\href{https://clinicaltrials.gov/search?ageRange=0M_1M\&cond=Infections\&aggFilters=studyType:int\&distance=50\&intr=Investigational+Agent}{link}}}{\href{https://clinicaltrials.gov/search?ageRange=0M_1M&cond=Infections&aggFilters=studyType:int&distance=50&intr=Investigational+Agent}{link}} | \ifelse{latex}{\out{\href{https://www.isrctn.com/search?q=\&filters=ageRange:Neonate,conditionCategory:Infections+and+Infestations\&searchType=advanced-search}{link}}}{\href{https://www.isrctn.com/search?q=&filters=ageRange:Neonate,conditionCategory:Infections+and+Infestations&searchType=advanced-search}{link}} | \ifelse{latex}{\out{\href{https://euclinicaltrials.eu/ctis-public/search\#searchCriteria={"containAll":"infection","containAny":"neonates","containNot":""}}{link}}}{\href{https://euclinicaltrials.eu/ctis-public/search#searchCriteria={"containAll":"infection","containAny":"neonates"}}{link}} |
 #'
-#' Some registers are expanding entered search terms using dictionaries.
+#' Some registers are expanding entered search terms using dictionaries
+#' (\href{https://clinicaltrials.gov/data-api/about-api/search-areas}{example}).
 #'
 #' @section 4 - Example and ctrdata motivation:
 #'
-#' *The example is an expert search for interventional trials primarily with
+#' See \code{vignette("ctrdata_summarise")} for several other examples.
+#'
+#' *This example is an expert search for interventional trials primarily with
 #' neonates, investigating treatments for infectious conditions. It shows that
 #' searches in the web interface of most registers are not sufficient to
 #' identify the trials of interest:
@@ -78,8 +81,10 @@
 #' - ISRCTN field \code{interventions.intervention.interventionType} for type of study
 #' - CTIS fields \code{ageGroup} and \code{authorizedApplication.authorizedPartI.medicalConditions.medicalCondition}
 #'
-#' `ctrdata` supports users in identifying fields with functions
-#' \link{dbFindFields} and \link{ctrShowOneTrial}.
+#' `ctrdata` supports users with pre-defined \link{ctrdata-trial-concepts} and
+#' these cover the example above, and with functions \link{dbFindFields} and
+#' \link{ctrShowOneTrial} for finding fields of interest and reviewing data
+#' structure, respectively.
 #'
 #' @name ctrdata-registers
 #' @docType data

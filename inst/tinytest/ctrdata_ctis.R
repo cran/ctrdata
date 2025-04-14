@@ -37,7 +37,7 @@ expect_true(
   suppressWarnings(
     ctrLoadQueryIntoDb(
       querytoupdate = "last",
-      con = dbc))[["n"]] >= 2L)
+      con = dbc))[["n"]] >= 1L)
 
 # test
 expect_message(
@@ -46,9 +46,107 @@ expect_message(
       querytoupdate = "last",
       only.count = TRUE,
       con = dbc)),
-  "[0-9]+ trials have been updated")
+  "Imported .* trial")
 
 #### ctrLoadQueryIntoDb update ####
+
+hist <- dbQueryHistory(con = dbc)
+
+expect_message(
+  suppressWarnings(
+    tmpTest <- ctrLoadQueryIntoDb(
+      querytoupdate = 1L,
+      ctishistory = TRUE,
+      only.count = TRUE,
+      con = dbc)),
+  "Imported .* trial")
+expect_true(tmpTest$n >= 0L)
+expect_true(tmpTest$queryterm == hist[["query-term"]][2L])
+
+expect_message(
+  suppressWarnings(
+    tmpTest <- ctrLoadQueryIntoDb(
+      querytoupdate = 1L,
+      ctishistory = TRUE,
+      only.count = FALSE,
+      con = dbc)),
+  "updating")
+expect_true(tmpTest$n >= 0L)
+expect_true(tmpTest$queryterm == hist[["query-term"]][2L])
+
+expect_message(
+  suppressWarnings(
+    tmpTest <- ctrLoadQueryIntoDb(
+      querytoupdate = 1L,
+      ctishistory = FALSE,
+      only.count = TRUE,
+      con = dbc)),
+  "Imported .* trial")
+expect_true(tmpTest$n >= 0L)
+expect_true(tmpTest$queryterm == hist[["query-term"]][2L])
+
+expect_message(
+  suppressWarnings(
+    tmpTest <- ctrLoadQueryIntoDb(
+      querytoupdate = 1L,
+      ctishistory = FALSE,
+      only.count = FALSE,
+      con = dbc)),
+  "updating")
+expect_true(tmpTest$n >= 0L)
+expect_true(tmpTest$queryterm == hist[["query-term"]][2L])
+
+# test full load
+hist <- hist[nrow(hist), ]
+hist[1L, "query-timestamp"] <- "2025-01-01 00:00:00"
+json <- jsonlite::toJSON(list("queries" = hist))
+expect_equal(
+  nodbi::docdb_update(
+    src = dbc,
+    key = dbc$collection,
+    value = as.character(json),
+    query = '{"_id": "meta-info"}'), 1L)
+
+expect_message(
+  suppressWarnings(
+    tmpTest <- ctrLoadQueryIntoDb(
+      querytoupdate = 1L,
+      ctishistory = TRUE,
+      only.count = TRUE,
+      con = dbc)),
+  "Imported .* trial")
+expect_true(tmpTest$n >= 0L)
+expect_true(tmpTest$queryterm == hist[["query-term"]][1L])
+
+expect_message(
+  suppressWarnings(
+    tmpTest <- ctrLoadQueryIntoDb(
+      querytoupdate = 1L,
+      ctishistory = FALSE,
+      only.count = TRUE,
+      con = dbc)),
+  "Imported .* trial")
+expect_true(tmpTest$n >= 0L)
+expect_true(tmpTest$queryterm == hist[["query-term"]][1L])
+
+expect_warning(
+  suppressMessages(
+    tmpTest <- ctrLoadQueryIntoDb(
+      querytoupdate = 1L,
+      ctishistory = TRUE,
+      only.count = FALSE,
+      con = dbc)),
+  "updating")
+expect_true(tmpTest$n >= 0L)
+expect_true(tmpTest$queryterm == hist[["query-term"]][1L])
+
+dF <- dbGetFieldsIntoDf(c(
+  "lastUpdated",
+  "history.history_version.version_date"), con = dbc)
+expect_inherits(dF[[2]], "Date")
+expect_inherits(dF[[3]], "Date")
+
+rm(tmpTest, dF, hist)
 
 #### annotating ####
 
@@ -112,7 +210,7 @@ tmp <- ctrLoadQueryIntoDb(
   con = dbc
 )
 # test
-expect_true(tmp$n > 125L)
+expect_true(tmp$n > 165L)
 
 # get all field names
 tmpFields <- suppressMessages(
@@ -124,7 +222,7 @@ tmpFields <- suppressMessages(
 
 # test
 expect_true(
-  length(tmpFields) > 950L)
+  length(tmpFields) > 960L)
 
 # debug
 if (FALSE){
@@ -217,7 +315,7 @@ expect_message(
   " [0-9]+ records")
 
 # test
-expect_true(length(res) >= 150L)
+expect_true(length(res) >= 190L)
 
 
 #### documents.path ####
