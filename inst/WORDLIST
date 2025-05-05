@@ -38,7 +38,6 @@ MeSH
 MedDRA
 MongoDB
 NCT
-NDJSON
 NHST
 NL
 NestedResults
@@ -51,6 +50,7 @@ RJ
 RPostgres
 RSQLite
 Rmd
+Russek
 SQLite
 SbjctInfaICF
 Sood
@@ -153,7 +153,6 @@ mongoDB
 mongodb
 mongolite
 mth
-ndjson
 nodbi
 nonproprietary
 numSites

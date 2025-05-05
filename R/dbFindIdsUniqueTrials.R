@@ -100,10 +100,68 @@ dbFindIdsUniqueTrials <- function(
     con = con,
     verbose = verbose)
 
+  # inform user
+  message("- Finding duplicates among registers' and sponsor ids...")
+
+  # find duplicates
+  colsToCheck <- match(c(preferregister, "SPONSOR"), names(listofIds))
+  outSet <- NULL
+  for (i in seq_along(preferregister)) {
+
+    # subset to be checked and non-dupes to be added
+    tmp <- listofIds[listofIds[["ctrname"]] == preferregister[i], , drop = FALSE]
+    row.names(tmp) <- NULL
+
+    # check if second etc. set has identifiers
+    # in the previously rbind'ed sets
+    if (i > 1L && nrow(tmp)) {
+
+      # check for duplicates
+      dupes <- mapply(
+        function(c1, c2) {
+          tmpIs <- intersect(
+            unlist(strsplit(c1, " / ")),
+            unlist(strsplit(c2, " / "))
+          )
+          if (length(tmpIs)) {
+            # map found intersecting names back
+            # to the rows of the input data frame
+            unlist(sapply(
+              tmpIs, function(i) grepl(i, c1),
+              USE.NAMES = FALSE, simplify = FALSE))
+          } else {
+            rep(FALSE, times = length(c1))
+          }
+        },
+        tmp[, colsToCheck, drop = FALSE],
+        outSet[, colsToCheck, drop = FALSE],
+        SIMPLIFY = FALSE
+      )
+
+      # mangle dupes for marginal cases, e.g. one record
+      dupes <- do.call(cbind, dupes)
+      dupes <- as.data.frame(dupes)
+
+      # keep uniques
+      tmp <- tmp[rowSums(dupes) == 0L, , drop = FALSE]
+      rm(dupes)
+
+    } # if
+
+    # add to output set
+    outSet <- rbind(
+      outSet, tmp,
+      make.row.names = FALSE,
+      stringsAsFactors = FALSE
+    )
+
+  } # for preferregister
+
   # keep attributes when selecting
   attribsids <- attributes(listofIds)
-  listofIds <- listofIds[, c("_id", "EUCTR", "ctrname")]
+  listofIds <- outSet[, c("_id", "EUCTR", "ctrname")]
   names(listofIds)[2] <- "a2_eudract_number"
+  rm(outSet)
 
   # find unique, preferred country version of euctr
   listofIds <- dfFindUniqueEuctrRecord(
@@ -151,6 +209,7 @@ dbFindIdsUniqueTrials <- function(
   # return
   return(listofIds)
 }
+# end dbFindIdsUniqueTrials
 
 
 
@@ -165,10 +224,7 @@ dbFindIdsUniqueTrials <- function(
 #' @keywords internal
 #' @noRd
 #'
-.dbMapIdsTrials <- function(
-    preferregister = c("CTGOV2", "EUCTR", "CTGOV", "ISRCTN", "CTIS"),
-    con,
-    verbose = FALSE) {
+.dbMapIdsTrials <- function(con, verbose = FALSE, ...) {
 
   ## check database connection
   if (is.null(con$ctrDb)) con <- ctrDb(con = con)
@@ -177,6 +233,7 @@ dbFindIdsUniqueTrials <- function(
   message("Searching for duplicate trials... ")
 
   # fields for database query
+  # TODO accommodate also ctis1?
   fields <- c(
     "ctrname",
     # euctr
@@ -193,11 +250,10 @@ dbFindIdsUniqueTrials <- function(
     "isrctn",
     # ctis
     "ctNumber",
-    "eudraCtInfo.eudraCtCode",
-    # "authorizedPartI.trialDetails.clinicalTrialIdentifiers.secondaryIdentifyingNumbers.nctNumber.number",                # ctis1
-    # "authorizedPartI.trialDetails.clinicalTrialIdentifiers.secondaryIdentifyingNumbers.whoUniversalTrialNumber.number",  # ctis1
+    "eudraCtInfo.eudraCtCode", # ctis1
+    "authorizedApplication.eudraCt.eudraCtCode", # ctis2
+    "authorizedPartI.trialDetails.clinicalTrialIdentifiers.secondaryIdentifyingNumbers.nctNumber.number", # ctis1
     "authorizedApplication.authorizedPartI.trialDetails.clinicalTrialIdentifiers.secondaryIdentifyingNumbers.nctNumber.number", # ctis2
-    # "authorizedApplication.authorizedPartI.trialDetails.clinicalTrialIdentifiers.secondaryIdentifyingNumbers.whoUniversalTrialNumber.number", # ctis2
     # ctgov2
     "protocolSection.identificationModule.nctId",
     "protocolSection.identificationModule.secondaryIdInfos.id",
@@ -265,7 +321,8 @@ dbFindIdsUniqueTrials <- function(
   # inform user
   message("\b\b\b, ", nrow(listofIds), " found in collection")
 
-  # target fields for adding cols for mangling below
+  # target fields for adding cols for mangling below,
+  # intentionally repeating fields to match expected cols
   fields <- c(
     "_id",
     "ctrname",
@@ -295,9 +352,10 @@ dbFindIdsUniqueTrials <- function(
     "externalRefs.protocolSerialNumber",
     # ctis 4
     "ctNumber",
-    "eudraCtInfo.eudraCtCode",
-    # "authorizedPartI.trialDetails.clinicalTrialIdentifiers.secondaryIdentifyingNumbers.nctNumber.number", # ctis1
-    # "authorizedPartI.trialDetails.clinicalTrialIdentifiers.secondaryIdentifyingNumbers.nctNumber.number", # ctis1
+    "eudraCtInfo.eudraCtCode", # ctis1
+    "authorizedApplication.eudraCt.eudraCtCode", # ctis2
+    "authorizedPartI.trialDetails.clinicalTrialIdentifiers.secondaryIdentifyingNumbers.nctNumber.number", # ctis1
+    "authorizedPartI.trialDetails.clinicalTrialIdentifiers.secondaryIdentifyingNumbers.nctNumber.number", # ctis1
     "authorizedApplication.authorizedPartI.trialDetails.clinicalTrialIdentifiers.secondaryIdentifyingNumbers.nctNumber.number", # ctis2
     "authorizedApplication.authorizedPartI.trialDetails.clinicalTrialIdentifiers.secondaryIdentifyingNumbers.nctNumber.number", # ctis2
     # ctgov2 6
@@ -330,48 +388,57 @@ dbFindIdsUniqueTrials <- function(
   # rename columns for content mangling, needs to
   # correspond to columns and sequence in "fields"
   # for mapping identifiers across registers
+  # ctrname dot number of register suffix repeat
   names(listofIds) <- c(
     "_id", "ctrname",
-    # euctr 8
+    # 1 - euctr
     "euctr.1", "ctgov.1a", "ctgov.1b", "ctgov2.1a", "ctgov2.1b", "isrctn.1a",
     "isrctn.1b", "sponsor.1",
-    # ctgov 8
+    # 2 - ctgov
     "euctr.2a", "euctr.2b", "ctgov.2a", "ctgov2.2", "ctgov.2b", "isrctn.2",
     "sponsor.2a", "sponsor.2b",
-    # isrctn 5
+    # 3 - isrctn
     "euctr.3", "ctgov.3", "ctgov2.3", "isrctn.3", "sponsor.3",
-    # ctis 4
-    "ctis.1", "euctr.4", "ctgov.4", "ctgov2.4",
-    # ctgov2 6
+    # 4 - ctis
+    "ctis.1", "euctr.4a", "euctr.4b", "ctgov.4a", "ctgov2.4a", "ctgov.4b", "ctgov2.4b",
+    # 5 - ctgov2
     "ctgov2.5", "ctgov.5a", "euctr.5", "sponsor.4a", "ctgov.5b", "sponsor.4b"
   )
 
   # keep only relevant content
-  # - in certain raw value columns
+  # in certain raw value columns
   colsToMangle <- list(
+    #
     c("ctgov.1a", regCtgov),
     c("ctgov.1b", regCtgov),
     c("ctgov.2a", regCtgov),
     c("ctgov.2b", regCtgov),
     c("ctgov.3", regCtgov),
-    c("ctgov.4", regCtgov),
+    c("ctgov.4a", regCtgov),
+    c("ctgov.4b", regCtgov),
     c("ctgov.5a", regCtgov),
     c("ctgov.5b", regCtgov),
+    #
     c("ctgov2.1", regCtgov2),
     c("ctgov2.2", regCtgov2),
     c("ctgov2.3", regCtgov2),
-    c("ctgov2.4", regCtgov2),
+    c("ctgov2.4a", regCtgov2),
+    c("ctgov2.4b", regCtgov2),
     c("ctgov2.5", regCtgov2),
+    #
     c("isrctn.1a", regIsrctn),
     c("isrctn.1b", regIsrctn),
     c("isrctn.2", regIsrctn),
     c("isrctn.3", regIsrctn),
+    #
     c("euctr.1", regEuctr),
     c("euctr.2a", regEuctr),
     c("euctr.2b", regEuctr),
     c("euctr.3", regEuctr),
-    c("euctr.4", regEuctr),
+    c("euctr.4a", regEuctr),
+    c("euctr.4b", regEuctr),
     c("euctr.5", regEuctr),
+    #
     c("ctis.1", regCtis)
   )
 
@@ -420,67 +487,11 @@ dbFindIdsUniqueTrials <- function(
     drop = FALSE
   ]
 
-  # inform user
-  message("- Finding duplicates among registers' and sponsor ids...")
-
-  # find duplicates
-  colsToCheck <- match(c(preferregister, "SPONSOR"), names(listofIds))
-  outSet <- NULL
-  for (i in seq_along(preferregister)) {
-    # to be added
-    tmp <- listofIds[
-      listofIds[["ctrname"]] == preferregister[i], ,
-      drop = FALSE
-    ]
-    row.names(tmp) <- NULL
-
-    # check if second etc. set has identifiers
-    # in the previously rbind'ed sets
-    if (i > 1L && nrow(tmp)) {
-      # check for duplicates
-      dupes <- mapply(
-        function(c1, c2) {
-          tmpIs <- intersect(
-            unlist(strsplit(c1, " / ")),
-            unlist(strsplit(c2, " / "))
-          )
-          if (length(tmpIs)) {
-            # map found intersecting names back
-            # to the rows of the input data frame
-            grepl(paste0(tmpIs, collapse = "|"), c1)
-          } else {
-            rep(FALSE, times = length(c1))
-          }
-        },
-        tmp[, colsToCheck, drop = FALSE],
-        outSet[, colsToCheck, drop = FALSE],
-        SIMPLIFY = FALSE
-      )
-
-      # mangle dupes for marginal cases, e.g. one record
-      dupes <- do.call(cbind, dupes)
-      dupes <- as.data.frame(dupes)
-
-      # keep uniques
-      tmp <- tmp[rowSums(dupes) == 0L, , drop = FALSE]
-      rm(dupes)
-    }
-
-    # add to output set
-    outSet <- rbind(
-      outSet, tmp,
-      make.row.names = FALSE,
-      stringsAsFactors = FALSE
-    )
-  }
-
-  # add meta data
-  outSet <- addMetaData(outSet, con = con)
-
   # return
-  return(outSet)
+  return(addMetaData(listofIds, con = con))
 
 }
+# end .dbMapIdsTrials
 
 
 
@@ -554,84 +565,86 @@ dfFindUniqueEuctrRecord <- function(
   totalEuctr <- length(totalEuctr)
 
   # as a first step, handle 3rd country trials e.g. 2010-022945-52-3RD
-  # if retained, these trials would count as record for a trial
+  # if retained, these trials would count as record for a trial. note
+  # that for any 3rd country trial there is at least one member state
+  # record as well in EUCTR and is kept even if removing 3rd country
   if (!include3rdcountrytrials) {
     df <- df[!grepl("-3RD", df[["_id"]]), , drop = FALSE]
   }
 
-  # count number of records by eudract number
-  tbl <- table(df[["_id"]], df[["a2_eudract_number"]])
-  tbl <- as.matrix(tbl)
-  # nms has names of all records
-  nms <- dimnames(tbl)[[1]]
-
-  # nrs has eudract numbers for which is there more than 1 record
-  nrs <- colSums(tbl)
-  nrs <- nrs[nrs > 1]
-  nrs <- names(nrs)
-
-  # nst is a list of nrs trials of a logical vector along nms
-  # that indicates if the indexed record belongs to the trial
-  nms2 <- substr(nms, 1, 14)
-  nst <- lapply(nrs, function(x) nms2 %in% x)
-
   # helper function to find the Member State version
   removeMSversions <- function(indexofrecords) {
-    # given a vector of records (nnnn-nnnnnnn-nn-MS) of a single trial, this
-    # returns all those _ids of records that do not correspond to the preferred
-    # Member State record, based on the user's choices and defaults.
+
+    # the returned record names are the duplicates.
+
+    # given a vector of records (nnnn-nnnnnnn-nn-MS) of a single trial,
+    # this returns all those _ids of records that do not correspond to
+    # the preferred MS record, based on the user's choices and defaults.
     # Function uses prefermemberstate, nms from the caller environment
-    recordnames <- nms[indexofrecords]
-    #
+    recordnames <- unlist(indexofrecords, use.names = FALSE)
+
+    # early exit if only single record, irrespective of preference
+    # an empty return is needed to avoid deleting this record
+    if (length(recordnames) == 1L) return(NULL)
+
+    # preferred MS found, return all but this record, early exit.
     # fnd should be only a single string, may need to be checked
-    if (sum(fnd <- grepl(prefermemberstate, recordnames)) != 0L) {
+    if (sum(fnd <- grepl(prefermemberstate, recordnames)) > 0L) {
       result <- recordnames[!fnd]
       return(result)
     }
-    #
+
+    # continue because preferred MS record was not found
+    # and because there are two or more record names
+
     # to exclude inactive country / ex member state records
+    # unless there is only this one (ex) member state record
+    # (intended behaviour as per changes for version 1.21.0)
     includeRecordnames <- sub(
       "^.+-([3A-Z]+)$", "\\1", recordnames) %in% countriesActive
+    activeRecordnames <- recordnames[includeRecordnames]
+    inactiveRecordnames <- recordnames[!includeRecordnames]
     #
     # default is to list all but first record.
-    # the listed records are the duplicates
     # 3RD country trials would be listed first
     # hence selected, which is not desirable
     # unless chosen as prefermemberstate
-    result <- recordnames[includeRecordnames]
+    arl <- length(activeRecordnames)
+    irl <- length(inactiveRecordnames)
     #
-    if (length(result) <= 1L && any(!includeRecordnames)) return(
-      recordnames[!includeRecordnames]
-    )
-    #
-    if (length(result) > 1L && any(!includeRecordnames)) return(
-      c(recordnames[!includeRecordnames],
-        sample(recordnames[includeRecordnames])[-1])
-    )
-    # else
-    return(
-      sample(recordnames[includeRecordnames])[-1]
-    )
+    # output
+    return(c(
+      sample(activeRecordnames, max(0L, arl - 1L)),
+      sample(inactiveRecordnames, max(0L, irl - ifelse(arl > 0L, 0L, 1L)))
+    ))
   }
+
+  # turn input df into list
+  euctrDf <- na.omit(df[, c("_id", "a2_eudract_number"), drop = FALSE])
+  euctrDf <- euctrDf[euctrDf$a2_eudract_number != "", , drop = FALSE]
+  nst <- tapply(euctrDf, euctrDf$a2_eudract_number, "[[", "_id", simplify = FALSE)
 
   # finds per trial the desired record;
   # uses prefermemberstate and nms
-  result <- lapply(
-    nst,
-    function(x) removeMSversions(x)
-  )
+  result <- lapply(nst, function(x) removeMSversions(indexofrecords = x))
   result <- unlist(result, use.names = FALSE)
 
-  # eleminate the unwanted EUCTR records
+  # limit to eudract country versions
+  result <- result[grepl(paste0(regEuctr, "-[3A-Z]{2,3}"), result)]
+
+  # eliminate the unwanted EUCTR records
   df <- df[!(df[["_id"]] %in% result), , drop = FALSE]
 
   # also eliminate the meta-info record
   df <- df[!(df[["_id"]] == "meta-info"), , drop = FALSE]
 
+  # remove row names
+  row.names(df) <- NULL
+
   # inform user about changes to data frame
-  if (length(nms) > (tmp <- length(result))) {
+  if (length(result) > 0L) {
     message(
-      "- ", tmp,
+      "- ", length(result),
       " EUCTR _id were not preferred EU Member State record for ",
       totalEuctr, " trials"
     )

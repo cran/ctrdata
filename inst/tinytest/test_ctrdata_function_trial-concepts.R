@@ -31,7 +31,7 @@ tf <- function() {
     dbname = system.file("extdata", "demo.sqlite", package = "ctrdata"),
     collection = "my_trials", flags = RSQLite::SQLITE_RO)
 
-  # only SQLite triggers message
+  # SQLite before 3.48.0 triggers message
   expect_message(
     dF <- dbGetFieldsIntoDf(
       fields = "",
@@ -39,7 +39,9 @@ tf <- function() {
       con = dbc,
       verbose = FALSE
     ),
-    "iterating over fields"
+    ifelse(
+      utils::packageVersion("RSQLite") >= package_version("2.3.10"),
+      "Querying ", "iterating over fields")
   )
 
   # test
@@ -79,7 +81,7 @@ tf <- function() {
   expect_true(sum(nchar(unlist(dF$.trialTitle))) > 5500)
 
   # lists
-  expect_length(na.omit(unique(unlist(dF$.likelyRelatedTrials))), 15L)
+  expect_length(na.omit(unique(unlist(dF$.likelyRelatedTrials))), 17L)
   expect_length(na.omit(unique(unlist(dF$.maybeRelatedTrials))), 0L)
 
   # test robustness against NAs
