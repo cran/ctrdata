@@ -352,7 +352,7 @@ ctrGenerateQueries <- function(
         "P+A" = 'AREA[StdAge]"CHILD" OR AREA[StdAge]"ADULT"',
         "A+E" = 'AREA[StdAge]"ADULT" OR AREA[StdAge]"OLDER_ADULT"',
         "P+A+E" = 'AREA[StdAge]"CHILD" OR AREA[StdAge]"ADULT" OR AREA[StdAge]"OLDER_ADULT"'
-      )[phase],
+      )[population],
       ') ')
 
     urls["CTIS"] <- paste0(
@@ -557,7 +557,7 @@ ctrGenerateQueries <- function(
       urls["CTGOV2"], "&aggFilters=studyType:int")
 
     urls["CTGOV2expert"] <- paste0(
-      # TODO
+      # TODO could be further tightened as follows but unclear for CTGOV
       # https://www.clinicaltrials.gov/data-api/about-api/study-data-structure#enum-PrimaryPurpose
       # AND (AREA[DesignPrimaryPurpose](DIAGNOSTIC OR PREVENTION OR TREATMENT))
       # AND (AREA[InterventionType](DRUG OR BIOLOGICAL))
@@ -641,7 +641,8 @@ ctrGenerateQueries <- function(
 
     urls["ISRCTN"] <- paste0(
       urls["ISRCTN"],
-      paste0("&filters=recruitmentCountry:", countryTable[countryIndex, 2], collapse = "")
+      paste0("&filters=recruitmentCountry:",
+             countryTable[countryIndex, 2], collapse = "")
     )
 
   }

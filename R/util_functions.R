@@ -462,7 +462,8 @@ ctgovClassicToCurrent <- function(url, verbose = TRUE) {
 #'
 #' @param xvalue value of variable to write
 #'
-#' @param verbose set to `TRUE` to print debug info
+#' @param verbose If \code{TRUE}, prints additional information
+#' (default \code{FALSE}).
 #'
 #' @keywords internal
 #' @noRd
@@ -689,6 +690,7 @@ typeField <- function(dv, fn) {
   # expand to function
   if (!is.null(ft)) ft <- switch(
     typeVars[[fn]],
+    "ctrFactor" = "as.factor(x = x)",
     "ctrInt" = "as.integer(x = x)",
     "ctrIntList" = 'sapply(x, function(i) {i[i == "NA"] <- NA; as.integer(i)}, USE.NAMES = FALSE)',
     "ctrYesNo" = 'sapply(x, function(i) if (is.na(i)) NA else
@@ -711,8 +713,8 @@ typeField <- function(dv, fn) {
   # clean up text
   if (is.null(ft)) {
 
-    # - if NA as string, change to NA
-    dv[grepl("^N/?A$|^ND$", dv)] <- NA
+    # - if NA or similar is a string, change to NA
+    if (typeof(dv) == "character") dv[grepl("^N/?A$|^ND$", dv)] <- NA_character_
 
     # - check if any html entities
     htmlEnt <- grepl("&[#a-zA-Z]+;", dv)
@@ -727,8 +729,11 @@ typeField <- function(dv, fn) {
         })
     }
 
-    # - check if possible and convert to numeric
-    if (all(is.numeric(dv) | is.na(dv))) dv <- as.numeric(dv)
+    # - check if conversion to numeric works
+    if ((typeof(dv) == "character") && any(!is.na(dv))) {
+      dvn <- suppressWarnings(as.numeric(dv))
+      if (identical(is.na(dv), is.na(dvn))) return(dvn)
+    }
 
     # - collapse unless list structure is heterogenous
     rowN1 <- sapply(dv, function(i) is.null(names(i)))
@@ -745,9 +750,9 @@ typeField <- function(dv, fn) {
         i <- sub("^Information not present in EudraCT", "", i)
         if (length(i) > 1L) {
           rowI <- paste0(i[!is.na(i)], collapse = " / ")
-          if (nchar(rowI)) rowI else NA
+          if (nchar(rowI)) rowI else NA_character_
         } else {
-          if (length(i) && !is.na(i)) i else NA
+          if (length(i) && !is.na(i)) i else NA_character_
         }
       })
     }
@@ -846,7 +851,8 @@ addMetaData <- function(x, con) {
 #' @param progress Set to \code{FALSE} to not print progress bar
 #' @param resume Logical for dispatching to curl
 #' @param multipley Logical for using http/2
-#' @param verbose For debug message printing
+#' @param verbose If \code{TRUE}, prints additional information
+#' (default \code{FALSE}).
 #'
 #' @keywords internal
 #' @noRd
@@ -1059,7 +1065,7 @@ ctrTempDir <- function(verbose = FALSE) {
 #' @param documents.path parameter from parent call
 #' @param documents.regexp parameter from parent call
 #' @param multiplex use http/2 or not
-#' @param verbose parameter from parent call
+#' @param verbose print parameter from parent call
 #'
 #' @return number of documents
 #'
@@ -1568,7 +1574,7 @@ dfOrTibble <- function(df) {
   if (any(sapply(
     .packages(), function(i)
       any(i == c("tibble", "magrittr", "tidyr", "dplyr")))
-    )) {
+  )) {
 
     return(tibble::as_tibble(df))
 

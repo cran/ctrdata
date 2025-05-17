@@ -5,6 +5,15 @@
 # mapping field names to typing function for typeField()
 typeVars <- list(
   #
+  ### . category ###
+  #
+  # - EUCTR
+  # - CTGOV
+  # - CTGOV2
+  # - ISRCTN
+  # - CTIS
+  #
+  #
   #### . dates ####
   #
   # - ctrdata intern
@@ -423,7 +432,7 @@ typeVars <- list(
   "trialGlobalEndDate" = "ctrDate",
   #
   #
-  #### . factors / logical ####
+  #### . logical ####
   #
   # - EUCTR Yes / No / Information not present in EudraCT
   "a7_trial_is_part_of_a_paediatric_investigation_plan" = "ctrYesNo",
@@ -510,9 +519,28 @@ typeVars <- list(
   "trialInformation.globalEndOfTrialPremature" = "ctrFalseTrue",
   #
   # - CTGOV
+  "eligibility.healthy_volunteers" = "ctrYesNo",
   "has_expanded_access"            = "ctrYesNo",
   "oversight_info.has_dmc"         = "ctrYesNo",
-  "eligibility.healthy_volunteers" = "ctrYesNo",
+  "oversight_info.is_fda_regulated_device" = "ctrFalseTrue",
+  "oversight_info.is_fda_regulated_drug" = "ctrFalseTrue",
+  "patient_data.sharing_ipd" = "ctrFalseTrue",
+  "provided_document_section.provided_document.document_has_icf" = "ctrFalseTrue",
+  "provided_document_section.provided_document.document_has_protocol" = "ctrFalseTrue",
+  "provided_document_section.provided_document.document_has_sap" = "ctrFalseTrue",
+  #
+  # - CTGOV2
+  "documentSection.largeDocumentModule.largeDocs.hasIcf"= "ctrFalseTrue",
+  "documentSection.largeDocumentModule.largeDocs.hasProtocol"= "ctrFalseTrue",
+  "documentSection.largeDocumentModule.largeDocs.hasSap"= "ctrFalseTrue",
+  "hasResults" = "ctrFalseTrue",
+  "protocolSection.eligibilityModule.healthyVolunteers"= "ctrFalseTrue",
+  "protocolSection.oversightModule.isFdaRegulatedDevice"= "ctrFalseTrue",
+  "protocolSection.oversightModule.isFdaRegulatedDrug"= "ctrFalseTrue",
+  "protocolSection.oversightModule.oversightHasDmc"= "ctrFalseTrue",
+  "protocolSection.statusModule.expandedAccessInfo.hasExpandedAccess"= "ctrFalseTrue",
+  "resultsSection.moreInfoModule.certainAgreement.piSponsorEmployee"= "ctrFalseTrue",
+  "resultsSection.moreInfoModule.certainAgreement.restrictiveAgreement"= "ctrFalseTrue",
   #
   # - ISRCTN
   "trialDescription.acknowledgment" = "ctrFalseTrue",
@@ -522,6 +550,7 @@ typeVars <- list(
   "authorizedApplication.applicationInfo.decisions.isRMS" = "ctrFalseTrue",
   "authorizedApplication.authorizedPartI.isLowIntervention" = "ctrFalseTrue",
   "authorizedApplication.authorizedPartI.medicalConditions.isConditionRareDisease" = "ctrFalseTrue",
+  "authorizedApplication.authorizedPartI.productRoleGroupInfos.products.allSubstancesChemicals" = "ctrFalseTrue",
   "authorizedApplication.authorizedPartI.productRoleGroupInfos.products.devices.hasCeMark" = "ctrFalseTrue",
   "authorizedApplication.authorizedPartI.productRoleGroupInfos.products.isPaediatricFormulation" = "ctrFalseTrue",
   "authorizedApplication.authorizedPartI.productRoleGroupInfos.products.part1MedicinalProductRoleMscInfos.memberStateConcernedInfo.hasRecruitmentStarted" = "ctrFalseTrue",
@@ -534,6 +563,7 @@ typeVars <- list(
   "authorizedApplication.authorizedPartI.products.part1MedicinalProductRoleMscInfos.memberStateConcernedInfo.isProposedRms" = "ctrFalseTrue",
   "authorizedApplication.authorizedPartI.products.part1MedicinalProductRoleMscInfos.memberStateConcernedInfo.isWillingAtDayThreeView" = "ctrFalseTrue",
   "authorizedApplication.authorizedPartI.products.therapies.isGmo" = "ctrFalseTrue",
+  "authorizedApplication.authorizedPartI.rowCountriesInfo.current" = "ctrFalseTrue",
   "authorizedApplication.authorizedPartI.rowCountriesInfo.isoAlpha2Code" = "ctrFalseTrue",
   "authorizedApplication.authorizedPartI.rowCountriesInfo.isoAlpha3Code" = "ctrFalseTrue",
   "authorizedApplication.authorizedPartI.rowCountriesInfo.isoNumber" = "ctrFalseTrue",
@@ -576,51 +606,24 @@ typeVars <- list(
   "events.trialEvents.earlyTerminationReason.isLateCandidate" = "ctrFalseTrue",
   #
   # ctis 2024-06-17
-  "includesPaediatricSubjects" = "ctrFalseTrue",
-  "hasDeferrallApplied" = "ctrFalseTrue",
-  "hasAmendmentApplied" = "ctrFalseTrue",
-  #
-  "baselineCharacteristics.ageCategoricalCharacteristic.readyForValues" = "ctrFalseTrue",
-  "baselineCharacteristics.ageContinuousCharacteristic.readyForValues" = "ctrFalseTrue",
-  "baselineCharacteristics.genderCategoricalCharacteristic.readyForValues" = "ctrFalseTrue",
-  "baselineCharacteristics.studyCategoricalCharacteristics.studyCategoricalCharacteristic.readyForValues" = "ctrFalseTrue",
-  "endPoints.endPoint.readyForValues" = "ctrFalseTrue",
-  #
-  "trialChanges.hasGlobalAmendments" = "ctrFalseTrue",
-  "trialChanges.hasGlobalInterruptions" = "ctrFalseTrue",
-  "oversight_info.has_dmc" = "ctrFalseTrue",
-  "applications.ctMSCsByApplication.hasRecruitmentStarted" = "ctrFalseTrue",
   "applications.ctMSCs.hasRecruitmentStarted" = "ctrFalseTrue",
-  "applications.eudraCtInfo.hasVhp" = "ctrFalseTrue",
-  "applications.partI.productRoleGroupInfos.products.hasDevice" = "ctrFalseTrue",
-  "applications.partI.products.hasDevice" = "ctrFalseTrue",
-  "applications.partI.trialDetails.associatedClinicalTrials.hasDocument" = "ctrFalseTrue",
-  "applications.partIIInfo.mscInfo.hasRecruitmentStarted" = "ctrFalseTrue",
-  "authorizedPartI.productRoleGroupInfos.products.hasDevice" = "ctrFalseTrue",
-  "authorizedPartI.products.hasDevice" = "ctrFalseTrue",
-  "authorizedPartI.trialDetails.associatedClinicalTrials.hasDocument" = "ctrFalseTrue",
-  "authorizedPartsII.mscInfo.hasRecruitmentStarted" = "ctrFalseTrue",
-  "eudraCtInfo.hasVhp" = "ctrFalseTrue",
-  "memberStatesConcerned.hasRecruitmentStarted" = "ctrFalseTrue",
-  "publicEvaluation.partIIEvaluationList.partIIRfis.hasApplicationChanges" = "ctrFalseTrue",
-  "publicEvaluation.validationRfis.hasApplicationChanges" = "ctrFalseTrue",
-  "publicEvaluation.partIRfis.hasApplicationChanges" = "ctrFalseTrue",
-  "protocolSection.statusModule.expandedAccessInfo.hasExpandedAccess" = "ctrFalseTrue",
-  #
-  "trialInformation.isGlobalEndOfTrialReached" = "ctrFalseTrue",
-  "applications.ctMSCsByApplication.isProposedRms" = "ctrFalseTrue",
-  "applications.ctMSCsByApplication.organisationInfo.isBusinessKeyValidated" = "ctrFalseTrue",
   "applications.ctMSCs.isProposedRms" = "ctrFalseTrue",
   "applications.ctMSCs.organisationInfo.isBusinessKeyValidated" = "ctrFalseTrue",
+  "applications.ctMSCsByApplication.hasRecruitmentStarted" = "ctrFalseTrue",
+  "applications.ctMSCsByApplication.isProposedRms" = "ctrFalseTrue",
+  "applications.ctMSCsByApplication.organisationInfo.isBusinessKeyValidated" = "ctrFalseTrue",
+  "applications.eudraCtInfo.hasVhp" = "ctrFalseTrue",
   "applications.eudraCtInfo.isTransitioned" = "ctrFalseTrue",
   "applications.isDossierUpdate" = "ctrFalseTrue",
   "applications.isMultiTrialSM" = "ctrFalseTrue",
   "applications.partI.isEditable" = "ctrFalseTrue",
   "applications.partI.isLowIntervention" = "ctrFalseTrue",
   "applications.partI.medicalConditions.isConditionRareDisease" = "ctrFalseTrue",
+  "applications.partI.productRoleGroupInfos.products.hasDevice" = "ctrFalseTrue",
   "applications.partI.productRoleGroupInfos.products.isDraftUnauthProduct" = "ctrFalseTrue",
   "applications.partI.productRoleGroupInfos.products.isPaediatricFormulation" = "ctrFalseTrue",
   "applications.partI.productRoleGroupInfos.products.productDictionaryInfo.isSelectedInMultiTrialSM" = "ctrFalseTrue",
+  "applications.partI.products.hasDevice" = "ctrFalseTrue",
   "applications.partI.products.isDraftUnauthProduct" = "ctrFalseTrue",
   "applications.partI.products.isPaediatricFormulation" = "ctrFalseTrue",
   "applications.partI.products.productDictionaryInfo.isSelectedInMultiTrialSM" = "ctrFalseTrue",
@@ -637,6 +640,7 @@ typeVars <- list(
   "applications.partI.sponsors.thirdParties.organisationAddress.isCreate" = "ctrFalseTrue",
   "applications.partI.sponsors.thirdParties.organisationAddress.isSave" = "ctrFalseTrue",
   "applications.partI.sponsors.thirdParties.organisationAddress.organisation.isBusinessKeyValidated" = "ctrFalseTrue",
+  "applications.partI.trialDetails.associatedClinicalTrials.hasDocument" = "ctrFalseTrue",
   "applications.partI.trialDetails.isClockStopRemovalRequested" = "ctrFalseTrue",
   "applications.partI.trialDetails.trialInformation.endPoint.primaryEndPoints.isPrimary" = "ctrFalseTrue",
   "applications.partI.trialDetails.trialInformation.endPoint.secondaryEndPoints.isPrimary" = "ctrFalseTrue",
@@ -647,6 +651,7 @@ typeVars <- list(
   "applications.partI.trialDetails.trialInformation.populationOfTrialSubjects.isVulnerablePopulationSelected" = "ctrFalseTrue",
   "applications.partI.trialDetails.trialInformation.trialCategory.isLowIntervention" = "ctrFalseTrue",
   "applications.partIIInfo.isEditable" = "ctrFalseTrue",
+  "applications.partIIInfo.mscInfo.hasRecruitmentStarted" = "ctrFalseTrue",
   "applications.partIIInfo.mscInfo.isProposedRms" = "ctrFalseTrue",
   "applications.partIIInfo.mscInfo.organisationInfo.isBusinessKeyValidated" = "ctrFalseTrue",
   "applications.partIIInfo.trialSites.organisationAddressInfo.isBusinessKeyValidated" = "ctrFalseTrue",
@@ -669,9 +674,11 @@ typeVars <- list(
   "authorizedPartI.isEditable" = "ctrFalseTrue",
   "authorizedPartI.isLowIntervention" = "ctrFalseTrue",
   "authorizedPartI.medicalConditions.isConditionRareDisease" = "ctrFalseTrue",
+  "authorizedPartI.productRoleGroupInfos.products.hasDevice" = "ctrFalseTrue",
   "authorizedPartI.productRoleGroupInfos.products.isDraftUnauthProduct" = "ctrFalseTrue",
   "authorizedPartI.productRoleGroupInfos.products.isPaediatricFormulation" = "ctrFalseTrue",
   "authorizedPartI.productRoleGroupInfos.products.productDictionaryInfo.isSelectedInMultiTrialSM" = "ctrFalseTrue",
+  "authorizedPartI.products.hasDevice" = "ctrFalseTrue",
   "authorizedPartI.products.isDraftUnauthProduct" = "ctrFalseTrue",
   "authorizedPartI.products.isPaediatricFormulation" = "ctrFalseTrue",
   "authorizedPartI.products.productDictionaryInfo.isSelectedInMultiTrialSM" = "ctrFalseTrue",
@@ -688,6 +695,7 @@ typeVars <- list(
   "authorizedPartI.sponsors.thirdParties.organisationAddress.isCreate" = "ctrFalseTrue",
   "authorizedPartI.sponsors.thirdParties.organisationAddress.isSave" = "ctrFalseTrue",
   "authorizedPartI.sponsors.thirdParties.organisationAddress.organisation.isBusinessKeyValidated" = "ctrFalseTrue",
+  "authorizedPartI.trialDetails.associatedClinicalTrials.hasDocument" = "ctrFalseTrue",
   "authorizedPartI.trialDetails.isClockStopRemovalRequested" = "ctrFalseTrue",
   "authorizedPartI.trialDetails.trialInformation.endPoint.primaryEndPoints.isPrimary" = "ctrFalseTrue",
   "authorizedPartI.trialDetails.trialInformation.endPoint.secondaryEndPoints.isPrimary" = "ctrFalseTrue",
@@ -698,12 +706,18 @@ typeVars <- list(
   "authorizedPartI.trialDetails.trialInformation.populationOfTrialSubjects.isVulnerablePopulationSelected" = "ctrFalseTrue",
   "authorizedPartI.trialDetails.trialInformation.trialCategory.isLowIntervention" = "ctrFalseTrue",
   "authorizedPartsII.isEditable" = "ctrFalseTrue",
+  "authorizedPartsII.mscInfo.hasRecruitmentStarted" = "ctrFalseTrue",
   "authorizedPartsII.mscInfo.isProposedRms" = "ctrFalseTrue",
   "authorizedPartsII.mscInfo.organisationInfo.isBusinessKeyValidated" = "ctrFalseTrue",
   "authorizedPartsII.trialSites.organisationAddressInfo.isBusinessKeyValidated" = "ctrFalseTrue",
   "authorizedPartsII.trialSites.organisationAddressInfo.isCreate" = "ctrFalseTrue",
   "authorizedPartsII.trialSites.organisationAddressInfo.isSave" = "ctrFalseTrue",
   "authorizedPartsII.trialSites.organisationAddressInfo.organisation.isBusinessKeyValidated" = "ctrFalseTrue",
+  "baselineCharacteristics.ageCategoricalCharacteristic.readyForValues" = "ctrFalseTrue",
+  "baselineCharacteristics.ageContinuousCharacteristic.readyForValues" = "ctrFalseTrue",
+  "baselineCharacteristics.genderCategoricalCharacteristic.readyForValues" = "ctrFalseTrue",
+  "baselineCharacteristics.studyCategoricalCharacteristics.studyCategoricalCharacteristic.readyForValues" = "ctrFalseTrue",
+  "correctiveMeasures.isImmediateActionRequired" = "ctrFalseTrue",
   "coSponsors.addresses.isBusinessKeyValidated" = "ctrFalseTrue",
   "coSponsors.addresses.isCreate" = "ctrFalseTrue",
   "coSponsors.addresses.isSave" = "ctrFalseTrue",
@@ -717,10 +731,17 @@ typeVars <- list(
   "coSponsors.thirdParties.organisationAddress.isCreate" = "ctrFalseTrue",
   "coSponsors.thirdParties.organisationAddress.isSave" = "ctrFalseTrue",
   "coSponsors.thirdParties.organisationAddress.organisation.isBusinessKeyValidated" = "ctrFalseTrue",
+  "endPoints.endPoint.readyForValues" = "ctrFalseTrue",
+  "eudraCtInfo.hasVhp" = "ctrFalseTrue",
+  "hasAmendmentApplied" = "ctrFalseTrue",
+  "hasDeferrallApplied" = "ctrFalseTrue",
+  "includesPaediatricSubjects" = "ctrFalseTrue",
+  "memberStatesConcerned.hasRecruitmentStarted" = "ctrFalseTrue",
   "memberStatesConcerned.isProposedRms" = "ctrFalseTrue",
   "memberStatesConcerned.organisationInfo.isBusinessKeyValidated" = "ctrFalseTrue",
   "mscTrialNotificationsInfoList.mscNotificationsListInfo.isBenefitRisckBalanceChange" = "ctrFalseTrue",
   "mscTrialNotificationsInfoList.mscNotificationsListInfo.isPublished" = "ctrFalseTrue",
+  "oversight_info.has_dmc" = "ctrFalseTrue",
   "primarySponsor.addresses.isBusinessKeyValidated" = "ctrFalseTrue",
   "primarySponsor.addresses.isCreate" = "ctrFalseTrue",
   "primarySponsor.addresses.isSave" = "ctrFalseTrue",
@@ -730,15 +751,23 @@ typeVars <- list(
   "primarySponsor.organisation.isBusinessKeyValidated" = "ctrFalseTrue",
   "primarySponsor.publicContacts.organisation.isBusinessKeyValidated" = "ctrFalseTrue",
   "primarySponsor.scientificContacts.organisation.isBusinessKeyValidated" = "ctrFalseTrue",
+  "protocolSection.statusModule.expandedAccessInfo.hasExpandedAccess" = "ctrFalseTrue",
   "publicEvaluation.partIIEvaluationList.partIIRfiConsiderations.rfiConsiderations.isDeConsolidated" = "ctrFalseTrue",
+  "publicEvaluation.partIIEvaluationList.partIIRfis.hasApplicationChanges" = "ctrFalseTrue",
   "publicEvaluation.partIIEvaluationList.partIIRfis.isDueInLessThanTwoDays" = "ctrFalseTrue",
   "publicEvaluation.partIIEvaluationList.partIIRfis.isEditingApplication" = "ctrFalseTrue",
-  "publicEvaluation.validationRfiConsiderations.rfiConsiderations.isDeConsolidated" = "ctrFalseTrue",
-  "publicEvaluation.validationRfis.isDueInLessThanTwoDays" = "ctrFalseTrue",
-  "publicEvaluation.validationRfis.isEditingApplication" = "ctrFalseTrue",
   "publicEvaluation.partIRfiConsiderations.rfiConsiderations.isDeConsolidated" = "ctrFalseTrue",
+  "publicEvaluation.partIRfis.hasApplicationChanges" = "ctrFalseTrue",
   "publicEvaluation.partIRfis.isDueInLessThanTwoDays" = "ctrFalseTrue",
   "publicEvaluation.partIRfis.isEditingApplication" = "ctrFalseTrue",
+  "publicEvaluation.validationRfiConsiderations.rfiConsiderations.isDeConsolidated" = "ctrFalseTrue",
+  "publicEvaluation.validationRfis.hasApplicationChanges" = "ctrFalseTrue",
+  "publicEvaluation.validationRfis.isDueInLessThanTwoDays" = "ctrFalseTrue",
+  "publicEvaluation.validationRfis.isEditingApplication" = "ctrFalseTrue",
+  "trialChanges.hasGlobalAmendments" = "ctrFalseTrue",
+  "trialChanges.hasGlobalInterruptions" = "ctrFalseTrue",
+  "trialInformation.isGlobalEndOfTrialReached" = "ctrFalseTrue",
+  #
   #
   #### . numbers ####
   #
@@ -822,6 +851,7 @@ typeVars <- list(
   "authorizedPartI.trialDetails.trialInformation.endPoint.primaryEndPoints.number"          = "ctrInt",
   "authorizedPartI.trialDetails.trialInformation.endPoint.secondaryEndPoints.number"        = "ctrInt",
   "authorizedPartI.trialDetails.trialInformation.trialObjective.secondaryObjectives.number" = "ctrInt",
+  "authorizedPartsII.recruitmentSubjectCount" = "ctrInt",
   #
   # - CTGOV2
   "history.history_version.version_number" = "ctrInt",

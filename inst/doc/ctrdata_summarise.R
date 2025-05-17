@@ -36,8 +36,8 @@ knitr::opts_chunk$set(
 # 
 # # Show results of loading
 # sapply(result, "[[", "n")
-# # EUCTR CTGOV2 ISRCTN   CTIS
-# #   390    613      3     19
+# # EUCTR       ISRCTN       CTGOV2 CTGOV2expert         CTIS
+# #   390            1          530          530           21
 
 ## ----dbFindFields-------------------------------------------------------------
 # #
@@ -64,6 +64,7 @@ knitr::opts_chunk$set(
 ## ----dbGetFieldsIntoDf--------------------------------------------------------
 # # Define vector of fields
 # fieldsOfInterest <- c(
+#   #
 #   # EUCTR protocol-related information
 #   "f41_in_the_member_state",
 #   "f422_in_the_whole_clinical_trial",
@@ -87,8 +88,8 @@ knitr::opts_chunk$set(
 # )
 # # Querying database (7 fields)...
 # 
-# # dim(result)
-# # [1] 984   8
+# dim(result)
+# # [1] 913   8
 
 ## ----attributes---------------------------------------------------------------
 # attributes(result)
@@ -112,9 +113,9 @@ knitr::opts_chunk$set(
 # # $`ctrdata-dbqueryhistory`
 # #       query-timestamp query-register query-records
 # # 1 2025-03-02 15:26:22          EUCTR           390
-# # 2 2025-03-02 15:26:25         CTGOV2           613
-# # 3 2025-03-02 15:26:26         ISRCTN             3
-# # 4 2025-03-02 15:26:28           CTIS            19
+# # 2 2025-03-02 15:26:25         CTGOV2           530
+# # 3 2025-03-02 15:26:26         ISRCTN             1
+# # 4 2025-03-02 15:26:28           CTIS            21
 # #                                                               query-term
 # # 1                                       query=neuroblastoma&age=under-18
 # # 2                               cond=neuroblastoma&aggFilters=ages:child
@@ -131,14 +132,14 @@ knitr::opts_chunk$set(
 # # - Getting all trial identifiers (may take some time), 1025 found in collection
 # # - Finding duplicates among registers' and sponsor ids...
 # # - 284 EUCTR _id were not preferred EU Member State record for 109 trials
-# # - Keeping 106 / 0 / 423 / 1 / 19 records from EUCTR / CTGOV / CTGOV2 / ISRCTN / CTIS
-# # = Returning keys (_id) of 549 records in collection "my_collection_name"
+# # - Keeping 106 / 0 / 366 / 0 / 8 records from EUCTR / CTGOV / CTGOV2 / ISRCTN / CTIS
+# # = Returning keys (_id) of 480 records in collection "my_collection_name"
 # 
 # # Eliminate duplicate trials records:
 # result <- result[result[["_id"]] %in% ids, ]
 # 
 # nrow(result)
-# # [1] 513
+# # [1] 465
 # #
 # # Note that "ids" are the identifiers of unique trials in the whole collection,
 # # whereas the data frame "result" only includes those trials in which any of
@@ -152,16 +153,17 @@ knitr::opts_chunk$set(
 #   calculate = "f.isUniqueTrial",
 #   con = db
 # )
-# # Querying database (30 fields)...
+# # Querying database (8 fields)...
 # # - Finding duplicates among registers' and sponsor ids...
-# # - 132 EUCTR _id were not preferred EU Member State record for 83 trials
-# # - Keeping 613 / 50 / 0 / 1 / 19 records from CTGOV2 / EUCTR / CTGOV / ISRCTN / CTIS
+# # - 132 EUCTR _id were not preferred EU Member State record for 87 trials
+# # - Keeping 530 / 50 / 0 / 0 / 11 records from CTGOV2 / EUCTR / CTGOV / ISRCTN / CTIS
+# # = Returning keys (_id) of 591 records in collection "my_collection_name"
 # 
 # # Eliminate duplicate trials records:
 # result <- result[result[[".isUniqueTrial"]], ]
 # 
 # nrow(result)
-# # [1] 267
+# # [1] 591
 # #
 # # Note this has used a different register as priority.
 # # Also, the data frame result includes all trials which
@@ -201,18 +203,18 @@ knitr::opts_chunk$set(
 ## ----str_data_frame-----------------------------------------------------------
 # # Get data of interest
 # result <- dbGetFieldsIntoDf(
-#   fields = c("ctrname"),
+#   fields = "ctrname",
 #   calculate = c("f.isUniqueTrial", "f.startDate"),
 #   con = db
 # )
-# # Querying database (33 fields)...
+# # Querying database (11 fields)...
 # # - Finding duplicates among registers' and sponsor ids...
 # # - 132 EUCTR _id were not preferred EU Member State record for 83 trials
-# # - Keeping 613 / 50 / 0 / 1 / 19 records from CTGOV2 / EUCTR / CTGOV / ISRCTN / CTIS
-# # Calculating .startDate...
+# # - Keeping 530 / 50 / 0 / 1 / 11 records from CTGOV2 / EUCTR / CTGOV / ISRCTN / CTIS
+# # = Returning keys (_id) of 591 records in collection "my_collection_name"
 # 
 # str(result)
-# # 'data.frame':	1025 obs. of  4 variables:
+# # 'data.frame':	942 obs. of  4 variables:
 # #  $ _id           : chr  "2004-004386-15-DE" "2004-004386-15-ES" "2004-004386-15-GB" "2004-004386-15-IT" ...
 # #  $ ctrname       : chr  "EUCTR" "EUCTR" "EUCTR" "EUCTR" ...
 # #  $ .isUniqueTrial: logi  FALSE FALSE FALSE FALSE FALSE FALSE ...
@@ -246,7 +248,7 @@ knitr::opts_chunk$set(
 # #  [7] "f.primaryEndpointDescription" "f.primaryEndpointResults"     "f.resultsDate"
 # # [10] "f.sampleSize"                 "f.sponsorType"                "f.startDate"
 # # [13] "f.statusRecruitment"          "f.trialObjectives"            "f.trialPhase"
-# # [16] "f.trialPopulation"
+# # [16] "f.trialPopulation"            "f.trialTitle"
 
 ## ----results='asis'-----------------------------------------------------------
 # '
@@ -322,8 +324,8 @@ knitr::opts_chunk$set(
 # result <- dbGetFieldsIntoDf(
 #   fields = c(
 #     # only CTGOV2 has structured historic information
-#     "history.protocolSection.designModule.enrollmentInfo.count",
-#     "history.history_version.version_date"
+#     "history.history_version.version_date",
+#     "history.protocolSection.designModule.enrollmentInfo.count"
 #   ),
 #   calculate = "f.statusRecruitment",
 #   con = db
@@ -414,7 +416,7 @@ knitr::opts_chunk$set(
 # # rows for each trial, with one row per field):
 # #
 # long_result <- dfTrials2Long(df = result)
-# # Total 89253 rows, 159 unique names of variables
+# # Total 89038 rows, 159 unique names of variables
 # long_result[c(100, 10000, 80000), ]
 # # # A tibble: 3 × 4
 # #   `_id`             identifier name                                                        value
@@ -524,7 +526,7 @@ knitr::opts_chunk$set(
 #   ),
 #   con = db
 # )
-# # Querying database (75 fields)...
+# # Querying database (56 fields)...
 # # - Finding duplicates among registers' and sponsor ids...
 # # - 132 EUCTR _id were not preferred EU Member State record for 83 trials
 # # - Keeping 613 / 50 / 0 / 1 / 19 records from CTGOV2 / EUCTR / CTGOV / ISRCTN / CTIS
@@ -548,7 +550,7 @@ knitr::opts_chunk$set(
 # # Tabulate
 # table(result$pep_is_efs)
 # # FALSE  TRUE
-# #   606    76
+# #   522    69
 # 
 # # Plot
 # library(ggplot2)
@@ -576,7 +578,7 @@ knitr::opts_chunk$set(
 #   ),
 #   con = db
 # )
-# # Querying database (53 fields)...
+# # Querying database (31 fields)...
 # 
 # # De-duplicate
 # result <- result[result[[".isUniqueTrial"]], ]
@@ -653,7 +655,7 @@ knitr::opts_chunk$set(
 # table(number_authorised, exclude = "")
 # # number_authorised
 # #    0    1    2    3    4    5    6    7   13 <NA>
-# #   19   12    5    2    3    3    1    1    1  636
+# #   19   13    5    1    3    3    1    1    1  544
 # 
 # result[["any_authorised"]] <- number_authorised > 0L
 # 
@@ -698,7 +700,7 @@ knitr::opts_chunk$set(
 # 
 # # Number of records in  collection
 # m$count()
-# # [1] 1026
+# # [1] 943
 # 
 # # Number of EUCTR records, using JSON for query
 # m$count(query = '{"_id": {"$regex": "[0-9]{4}-[0-9]{6}-[0-9]{2}-[3A-Z]{2,3}", "$options": "i"}}')
@@ -710,11 +712,11 @@ knitr::opts_chunk$set(
 # 
 # # Number of CTGOV records
 # m$count(query = '{"_id": {"$regex": "NCT[0-9]{8}", "$options": "i"}}')
-# # [1] 613
+# # [1] 530
 # 
 # # Alternative
 # m$count(query = '{"ctrname": "CTGOV2"}')
-# # [1] 613
+# # [1] 530
 # 
 # # To best define regular expressions for analyses, inspect the field:
 # head(
@@ -745,7 +747,7 @@ knitr::opts_chunk$set(
 # )
 # out
 # #    _id count
-# # 1 null    64
+# # 1 null    59
 # 
 # # List records of trials with overall survival
 # # as primary endpoint, and list start date
@@ -803,18 +805,19 @@ knitr::opts_chunk$set(
 #   }
 # ]
 # ')
-# #      _id count
-# # 1     NA   463
-# # 2      0   419
-# # 3    100    67
-# # 4    200    18
-# # 5    300    12
-# # 6    400     8
-# # 7    500     9
-# # 8    600     6
-# # 9    700     1
-# # 10   800     2
-# # 11   900     1
-# # 12  1000     5
-# # [...]
+# #     _id count
+# # 1    NA   448
+# # 2     0   392
+# # 3   100    58
+# # 4   200    15
+# # 5   300     5
+# # 6   400     6
+# # 7   500     6
+# # 8   600     6
+# # 9   700     1
+# # 10  800     2
+# # 11  900     1
+# # 12 1300     1
+# # 13 1400     1
+# # 14 3300     1
 
