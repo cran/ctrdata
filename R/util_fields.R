@@ -605,7 +605,7 @@ typeVars <- list(
   "events.temporaryHaltList.reasonList.isSmRequiredForRestart" = "ctrFalseTrue",
   "events.trialEvents.earlyTerminationReason.isLateCandidate" = "ctrFalseTrue",
   #
-  # ctis 2024-06-17
+  # ctis until 2024-06-17
   "applications.ctMSCs.hasRecruitmentStarted" = "ctrFalseTrue",
   "applications.ctMSCs.isProposedRms" = "ctrFalseTrue",
   "applications.ctMSCs.organisationInfo.isBusinessKeyValidated" = "ctrFalseTrue",
@@ -824,6 +824,7 @@ typeVars <- list(
   "authorizedApplication.authorizedPartI.trialDetails.trialInformation.endPoint.primaryEndPoints.number" = "ctrInt",
   "authorizedApplication.authorizedPartI.trialDetails.trialInformation.endPoint.secondaryEndPoints.number" = "ctrInt",
   "authorizedApplication.authorizedPartI.trialDetails.trialInformation.trialObjective.secondaryObjectives.number" = "ctrInt",
+  "ctPublicStatusCode" = "ctrInt",
   "totalNumberEnrolled" = "ctrInt",
   #
   "authorizedApplication.authorizedPartI.rowSubjectCount" = "ctrInt",
@@ -832,7 +833,6 @@ typeVars <- list(
   "authorizedApplication.authorizedPartsII.recruitmentSubjectCount" = "ctrInt",
   #
   # ctis until 2024-06-17
-  "totalNumberEnrolled"     = "ctrInt",
   "totalPartIISubjectCount" = "ctrInt",
   "authorizedPartI.rowSubjectCount" = "ctrInt",
   "applications.mscExtendedInfoList.numberSubjects" = "ctrInt",

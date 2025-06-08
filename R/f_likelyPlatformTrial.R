@@ -1,6 +1,6 @@
 #### history ####
 # 2025-01-27 first partly working version
-# 2025-02-08 improved
+# 2025-02-08, 2025-05-31 improved
 
 #' Calculate if study is likely a platform trial or not
 #'
@@ -13,28 +13,32 @@
 #' after excluding comparator, auxiliary and placebo medicines (calculated with
 #' \link{f.numTestArmsSubstances}; not used for ISRCTN because it cannot be
 #' calculated precisely),
-#' c. trial more than 2 periods, after excluding safety run-in, screening,
+#' c. trial has more than 2 periods, after excluding safety run-in, screening,
 #' enrolling, extension and follow-up periods (for CTGOV and CTGOV2, this
 #' criterion requires results-related data).
-#' Requires that EUCTR results have been included in the collection, using
-#' ctrLoadQueryIntoDb(queryterm = ..., euctrresults = TRUE, con = ...).
+#'
+#' For EUCTR, requires that results have been included in the collection, using
+#' `ctrLoadQueryIntoDb(queryterm = ..., euctrresults = TRUE, con = ...)`.
 #' Requires packages dplyr and stringdist to be installed; stringdist is used
 #' for evaluating terms in brackets in the trial title, where trials may be
-#' related if the term similarity is 0.7 or higher.
+#' related if the term similarity is 0.77 or higher.
 #'
 #' Publication references considered:
-#' E-PEARL WP2 2020 https://tinyurl.com/eupearld21terminology (which did not
-#' include all basket trials in the definition, as done here)
-#' Williams RJ et al. 2022 https://doi.org/10.1136/bmj-2021-067745
+#' \href{https://web.archive.org/web/20230314024441/https://eu-pearl.eu/wp-content/uploads/2020/06/EU-PEARL_D2.1_Report-on-Terminology-and-Scenarios-for-Platform-Trials-and-Masterprotocols.pdf}{EU-PEARL WP2 2020}
+#' and Williams RJ et al. 2022, \doi{10.1136/bmj-2021-067745}
 #'
 #' @param df data frame such as from \link{dbGetFieldsIntoDf}. If `NULL`,
 #' prints fields needed in `df` for calculating this trial concept, which can
 #' be used with \link{dbGetFieldsIntoDf}.
 #'
 #' @return data frame with columns `_id` and `.likelyPlatformTrial`, a logical,
-#' `.likelyRelatedTrials`, a list (e.g., from CTIS' `associatedClinicalTrials`)
-#' and `.maybeRelatedTrials`, a list (based on similar short terms within
-#' a first set of brackets or before a colon in the title).
+#' and two complementary columns, each with lists of identifiers:
+#' `.likelyRelatedTrials` (based on other identifiers provided in the trial
+#' record, including `associatedClinicalTrials` from CTIS; listing identifiers
+#' whether or not the trial with the other identifier is in the database
+#' collection) and `.maybeRelatedTrials` (based on similar short terms in the
+#' first set of brackets or before a colon in the trial title; only listing
+#' identifiers from the database collection).
 #'
 #' @export
 #'
@@ -87,25 +91,22 @@ f.likelyPlatformTrial <- function(df = NULL) {
     ),
     "ctis" = c(
       # CTIS1
-      "title",
       # "applications.fullTitle",
       # "authorizedPartI.trialDetails.clinicalTrialIdentifiers.fullTitle",
       # "authorizedPartI.trialDetails.clinicalTrialIdentifiers.publicTitle",
       "authorizedPartI.trialDetails.protocolInformation.studyDesign.periodDetails.title",
       # "authorizedPartI.trialDetails.protocolInformation.studyDesign.periodDetails.armDetails.title",
-      #
       # "authorizedPartI.trialDetails.associatedClinicalTrials.parentClinicalTrialId",
-      # "authorizedPartI.trialDetails.associatedClinicalTrials.ctNumber",
+      "authorizedPartI.trialDetails.associatedClinicalTrials.ctNumber",
       # "authorizedPartsII.mscInfo.clinicalTrialId",
-
+      #
       # CTIS2
       # "shortTitle" is mostly an uninformative study code
       # "authorizedApplication.authorizedPartI.trialDetails.clinicalTrialIdentifiers.fullTitle",
       # "authorizedApplication.authorizedPartI.trialDetails.clinicalTrialIdentifiers.publicTitle",
-      "authorizedApplication.authorizedPartI.trialDetails.protocolInformation.studyDesign.periodDetails.title"
-      #
+      "authorizedApplication.authorizedPartI.trialDetails.protocolInformation.studyDesign.periodDetails.title",
       # "authorizedApplication.authorizedPartI.trialDetails.associatedClinicalTrials.parentClinicalTrialId",
-      # "authorizedApplication.authorizedPartI.trialDetails.associatedClinicalTrials.ctNumber",
+      "authorizedApplication.authorizedPartI.trialDetails.associatedClinicalTrials.ctNumber"
       # "authorizedApplication.authorizedPartsII.mscInfo.clinicalTrialId"
     ))
 
@@ -135,7 +136,7 @@ f.likelyPlatformTrial <- function(df = NULL) {
   fctChkFlds(names(df), fldsNeeded)
 
   # helper definitions
-  indexThreshold <- 0.7
+  indexThreshold <- 0.77
   platformThreshold <- 0.3
   minNumArmsDefPlatform <- 2L
   minNumPeriodsDefPlatform <- 2L
@@ -178,16 +179,28 @@ f.likelyPlatformTrial <- function(df = NULL) {
     }, simplify = FALSE)
   }
 
-  # get and mangle mapping table
+  # get and mangle mapping table, add ids associated trials
   df2 <- .dbMapIdsTrials(con = parent.frame()$con)
+  df2 <- dplyr::left_join(df2, df[, c("_id",
+    "authorizedPartI.trialDetails.associatedClinicalTrials.ctNumber",
+    "authorizedApplication.authorizedPartI.trialDetails.associatedClinicalTrials.ctNumber"
+  )], by = "_id")
+  # collapse into single column that is a list
   df2$.likelyRelatedTrials <- rowColsList(
-    dplyr::select(df2, registerList))
+    dplyr::select(df2, c(
+      registerList,
+      "authorizedPartI.trialDetails.associatedClinicalTrials.ctNumber",
+      "authorizedApplication.authorizedPartI.trialDetails.associatedClinicalTrials.ctNumber"
+    )))
+  # expand rows for each list item
   df2 <- tidyr::unnest(
     df2, cols = .data$.likelyRelatedTrials)
+  # mangle, revert to one list in one row per trial
   df2 <- df2 %>%
-    dplyr::select(!c(registerList, "SPONSOR")) %>%
+    dplyr::select(c("_id", "ctrname", ".likelyRelatedTrials")) %>%
     tidyr::pivot_longer(cols = !"_id") %>%
-    dplyr::filter(.data$name != "EUCTR") %>% # since this has no country suffix
+    # since value has no country suffix as needed for _id
+    dplyr::filter(.data$name != "EUCTR") %>%
     dplyr::filter(.data$name != "ctrname") %>%
     dplyr::filter(.data$value != "") %>%
     dplyr::filter(.data$value != .data$`_id`) %>%
@@ -236,6 +249,9 @@ f.likelyPlatformTrial <- function(df = NULL) {
   # number of arms and substances
   df %>% dplyr::mutate(
     #
+    # normalise to work with regex
+    .trialTitle = gsub("\n|\r|  +", " ", .data$.trialTitle),
+    #
     # is title relevant
     analysis_titleRelevant = stringi::stri_detect_regex(
       .data$.trialTitle, titleDefPlatform, case_insensitive = TRUE),
@@ -252,7 +268,11 @@ f.likelyPlatformTrial <- function(df = NULL) {
     ),
     titleBracketedRefs = if_else(
       .data$titleBracketedRefs == .data$.trialTitle |
-        nchar(.data$titleBracketedRefs) < 5L,
+        nchar(.data$titleBracketedRefs) < 5L |
+        # TODO add more abbreviations that are not
+        # short names of (platform) clinical trials
+        grepl("NSCLC|mCRPC|SCCHN",
+              .data$titleBracketedRefs, ignore.case = TRUE),
       NA_character_, gsub("[^a-zA-Z0-9]", "", .data$titleBracketedRefs)
     ),
     #
@@ -268,7 +288,7 @@ f.likelyPlatformTrial <- function(df = NULL) {
     titleColonedRefs = if_else(
       .data$titleColonedRefs == .data$.trialTitle |
         nchar(.data$titleColonedRefs) < 5L |
-        nchar(.data$titleColonedRefs) > 25L,
+        nchar(.data$titleColonedRefs) > 35L,
       NA_character_, gsub("[^a-zA-Z0-9]", "", .data$titleColonedRefs)
     ),
     #
@@ -286,7 +306,7 @@ f.likelyPlatformTrial <- function(df = NULL) {
     # turn row indices to ids of possibly related trials
     .maybeRelatedTrials = mapply(
       function(a, b, c) if (all(is.na(a)))
-        NA_character_ else unique(na.omit(c(.data$`_id`[a], b, c))),
+        NA_character_ else sort(unique(na.omit(c(.data$`_id`[a], b, c)))),
       a = .data$.maybeRelatedTrials,
       b = .data$.likelyRelatedTrials,
       c = .data$`_id`,
@@ -319,7 +339,9 @@ f.likelyPlatformTrial <- function(df = NULL) {
       }),
     #
     .analysis_numberTestPeriods = dplyr::case_when(
-      ctrname == "EUCTR" ~ .data$analysis_numberTestPeriods)
+      ctrname == "EUCTR" ~ .data$analysis_numberTestPeriods,
+      .default = .data$analysis_numberTestPeriods)
+    #
   ) -> df
 
 
@@ -340,7 +362,8 @@ f.likelyPlatformTrial <- function(df = NULL) {
       }),
     #
     .analysis_numberTestPeriods = dplyr::case_when(
-      ctrname == "CTGOV" ~ .data$analysis_numberTestPeriods)
+      ctrname == "CTGOV" ~ .data$analysis_numberTestPeriods,
+      .default = .data$analysis_numberTestPeriods)
     #
   ) -> df
 
@@ -362,7 +385,8 @@ f.likelyPlatformTrial <- function(df = NULL) {
       }),
     #
     .analysis_numberTestPeriods = dplyr::case_when(
-      ctrname == "CTGOV2" ~ .data$analysis_numberTestPeriods)
+      ctrname == "CTGOV2" ~ .data$analysis_numberTestPeriods,
+      .default = .data$analysis_numberTestPeriods)
     #
   ) -> df
 
@@ -378,7 +402,9 @@ f.likelyPlatformTrial <- function(df = NULL) {
     #
     analysis_titleRelevant = dplyr::case_when(
       ctrname == "ISRCTN" ~ .data$analysis_isDrugTrial &
-        .data$analysis_titleRelevant)
+        .data$analysis_titleRelevant,
+      .default = .data$analysis_titleRelevant)
+    #
   ) -> df
 
 
@@ -386,8 +412,8 @@ f.likelyPlatformTrial <- function(df = NULL) {
   df %>%
     dplyr::mutate(
       #
-      periodTitle = dplyr::coalesce(
-        as.character(.data$authorizedPartI.trialDetails.protocolInformation.studyDesign.periodDetails.title),
+      periodTitle = dplyr::coalesce(as.character(
+        .data$authorizedPartI.trialDetails.protocolInformation.studyDesign.periodDetails.title),
         .data$authorizedApplication.authorizedPartI.trialDetails.protocolInformation.studyDesign.periodDetails.title
       ),
       #
@@ -404,7 +430,8 @@ f.likelyPlatformTrial <- function(df = NULL) {
         }),
       #
       .analysis_numberTestPeriods = dplyr::case_when(
-        ctrname == "CTIS" ~ .data$analysis_numberTestPeriods)
+        ctrname == "CTIS" ~ .data$analysis_numberTestPeriods,
+        .default = .data$analysis_numberTestPeriods)
       #
     ) -> df
 

@@ -1,3 +1,10 @@
+# ctrdata 1.22.3
+
+- Added dev version of `nodbi` to GitHub Action
+- Added typing to CTIS field for `f.statusRecruitment`
+- Improved `f.likelyPlatfromTrial` (mangling title excerpts, add a missing default, sort ids in `.maybeRelatedTrials`, added back associated trials, updated similarity and user info)
+- Accelerated file operations that still used `cat`
+
 # ctrdata 1.22.2 
 
 - Added typing for further CTGOV2 and CTIS fields

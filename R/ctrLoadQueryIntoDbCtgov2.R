@@ -506,27 +506,29 @@ ctrLoadQueryIntoDbCtgov2 <- function(
     res <- sapply(
       X = unique(historyDf[["_id"]]),
       FUN = function(i) {
+
         out <- file.path(tempDir, paste0("h_m_", i, ".json"))
         unlink(out)
+        outCon <- file(out, open = "at")
+        on.exit(try(close(outCon), silent = TRUE), add = TRUE)
 
         # put historic versions into top level array
-        cat(paste0('{"_id": "', i, '", "history": ['),
-          file = out,
-          sep = "",
-          append = TRUE
-        )
+        writeLines(paste0('{"_id": "', i, '", "history": ['),
+                   con = outCon, sep = "")
 
         fToMerge <- tmp[["destfile"]][grepl(i, tmp[["destfile"]])]
 
         # write history study versions into array
         for (ii in seq_along(fToMerge)) {
+
           if (!file.exists(fToMerge[ii]) || !file.size(fToMerge[ii]) > 10L) next
-          if (ii > 1L) cat(",", file = out, sep = "", append = TRUE)
+
+          if (ii > 1L) writeLines(",", con = outCon, sep = "")
 
           vn <- as.numeric(jqr::jq(file(fToMerge[ii]), " .studyVersion")) + 1L
 
           # add information about version
-          cat(
+          writeLines(
             jqr::jq(file(fToMerge[ii]), paste0(
               ' .study | .history_version = { "version_number": ', vn, ",",
               ' "version_date": "', historyDf[["version_date"]][
@@ -535,13 +537,14 @@ ctrLoadQueryIntoDbCtgov2 <- function(
             ),
             flags = jqr::jq_flags(pretty = FALSE)
             ),
-            file = out,
-            sep = "",
-            append = TRUE
+            con = outCon,
+            sep = ""
           )
+
         }
 
-        cat("]}", file = out, sep = "\n", append = TRUE)
+        writeLines("]}", con = outCon)
+        close(outCon)
         message(". ", appendLF = FALSE)
       },
       USE.NAMES = FALSE
