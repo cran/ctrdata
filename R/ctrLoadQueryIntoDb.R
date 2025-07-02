@@ -127,8 +127,7 @@
 #'
 #' @export
 #'
-#' @importFrom httr set_config user_agent
-#' @importFrom utils packageVersion
+#' @importFrom utils packageVersion URLencode
 #'
 #' @examples
 #' \dontrun{
@@ -225,9 +224,10 @@ ctrLoadQueryIntoDb <- function(
 
   ## obtain queryterm register --------------------------------------------
 
-  # - if not querytoupdate
+  # if not querytoupdate
   if (is.null(querytoupdate)) {
-    # check queryterm
+
+    # - check queryterm
     if (!is.data.frame(queryterm)) {
       # obtain url and register
       queryterm <- try(
@@ -305,14 +305,6 @@ ctrLoadQueryIntoDb <- function(
     stop("'annotation.mode' incorrect", call. = FALSE)
   }
 
-  # set user agent for httr and curl to inform registers
-  httr::set_config(httr::user_agent(
-    paste0(
-      "ctrdata/", utils::packageVersion("ctrdata"),
-      " (https://cran.r-project.org/package=ctrdata)"
-    )
-  ))
-
   ## handle querytoupdate -----------------------------------------------------
 
   # initialise variable that is filled if an update is to be made
@@ -345,7 +337,7 @@ ctrLoadQueryIntoDb <- function(
   } # if querytermtoupdate
 
   # continue with database if needed
-  if (!only.count) {con <- ctrDb(con)}
+  if (!only.count) con <- ctrDb(con)
 
   ## . main function -----------------------------------------------------
 
@@ -402,7 +394,7 @@ ctrLoadQueryIntoDb <- function(
   ## finalise
 
   # early exit if only count
-  if (only.count) {return(imported)}
+  if (only.count) return(imported)
 
   # add query parameters to database
   if (imported$n > 0L || !is.null(querytoupdate)) {

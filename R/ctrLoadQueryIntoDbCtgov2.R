@@ -10,8 +10,9 @@
 #' @importFrom jqr jq jq_flags
 #' @importFrom utils URLencode
 #' @importFrom jsonlite stream_in
-#' @importFrom httr GET status_code content
 #' @importFrom stringi stri_replace_all_regex
+#' @importFrom httr2 req_perform req_user_agent request
+#' @importFrom rlang hash
 #'
 ctrLoadQueryIntoDbCtgov2 <- function(
     queryterm = queryterm,
@@ -48,7 +49,7 @@ ctrLoadQueryIntoDbCtgov2 <- function(
     ctgov2history <- deparse(ctgov2history)
   }
   if (!length(ctgov2history) ||
-    !grepl("^(FALSE|TRUE|-1L?|1L?|[0-9]+L?:[0-9]+L?|[1-9]+[0-9]+L?|[1-9]+L?)$", ctgov2history)) {
+      !grepl("^(FALSE|TRUE|-1L?|1L?|[0-9]+L?:[0-9]+L?|[1-9]+[0-9]+L?|[1-9]+L?)$", ctgov2history)) {
     message("Parameter 'ctgov2history' invalid, ignored: ", ctgov2history)
     ctgov2history <- "FALSE"
   }
@@ -80,16 +81,16 @@ ctrLoadQueryIntoDbCtgov2 <- function(
   queryValues <- sub("(.+)=(.*)", "\\2", queryterm)
   names(queryValues) <- sub("(.+)=(.*)", "\\1", queryterm)
   if (!is.na(queryValues["state"]) &&
-    !is.na(queryValues["city"]) &&
-    (queryValues["state"] == queryValues["city"])) {
+      !is.na(queryValues["city"]) &&
+      (queryValues["state"] == queryValues["city"])) {
     queryterm <-
       queryterm[!grepl("state=", queryterm)]
   }
   # - if only locStr, warn user
   if (!is.na(queryValues["locStr"]) &&
-    (is.na(queryValues["country"]) &&
-      is.na(queryValues["state"]) &&
-      is.na(queryValues["city"]))) {
+      (is.na(queryValues["country"]) &&
+       is.na(queryValues["state"]) &&
+       is.na(queryValues["city"]))) {
     stop(
       "Parameter 'locStr' provided, but no 'country', 'state' or 'city'; ",
       "please check in CTGOV; e.g., the name of a trial site should go ",
@@ -218,22 +219,28 @@ ctrLoadQueryIntoDbCtgov2 <- function(
   # corresponds to count
   url <- sprintf(ctgovEndpoints[1], queryterm)
   if (verbose) message("API call: ", url)
-  message("* Checking trials using CTGOV REST API 2.0...", appendLF = FALSE)
+  message("* Checking trials in CTGOV...", appendLF = FALSE)
+  #
   url <- utils::URLencode(url)
-  counts <- httr::GET(url)
+  counts <- try(httr2::req_perform(
+    httr2::req_user_agent(
+      httr2::request(url),
+      ctrdataUseragent
+    )), silent = TRUE)
 
   # early exit
-  if (httr::status_code(counts) != 200L) {
+  if (inherits(counts, "try-error") ||
+      counts$status_code != 200L) {
     warning("Could not be retrieved, check 'queryterm' and / or 'register'. ",
-      "\nAPI returned: ", httr::content(counts),
-      call. = FALSE
+            "\nAPI returned: ", rawToChar(counts$body),
+            call. = FALSE
     )
     message("API call: ", url)
     return(emptyReturn)
   }
 
   # extract total number of trial records
-  counts <- suppressMessages(httr::content(counts, as = "text"))
+  counts <- suppressMessages(rawToChar(counts$body))
   resultsEuNumTrials <- as.numeric(jqr::jq(counts, " .totalCount "))
   message("\b\b\b, found ", resultsEuNumTrials, " trials")
 
@@ -267,14 +274,13 @@ ctrLoadQueryIntoDbCtgov2 <- function(
   # corresponds to trials
 
   url <- sprintf(ctgovEndpoints[2], queryterm)
-  url <- utils::URLencode(url)
 
   pageNextToken <- ""
   pageNumber <- 1L
   importDateTime <- strftime(Sys.time(), "%Y-%m-%d %H:%M:%S")
 
   message(
-    "(1/3) Downloading in ",
+    "- Downloading in ",
     ceiling(resultsEuNumTrials / 1000L),
     " batch(es) (max. 1000 trials each; estimate: ",
     format(resultsEuNumTrials * 0.1, digits = 2), " Mb total)"
@@ -285,6 +291,7 @@ ctrLoadQueryIntoDbCtgov2 <- function(
 
   # download and compile into ndjson
   while (TRUE) {
+
     # page url
     urlToDownload <- ifelse(
       pageNextToken != "",
@@ -297,27 +304,24 @@ ctrLoadQueryIntoDbCtgov2 <- function(
       tempDir, paste0(
         "ctgov_trials_",
         # include query in file name for potential re-download
-        sapply(url, digest::digest, algo = "crc32"),
+        sapply(url, rlang::hash),
         "_", pageNumber, ".json"
       )
     )
 
     # do download
-    tmp <- ctrMultiDownload(
-      urlToDownload,
-      fTrialJson,
+    resDf <- ctrMultiDownload(
+      urls = urlToDownload,
+      destfiles = fTrialJson,
       verbose = verbose
     )
 
     # inform user
-    if (tmp[1, "status_code", drop = TRUE] != 200L) {
-      message(
-        "Download not successful for ", urlToDownload
-      )
-    }
+    if (!nrow(resDf) == 1L || !resDf$success) message(
+      "Download not successful for ", urlToDownload)
 
     # convert to ndjson
-    message("(2/3) Converting to NDJSON...\r", appendLF = FALSE)
+    message("- Converting to NDJSON...\r", appendLF = FALSE)
     fTrialsNdjson <- file.path(tempDir, paste0("ctgov_trials_", pageNumber, ".ndjson"))
     jqr::jq(
       file(fTrialJson),
@@ -347,11 +351,11 @@ ctrLoadQueryIntoDbCtgov2 <- function(
 
   ## database import -----------------------------------------------------
 
-  message("\n(3/3) Importing records into database...")
+  message("\n- Importing records into database...")
 
   # dbCTRLoadJSONFiles operates on pattern = ".+_trials_.*.ndjson"
   imported <- dbCTRLoadJSONFiles(dir = tempDir, con = con, verbose = verbose)
-  message("")
+  message()
 
   ## download history---------------------------------------------------
 
@@ -381,7 +385,7 @@ ctrLoadQueryIntoDbCtgov2 <- function(
       USE.NAMES = FALSE
     ))
 
-    tmp <- ctrMultiDownload(
+    ctrMultiDownload(
       urls = urls,
       destfiles = files,
       verbose = verbose
@@ -488,7 +492,7 @@ ctrLoadQueryIntoDbCtgov2 <- function(
       format(length(files) * 2.7 / 71, digits = 2), " MB total)..."
     )
 
-    tmp <- ctrMultiDownload(
+    resDf <- ctrMultiDownload(
       urls = urls,
       destfiles = files,
       verbose = verbose
@@ -503,7 +507,7 @@ ctrLoadQueryIntoDbCtgov2 <- function(
     ))), add = TRUE)
 
     # do version merge
-    res <- sapply(
+    sapply(
       X = unique(historyDf[["_id"]]),
       FUN = function(i) {
 
@@ -516,7 +520,7 @@ ctrLoadQueryIntoDbCtgov2 <- function(
         writeLines(paste0('{"_id": "', i, '", "history": ['),
                    con = outCon, sep = "")
 
-        fToMerge <- tmp[["destfile"]][grepl(i, tmp[["destfile"]])]
+        fToMerge <- resDf[["destfile"]][grepl(i, resDf[["destfile"]])]
 
         # write history study versions into array
         for (ii in seq_along(fToMerge)) {

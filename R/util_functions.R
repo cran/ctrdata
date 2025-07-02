@@ -34,7 +34,12 @@ regCtis <- "[0-9]{4}-[0-9]{6}-[0-9]{2}-[0-9]{2}"
 #
 # register list, order important
 registerList <- c("EUCTR", "CTGOV", "CTGOV2", "ISRCTN", "CTIS")
-
+#
+# user agent for all server requests
+ctrdataUseragent <- paste0(
+  "ctrdata/", utils::packageVersion("ctrdata"),
+  " (https://cran.r-project.org/package=ctrdata)"
+)
 
 #### functions ####
 
@@ -43,13 +48,14 @@ registerList <- c("EUCTR", "CTGOV", "CTGOV2", "ISRCTN", "CTIS")
 #' Checks for mismatch between label CTGOV and CTGOV2
 #' and tries to guess the correct label
 #'
-#' @param url url or data frame with query term
+#' @param url URL or data frame with query term
 #' @param register any of the register names
+#' @param verbose print detected API version
+#'
+#' @returns string
 #'
 #' @keywords internal
 #' @noRd
-#'
-#' @returns string
 #'
 #' @examples
 #'
@@ -63,10 +69,10 @@ registerList <- c("EUCTR", "CTGOV", "CTGOV2", "ISRCTN", "CTIS")
 #' ctgovVersion("term=NCT04412252,%20NCT04368728", "CTGOV2")
 #' ctgovVersion("https://www.clinicaltrials.gov/search?distance=50&cond=Cancer", "")
 #'
-ctgovVersion <- function(url, register) {
+ctgovVersion <- function(url, register, verbose = FALSE) {
 
   # in case the input is from dbQueryHistory
-  if (!is.atomic(url)) try({url <- url[["query-term"]]}, silent = TRUE)
+  if (!is.atomic(url)) try(url <- url[["query-term"]], silent = TRUE)
   if (inherits(url, "try-error") || is.null(url)) return(register)
 
   # logic 1
@@ -75,7 +81,7 @@ ctgovVersion <- function(url, register) {
     # these are classic-specific
     "[?&]rsub=|[?&]type=|[?&]rslt=|[?&]gndr=|[?&]recrs=|[?&]phase=|",
     "[?&]age=|[?&]cntry=|[?&][a-z]+_[a-z]+="), url)) { # e.g. strd_s
-    message("* Appears specific for CTGOV Classic website")
+    if (verbose) message("* Appears specific for CTGOV Classic website")
     return("CTGOV")
   }
 
@@ -84,12 +90,12 @@ ctgovVersion <- function(url, register) {
     # clear identifiers of CTGOV2
     "aggFilters|clinicaltrials[.]gov/(search|study)[/?]|",
     "[?&]country=|[:][^/]|%3[aA]"), url)) {
-    message("* Appears specific for CTGOV REST API 2.0")
+    if (verbose) message("* Appears specific for CTGOV REST API 2.0")
     return("CTGOV2")
   }
 
   # default return
-  message("Not overruling register label ", register)
+  if (verbose) message("Not overruling register label ", register)
   return(register)
 
 }
@@ -108,13 +114,12 @@ ctgovVersion <- function(url, register) {
 #'
 #' @param url url intended for a search in the classic CTGOV website
 #'
+#' @returns string url suitable for a search current CTGOV website
+#'
 #' @keywords internal
 #' @noRd
 #'
-#' @importFrom countrycode countrycode
 #' @importFrom utils URLdecode
-#'
-#' @returns string url suitable for a search current CTGOV website
 #'
 #' @examples
 #'
@@ -420,10 +425,13 @@ ctgovClassicToCurrent <- function(url, verbose = TRUE) {
   if (grepl("[?&]country=[^$&]", apiParams)) {
 
     countryCode <- sub(".+([?&]country=)([A-Z]+)([$&]).*", "\\2", apiParams)
+
+    # translate from 2 letter ISO to English name
     if (countryCode != apiParams) apiParams <-
         sub("([?&]country=)([A-Z]+)([$&])",
-            paste0("\\1", countrycode::countrycode(
-              countryCode, "iso2c", "iso.name.en"), "\\3"),
+            paste0("\\1", countryTable[which(
+              countryCode == countryTable[, 3]
+            ), 2, drop == TRUE][1], "\\3"),
             apiParams)
   }
 
@@ -484,10 +492,10 @@ ctrCache <- function(xname, xvalue = NULL, verbose = FALSE) {
   # check and read any value for xname variable
   if (verbose) message("- Checking cache...")
   if (exists(x = xname, envir = .ctrdataenv)) {
-    tmp <- try(get(x = xname, envir = .ctrdataenv), silent = TRUE)
-    if (inherits(tmp, "try-error")) return(NULL)
+    val <- try(get(x = xname, envir = .ctrdataenv), silent = TRUE)
+    if (inherits(val, "try-error")) return(NULL)
     if (verbose) message("- Returning ", xname, " ")
-    return(tmp)
+    return(val)
   }
 
   # default
@@ -846,12 +854,11 @@ addMetaData <- function(x, con) {
 
 #' ctrMultiDownload
 #'
-#' @param urls Vector of urls to be downloaded
+#' @param urls Vector of URLs to be downloaded
 #' @param destfiles Vector of local file names into which to download
 #' @param progress Set to \code{FALSE} to not print progress bar
-#' @param resume Logical for dispatching to curl
-#' @param multiplex Logical for using http/2
-#' @param verbose If \code{TRUE}, prints additional information
+#' @param data JSON string
+#' @param verbose If \code{TRUE}, print additional information
 #' (default \code{FALSE}).
 #'
 #' @keywords internal
@@ -859,16 +866,16 @@ addMetaData <- function(x, con) {
 #'
 #' @return Data frame with columns such as status_code etc
 #'
-#' @importFrom curl multi_download
 #' @importFrom utils URLencode
-#' @importFrom jsonlite fromJSON
+#' @importFrom jsonlite fromJSON toJSON validate
+#' @importFrom httr2 request req_throttle req_perform_parallel req_body_json req_user_agent
+#' @importFrom dplyr rows_update
 #'
 ctrMultiDownload <- function(
     urls,
     destfiles,
+    data = NULL,
     progress = TRUE,
-    resume = TRUE,
-    multiplex = TRUE,
     verbose = TRUE) {
 
   stopifnot(length(urls) == length(destfiles))
@@ -876,7 +883,6 @@ ctrMultiDownload <- function(
 
   # starting values
   numI <- 1L
-  canR <- resume
 
   # do not again download files that already exist
   # or that do not have an (arbitrary) minimal size.
@@ -886,57 +892,145 @@ ctrMultiDownload <- function(
          (is.na(file.size(destfiles)) |
             file.size(destfiles) > 20L)] <- FALSE
 
+  # mangle data
+  if (is.null(data)) data <- rep.int(NA, length(toDo))
+  data <- sapply(data, function(i) ifelse(
+    is.null(i) || is.na(i) || !jsonlite::validate(i), NA,
+    jsonlite::toJSON(jsonlite::fromJSON(
+      i, simplifyVector = FALSE), auto_unbox = TRUE)),
+    USE.NAMES = FALSE)
+
   downloadValue <- data.frame(
     "success" = !toDo,
-    "status_code" = rep.int(200L, length(toDo)),
-    "resumefrom" = double(length(toDo)),
-    "url" = urls,
     "destfile" = destfiles,
-    "error" = character(length(toDo)),
-    "type" = character(length(toDo)),
-    "modified" = double(length(toDo)),
-    "time" = double(length(toDo)),
-    "headers" = character(length(toDo))
+    "data" = data,
+    "url" = utils::URLencode(urls),
+    "status_code" = rep.int(NA_integer_, length(toDo)),
+    "urlResolved" = rep.int(NA_character_, length(toDo)),
+    "content_type" = rep.int(NA_character_, length(toDo))
   )
 
   # remove any duplicates
   downloadValue <- unique(downloadValue)
+
+  # helper
+  body2json <- function(x) {
+    if (is.null(x)) return(NA)
+    as.character(jsonlite::toJSON(x, auto_unbox = TRUE))
+  }
 
   # does not error in case any of the individual requests fail.
   # inspect the return value to find out which were successful
   # make no more than 3 attempts to complete downloading
   while (any(toDo) && numI < 3L) {
 
-    args <- c(
-      urls = list(utils::URLencode(downloadValue$url[toDo])),
-      destfiles = list(downloadValue$destfile[toDo]),
-      resume = canR,
-      progress = progress,
-      multiplex = multiplex,
-      c(getOption("httr_config")[["options"]],
-        accept_encoding = "gzip,deflate,zstd,br")
+    # use urlResolved if this has been filled below in CDN check
+    downloadValue$url[!is.na(downloadValue$urlResolved)] <-
+      downloadValue$urlResolved[!is.na(downloadValue$urlResolved)]
+
+    # construct requests
+    reqs <- mapply(
+      function(u, d) {
+        # start with basic request
+        r <- httr2::request(u)
+
+        # add user agent
+        r <- httr2::req_user_agent(r, ctrdataUseragent)
+
+        # curl::curl_options("vers")
+        # keep important option 2L for euctr
+        r <- httr2::req_options(r, http_version = 2)
+
+        # conditionally add body
+        if (!is.na(d)) r <-
+          httr2::req_body_json(r, jsonlite::fromJSON(
+            d, simplifyVector = FALSE))
+
+        # hard-coded throttling
+        r <- httr2::req_throttle(
+          req = r,
+          # ensures that you never make more
+          # than capacity requests in fill_time_s
+          capacity = 20L * 10L,
+          fill_time_s = 10L
+        )
+
+        # return
+        return(r)
+      },
+      u = downloadValue$url[toDo],
+      d = downloadValue$data[toDo],
+      SIMPLIFY = FALSE,
+      USE.NAMES = FALSE
     )
 
     # do download
-    res <- do.call(curl::multi_download, args)
+    res <- suppressWarnings(
+      httr2::req_perform_parallel(
+        reqs,
+        paths = downloadValue$destfile[toDo],
+        on_error = "continue",
+        progress = progress,
+        max_active = 10L # default
+      ))
 
-    # check if download successful and CDN is likely to be used
-    cdnCheck <- (res$status_code %in% c(200L, 206L, 416L)) &
+    # mangle results info
+    res <- lapply(
+      res,
+      function(r) {
+        if (inherits(r, "httr2_failure")) return(
+          data.frame(
+            "success" = FALSE,
+            "status_code" = NA_integer_,
+            "url" = r$request$url,
+            "destfile" = NA_character_,
+            "content_type" = NA_character_,
+            "urlResolved" = NA_character_,
+            "data" = body2json(r$request$body$data)
+          )
+        )
+        if (inherits(r, "httr2_error")) return(
+          data.frame(
+            "success" = FALSE,
+            "status_code" = r$status,
+            "url" = r$request$url,
+            "destfile" = as.character(r$resp$body),
+            "content_type" = NA_character_,
+            "urlResolved" = NA_character_,
+            "data" = body2json(r$request$body$data)
+          )
+        ) # else
+        return(
+          data.frame(
+            "success" = TRUE,
+            "status_code" = r[["status_code"]],
+            "url" = r[["url"]],
+            "destfile" = as.character(r[["body"]]),
+            "content_type" = r[["headers"]]$`content-type`,
+            "urlResolved" = NA_character_,
+            "data" = body2json(r$request$body$data)
+          )
+        )})
+    res <- as.data.frame(do.call(rbind, res))
+
+    # check if download successful but CDN is likely used
+    cdnCheck <- !is.na(res$status_code) &
+      !is.na(res$destfile) &
+      !is.na(res$content_type) &
+      (res$status_code %in% c(200L, 206L, 416L)) &
       !grepl("[.]json$", res$destfile) &
-      sapply(res$headers, function(x)
-        if (length(x) >= 1)
-          any(grepl("application/json", x))
-        else FALSE)
+      grepl("application/json", res$content_type)
 
-    # replace url with CDN url
+    # replace url with CDN url and prepare to iterate
     if (any(cdnCheck)) {
 
-      message("Redirecting to CDN...")
+      message("- Resolving CDN and redirecting...")
 
       # get CDN url
-      res$url[cdnCheck] <- sapply(
+      res$urlResolved[cdnCheck] <- sapply(
         res$destfile[cdnCheck],
-        function(x) jsonlite::fromJSON(x)$url,
+        # x can be a JSON string, URL or file
+        function(x) jsonlite::fromJSON(x, simplifyVector = FALSE)$url,
         USE.NAMES = FALSE,
         simplify = TRUE)
 
@@ -944,49 +1038,61 @@ ctrMultiDownload <- function(
       unlink(res$destfile[cdnCheck])
 
       # reset status
-      res$status_code[cdnCheck] <- NA
+      res$success[cdnCheck] <- NA
 
     }
 
-    # update input
-    downloadValue[toDo, ] <- res
-
-    if (any(grepl(
-      "annot resume", downloadValue[toDo, "error", drop = TRUE]))) canR <- FALSE
+    # update input, mind row order
+    downloadValue <- dplyr::rows_update(
+      downloadValue,
+      # do not include destfile as this may be NA in res
+      res[, c("success", "status_code", "url", "urlResolved",
+              "content_type", "data"), drop = FALSE],
+      by = c("url", "data")[seq_len(
+        ifelse(all(is.na(downloadValue$data)), 1L, 2L))]
+    )
 
     if (inherits(downloadValue, "try-error")) {
       stop("Download failed; last error: ", class(downloadValue), call. = FALSE)
     }
 
+    # only check success because this is filled initially by !toDo
+    # and status_code where this is NA as it reflects the latest action
     toDoThis <- is.na(downloadValue$success) |
-      !downloadValue$success |
-      !(downloadValue$status_code %in% c(200L, 206L, 416L))
+      # OK, Partial Content, Not Found, Range Not Satisfiable
+      !(downloadValue$status_code %in% c(NA, 200L, 206L, 404L, 416L))
 
     # only count towards repeat attempts if
     # the set of repeated urls is unchanged
-    if (identical(toDo, toDoThis)) numI <- numI + 1L
+    if (identical(toDo, toDoThis) & !any(cdnCheck)) numI <- numI + 1L
 
     toDo <- toDoThis
 
   }
 
+  # remove any files from failed downloads
+  unlink(downloadValue$destfile[downloadValue$status_code %in% c(404L, 416L)])
+
+  # finalise
   if (any(toDo)) {
 
     # remove any files from failed downloads
-    unlink(downloadValue[toDo, c("destfile"), drop = TRUE])
+    unlink(downloadValue$destfile[toDo])
 
-    if (verbose) {
-      message(
-        "Download failed for: status code / url(s):"
-      )
-      apply(
-        downloadValue[toDo, c("status_code", "url"), drop = FALSE],
-        1, function(r) message(r[1], " / ", r[2], "\n", appendLF = FALSE)
-      )
-    }
+    message("Download failed for: status code / url(s):")
+    apply(downloadValue[toDo, c("status_code", "url"), drop = FALSE],
+          1, function(r) message(r[1], " / ", r[2], "\n", appendLF = FALSE))
 
   }
 
+  # if previously downloaded, success may not reflect on disk;
+  # thus safeguard by unsetting success if file does not exist
+  downloadValue$success <- file.exists(downloadValue$destfile)
+
+  # inform user
+  if (verbose) message("Done: ", numI, " iteration(s)")
+
+  # return
   return(downloadValue[!toDo, , drop = FALSE])
 
 } # end ctrMultiDownload
@@ -1028,8 +1134,8 @@ ctrTempDir <- function(verbose = FALSE) {
     if (length(.ctrdataenv$keeptempdir) &&
         !is.null(.ctrdataenv$keeptempdir)) {
       if (.ctrdataenv$keeptempdir) {
-        message(
-          'ctrdata: "verbose = TRUE", not deleting temporary directory ', tempDir, "\r")
+        message('ctrdata: "verbose = TRUE", not deleting ',
+                'temporary directory ', tempDir, "\r")
       } else {
         unlink(tempDir, recursive = TRUE)
         message("ctrdata: deleted temporary directory\r")
@@ -1116,20 +1222,20 @@ ctrDocsDownload <- function(
     message("- Creating empty document placeholders (max. ", nrow(dlFiles), ")")
 
     # create subdirectories by trial
-    invisible(sapply(
+    sapply(
       unique(dlFiles$filepath), function(i) if (!dir.exists(i))
         dir.create(i, showWarnings = FALSE, recursive = TRUE)
-    ))
+    )
 
     # create empty files
-    tmp <-
+    filesCount <-
       sapply(
         dlFiles$filepathname,
         function(i) if (!file.exists(i))
           file.create(i, showWarnings = TRUE),
         USE.NAMES = FALSE)
 
-    tmp <- sum(unlist(tmp), na.rm = TRUE)
+    filesCount <- sum(unlist(filesCount), na.rm = TRUE)
 
   } else {
 
@@ -1146,10 +1252,10 @@ ctrDocsDownload <- function(
     message("- Creating subfolder for each trial")
 
     # create subdirectories by trial
-    invisible(sapply(
+    sapply(
       unique(dlFiles$filepath), function(i) if (!dir.exists(i))
         dir.create(i, showWarnings = FALSE, recursive = TRUE)
-    ))
+    )
 
     # inform
     message("- Downloading ",
@@ -1157,11 +1263,25 @@ ctrDocsDownload <- function(
             " missing documents " , appendLF = FALSE)
 
     # check and remove duplicate filepathname rows
+    duplicateUrls <- duplicated(tolower(dlFiles$url))
+    if (any(duplicateUrls)) {
+      message(
+        "(excluding ", sum(duplicateUrls), " documents ",
+        "from duplicate URLs, e.g. for trial ids ",
+        paste0(
+          sample(
+            dlFiles$`_id`[duplicateUrls],
+            min(length(dlFiles$`_id`[duplicateUrls]), 3L)),
+          collapse = ", "),
+        ") ", appendLF = FALSE)
+      dlFiles <- dlFiles[!duplicateUrls, , drop = FALSE]
+    }
+
     duplicateFiles <- duplicated(tolower(dlFiles$filepathname))
     if (any(duplicateFiles)) {
       message(
-        "(excluding ", sum(duplicateFiles), " ",
-        "files with duplicate names for saving, e.g. ",
+        "(excluding ", sum(duplicateFiles), " documents ",
+        "with duplicate names, e.g. ",
         paste0(
           sample(
             dlFiles$filepathname[duplicateFiles],
@@ -1170,28 +1290,20 @@ ctrDocsDownload <- function(
         ") ", appendLF = FALSE)
       dlFiles <- dlFiles[!duplicateFiles, , drop = FALSE]
     }
+
     message()
 
     # do download
-    tmp <- ctrMultiDownload(
+    filesCount <- ctrMultiDownload(
       urls = dlFiles$url[!dlFiles$fileexists],
       destfiles = dlFiles$filepathname[!dlFiles$fileexists],
-      multiplex = multiplex,
-      verbose = verbose)
+      verbose = verbose
+    )
 
     # check results
-    if (!nrow(tmp)) tmp <- 0L else {
-
-      # handle failures despite success is true
-      suppressMessages(invisible(sapply(
-        tmp[tmp$status_code != 200L, "destfile", drop = TRUE],
-
-        # delete but only micro files, possible remnants
-        function(f) if (file.size(f) < 20L) unlink(f)
-      )))
-      tmp <- nrow(tmp[tmp$status_code == 200L, , drop = FALSE])
-
-    }
+    filesCount <- ifelse(
+      !nrow(filesCount), 0L,
+      sum(filesCount$success, na.rm = TRUE))
 
   } # is.null(documents.regexp)
 
@@ -1201,7 +1313,7 @@ ctrDocsDownload <- function(
     ifelse(is.null(documents.regexp), "placeholder ", ""),
     "document(s) for %i trial(s); ",
     "%i of such document(s) for %i trial(s) already existed in %s"),
-    tmp,
+    filesCount,
     length(unique(dlFiles$`_id`)),
     sum(dlFiles$fileexists),
     length(unique(dlFiles$`_id`[dlFiles$fileexists])),
@@ -1209,7 +1321,7 @@ ctrDocsDownload <- function(
   ))
 
   # return
-  return(tmp)
+  return(filesCount)
 
 } # end ctrDocsDownload
 
@@ -1334,7 +1446,7 @@ dbCTRLoadJSONFiles <- function(dir, con, verbose) {
       ## delete and import ----------------------------------------------------
 
       # delete any existing records
-      tmp <- try({
+      res <- try({
         nodbi::docdb_delete(
           src = con,
           key = con$collection,
@@ -1344,15 +1456,15 @@ dbCTRLoadJSONFiles <- function(dir, con, verbose) {
       }, silent = TRUE)
 
       # early exit
-      if (inherits(tmp, "try-error") &&
-          grepl("read.?only", tmp)) stop(
+      if (inherits(res, "try-error") &&
+          grepl("read.?only", res)) stop(
             "Database is read-only, cannot load trial records.\n",
             "Change database connection in parameter 'con = ...'",
             call. = FALSE
           )
 
       ## import
-      tmp <- try({
+      res <- try({
         suppressWarnings(
           suppressMessages(
             nodbi::docdb_create(
@@ -1362,7 +1474,7 @@ dbCTRLoadJSONFiles <- function(dir, con, verbose) {
             )))}, silent = TRUE)
 
       ## return values for lapply
-      if (inherits(tmp, "try-error") || tmp == 0L || tmp != nrow(annoDf)) {
+      if (inherits(res, "try-error") || res == 0L || res != nrow(annoDf)) {
 
         # step into line by line mode
         fdLines <- file(tempFiles[tempFile], open = "rt", blocking = TRUE)
@@ -1370,19 +1482,19 @@ dbCTRLoadJSONFiles <- function(dir, con, verbose) {
           tmpOneLine <- readLines(con = fdLines, n = 1L, warn = FALSE)
           if (length(tmpOneLine) == 0L || !nchar(tmpOneLine)) break
           id <- sub(".*\"_id\":[ ]*\"(.*?)\".*", "\\1", tmpOneLine)
-          tmp <- suppressWarnings(suppressMessages(nodbi::docdb_create(
+          res <- suppressWarnings(suppressMessages(nodbi::docdb_create(
             src = con, key = con$collection, value = paste0("[", tmpOneLine, "]"))))
-          nImported <- nImported + tmp
-          if (tmp) idSuccess <- c(idSuccess, id)
-          if (!tmp) idFailed <- c(idFailed, id)
-          if (!tmp) warning("Failed to load: ", id, call. = FALSE)
-          if (tmp) idAnnotation <- c(idAnnotation, annoDf[
+          nImported <- nImported + res
+          if (res) idSuccess <- c(idSuccess, id)
+          if (!res) idFailed <- c(idFailed, id)
+          if (!res) warning("Failed to load: ", id, call. = FALSE)
+          if (res) idAnnotation <- c(idAnnotation, annoDf[
             annoDf[["_id"]] == id, "annotation", drop = TRUE][1])
         }
         close(fdLines)
 
       } else {
-        nImported <- nImported + tmp
+        nImported <- nImported + res
         idSuccess <- c(idSuccess, annoDf[, "_id", drop = TRUE])
         idAnnotation <- c(idAnnotation, annoDf[, "annotation", drop = TRUE])
       }
@@ -1524,7 +1636,7 @@ dbCTRUpdateQueryHistory <- function(
     newHist <- rbind(hist, newHist)
     newHist <- list("queries" = newHist)
 
-    tmp <- suppressMessages(
+    res <- suppressMessages(
       nodbi::docdb_update(
         src = con,
         key = con$collection,
@@ -1540,7 +1652,7 @@ dbCTRUpdateQueryHistory <- function(
       "queries" = newHist))
 
     # write new document
-    tmp <- suppressMessages(
+    res <- suppressMessages(
       nodbi::docdb_create(
         src = con,
         key = con$collection,
@@ -1549,7 +1661,7 @@ dbCTRUpdateQueryHistory <- function(
   }
 
   # inform user
-  if (tmp == 1L) {
+  if (res == 1L) {
     message('Updated history ("meta-info" in "', con$collection, '")')
   } else {
     warning('Could not update history ("meta-info" in "', con$collection,
@@ -1566,8 +1678,6 @@ dbCTRUpdateQueryHistory <- function(
 #'
 #' @keywords internal
 #' @noRd
-#'
-#' @importFrom tibble as_tibble
 #'
 dfOrTibble <- function(df) {
 

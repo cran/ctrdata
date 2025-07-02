@@ -18,7 +18,7 @@
 #'
 #' @examples
 #' # fields needed
-#' f.resultsDate()
+#' f.trialTitle()
 #'
 #' # apply trial concept when creating data frame
 #' dbc <- nodbi::src_sqlite(
@@ -78,9 +78,6 @@ f.trialTitle <- function(df = NULL) {
 
   # check generic, do not edit
   fctChkFlds(names(df), fldsNeeded)
-
-  # helper function
-  `%>%` <- dplyr::`%>%`
 
   # helper function similar to unite
   pasteCols <- function(...) apply(

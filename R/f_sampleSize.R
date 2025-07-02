@@ -4,7 +4,8 @@
 #' Calculate sample size of a study
 #'
 #' Trial concept calculated: sample size of the trial, preferring
-#' results-related over protocol-related information.
+#' results-related (achieved recruitment) over protocol-related information
+#' (planned sample size).
 #'
 #' @param df data frame such as from \link{dbGetFieldsIntoDf}. If `NULL`,
 #' prints fields needed in `df` for calculating this trial concept, which can
@@ -97,7 +98,8 @@ f.sampleSize <- function(df = NULL) {
   #### . EUCTR ####
   fldsEuctrProtocol <- fldsNeeded$euctr[-1]
   dplyr::mutate(
-    df, out = rowSums(
+    df,
+    out = rowSums(
       dplyr::select(
         df, fldsEuctrProtocol), na.rm = TRUE)) %>%
     dplyr::pull("out") -> df$helper_euctr_protocol
@@ -150,7 +152,8 @@ f.sampleSize <- function(df = NULL) {
         USE.NAMES = FALSE, simplify = TRUE)
     ) -> df
   dplyr::mutate(
-    df, out = rowSums(
+    df,
+    out = rowSums(
       dplyr::select(
         df, c(
           "helper_ctis1", "authorizedPartI.rowSubjectCount",
@@ -163,7 +166,7 @@ f.sampleSize <- function(df = NULL) {
     df,
     out = rowSums(
       dplyr::select(
-        df,c(
+        df, c(
           "euctr",
           "enrollment",
           "protocolSection.designModule.enrollmentInfo.count",

@@ -61,7 +61,7 @@ expect_message(
       only.count = TRUE,
       verbose = TRUE,
       con = dbc)),
-  "Retrieved overview")
+  "Checking trials in ISRCTN")
 
 # test
 expect_true(tmpTest$n < 250L)
@@ -75,7 +75,7 @@ expect_message(
       only.count = TRUE,
       verbose = TRUE,
       con = dbc)),
-  "are to be downloaded")
+  "found [0-9]+ trials")
 
 # test
 expect_true(tmpTest$n < 15L)
@@ -125,7 +125,7 @@ expect_message(
       querytoupdate = "last",
       con = dbc,
       verbose = TRUE)),
-  "Updating using this additional query term")
+  "additional term")
 
 
 # new query (last edited before)
@@ -318,16 +318,18 @@ rm(res)
 
 #### ctrLoadQueryIntoDb documents ####
 
-tmpDir <- newTempDir()
-on.exit(unlink(tmpDir, recursive = TRUE), add = TRUE)
+if (interactive()) {
 
-expect_message(
-  ctrLoadQueryIntoDb(
-    queryterm = "https://www.isrctn.com/search?q=alzheimer",
-    con = dbc,
-    documents.path = tmpDir,
-    documents.regexp = ".*"
-  ),
-  "Newly saved [0-9]+ document[(]s[)] for [0-9]+ trial"
-)
+  tmpDir <- newTempDir()
+  on.exit(unlink(tmpDir, recursive = TRUE), add = TRUE)
 
+  expect_message(
+    ctrLoadQueryIntoDb(
+      queryterm = "https://www.isrctn.com/search?q=alzheimer",
+      con = dbc,
+      documents.path = tmpDir,
+      documents.regexp = ".*"
+    ),
+    "Newly saved [0-9]+ document[(]s[)] for [0-9]+ trial"
+  )
+}

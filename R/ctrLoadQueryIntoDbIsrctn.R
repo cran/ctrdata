@@ -9,9 +9,12 @@
 #'
 #' @importFrom jsonlite toJSON
 #' @importFrom nodbi docdb_query
-#' @importFrom utils URLdecode
-#' @importFrom httr with_config config
+#' @importFrom utils URLdecode URLencode
+#' @importFrom httr2 req_perform req_user_agent request
 #' @importFrom V8 JS
+#' @importFrom rlang hash
+#' @importFrom rvest read_html_live html_attr html_elements
+#' @importFrom dplyr rows_update
 #'
 ctrLoadQueryIntoDbIsrctn <- function(
     queryterm = queryterm,
@@ -99,69 +102,56 @@ ctrLoadQueryIntoDbIsrctn <- function(
   # - prefix with q removed above
   apiterm <- paste0("q=", apiterm)
   # - inform user
-  if (verbose) message("DEBUG: apiterm is ", apiterm)
+  if (verbose) message("DEBUG: ", apiterm)
 
   ## checks -------------------------------------------------------------------
 
-  message("* Checking trials in ISRCTN...")
+  message("* Checking trials in ISRCTN...", appendLF = FALSE)
 
   # - check number of trials to be downloaded
-  isrctnfirstpageurl <- paste0(
-    queryIsrctnRoot, queryIsrctnType2, apiterm, queryupdateterm
-  )
-  #
-  tmp <- try(
-    suppressWarnings(
-      xml2::read_xml(
-        x = url(utils::URLencode(isrctnfirstpageurl))
-      )
-    ),
-    silent = TRUE
-  )
-  #
-  if (inherits(tmp, "try-error")) {
-    stop("Host ", queryIsrctnRoot, " not working as expected, ",
-         "cannot continue: ", tmp[[1]],
-         call. = FALSE
-    )
-  }
-  #
-  tmp <- try(xml2::xml_attr(tmp, "totalCount"), silent = TRUE)
-  #
+  isrctnfirstpageurl <- utils::URLencode(paste0(
+    queryIsrctnRoot, queryIsrctnType2, apiterm, queryupdateterm))
+
+  resCount <- try(sub(
+    '.*totalCount=\"([0-9]+)\" .*', "\\1",
+    rawToChar(
+      httr2::req_perform(
+        httr2::req_user_agent(
+          httr2::request(
+            isrctnfirstpageurl),
+          ctrdataUseragent
+        ))$body)), silent = TRUE)
+
   # safeguard against no or unintended large numbers
-  tmp <- suppressWarnings(as.integer(tmp))
-  if (is.na(tmp) || !length(tmp)) {
-    message("No trials or number of trials could not be determined: ", tmp)
+  resCount <- suppressWarnings(as.integer(resCount))
+  if (is.na(resCount) || !length(resCount)) {
+    message("No trials or number of trials could not be determined: ", resCount)
     return(invisible(emptyReturn))
   }
   #
-  if (tmp == 0L) {
+  if (resCount == 0L) {
     message("Search result page empty - no (new) trials found?")
     return(invisible(emptyReturn))
   }
   # otherwise continue
 
   # inform user
-  message(
-    "Retrieved overview, records of ", tmp, " ",
-    "trial(s) are to be downloaded (estimate: ",
-    signif(tmp * 0.018, 1L), " MB)"
-  )
+  message("\b\b\b, found ", resCount, " trials ")
 
   # only count?
   if (only.count) {
     # return
     return(list(
-      n = tmp,
+      n = resCount,
       success = NULL,
       failed = NULL
     ))
   }
 
   # exit if too many records
-  if (tmp > 10000L) {
+  if (resCount > 10000L) {
     stop(
-      "These are ", tmp, " (more than 10,000) trials, this may be ",
+      "These are ", resCount, " (more than 10,000) trials, this may be ",
       "unintended. Downloading more than 10,000 trials may not be supported ",
       "by the register; consider correcting or splitting queries"
     )
@@ -173,22 +163,30 @@ ctrLoadQueryIntoDbIsrctn <- function(
   tempDir <- ctrTempDir(verbose)
 
   # inform user
-  message("(1/3) Downloading trial file... ")
+  message(
+    "- Downloading trial file (estimate: ",
+    signif(resCount * 0.018, 1L), " MB)"
+  )
 
   # construct API call setting limit to number found above
   isrctndownloadurl <- paste0(
-    queryIsrctnRoot, queryIsrctnType1, tmp, "&", apiterm, queryupdateterm
+    queryIsrctnRoot, queryIsrctnType1, resCount, "&", apiterm, queryupdateterm
   )
 
   # prepare a file handle for temporary directory
   f <- file.path(
-    tempDir, paste0("isrctn_",
-                    # include query in file name for potential re-download
-                    sapply(isrctndownloadurl, digest::digest, algo = "crc32"),
-                    ".xml"))
+    tempDir, paste0(
+      "isrctn_",
+      # include query in file name for potential re-download
+      sapply(isrctndownloadurl, rlang::hash),
+      ".xml"))
 
   # get (download) trials into single file f
-  ctrMultiDownload(isrctndownloadurl, f, verbose = verbose)
+  ctrMultiDownload(
+    urls = isrctndownloadurl,
+    destfiles = f,
+    verbose = verbose
+  )
 
   # inform user
   if (!file.exists(f) || file.size(f) == 0L) {
@@ -204,8 +202,8 @@ ctrLoadQueryIntoDbIsrctn <- function(
 
   # run conversion
   importDateTime <- strftime(Sys.time(), "%Y-%m-%d %H:%M:%S")
-  message("(2/3) Converting to NDJSON (estimate: ",
-          signif(tmp * 1.7 / 290, 1L), " s)...")
+  message("- Converting to NDJSON (estimate: ",
+          signif(resCount * 1.7 / 290, 1L), " s)...")
 
   jqr::jq(
     # input
@@ -233,7 +231,7 @@ ctrLoadQueryIntoDbIsrctn <- function(
   ## import json -----------------------------------------------------
 
   ## run import
-  message("(3/3) Importing records into database...")
+  message("- Importing records into database...")
   if (verbose) message("DEBUG: ", tempDir)
 
   # do import
@@ -250,7 +248,8 @@ ctrLoadQueryIntoDbIsrctn <- function(
     # user info
     message(
       "* Checking for documents...\n",
-      "- Getting links to documents")
+      "- Getting links to documents from data ",
+      appendLF = FALSE)
 
     # temporary file for trial ids and file names
     downloadsNdjson <- file.path(tempDir, "isrctn_downloads.ndjson")
@@ -274,7 +273,6 @@ ctrLoadQueryIntoDbIsrctn <- function(
       message(". ", appendLF = FALSE)
     }
     close(downloadsNdjsonCon)
-    message("\r", appendLF = FALSE)
 
     # get document trial id and file name
     dlFiles <- jsonlite::stream_in(
@@ -283,26 +281,55 @@ ctrLoadQueryIntoDbIsrctn <- function(
     # check if any documents
     if (!nrow(dlFiles)) {
 
-      message("= No documents identified for downloading.")
+      message("\n= No documents identified for downloading.")
 
     } else {
+
+      # check for which ids fileref2 could not be determined
+      ids <- unique(dlFiles[is.na(dlFiles$fileref2), "_id", drop = TRUE])
+
+      # need to go to webpage to obtain full download url since fileref2
+      # in most cases cannot be determined from data in the ndjsonFile
+      if (length(ids)) {
+
+        message("correct with web pages ", appendLF = FALSE)
+
+        webPageInfo <- sapply(
+          ids,
+          function(i) {
+            sess <- rvest::read_html_live(paste0(queryIsrctnRoot, "ISRCTN", i))
+            i <- rvest::html_elements(sess, "a")
+            i <- rvest::html_attr(i, "href")
+            i <- i[grepl("/editorial/retrieveFile/", i)][1]
+            i <- sub(".+/(.*?)$", "\\1", i)
+            sess$session$close()
+            message(". ", appendLF = FALSE)
+            return(i)
+          }
+        )
+        message()
+
+        webPageInfo <- data.frame(
+          `_id` = names(webPageInfo),
+          fileref2 = webPageInfo,
+          row.names = NULL,
+          check.names = FALSE)
+
+        dlFiles <- dplyr::rows_update(
+          dlFiles, webPageInfo, by = "_id")
+
+      } # if ids
 
       # calculate urls
       dlFiles$url <- sprintf(
         "https://www.isrctn.com/editorial/retrieveFile/%s/%s",
         dlFiles$fileref1, dlFiles$fileref2)
 
-      # do download with special config to avoid error
-      # "Unrecognized content encoding type.
-      #  libcurl understands deflate, gzip content encodings."
-      httr::with_config(
-        config = httr::config("http_content_decoding" = 0), {
-          ctrDocsDownload(
-            dlFiles[, c("_id", "filename", "url"), drop = FALSE],
-            documents.path,
-            documents.regexp,
-            verbose = verbose)
-        }, override = FALSE)
+      ctrDocsDownload(
+        dlFiles[, c("_id", "filename", "url"), drop = FALSE],
+        documents.path,
+        documents.regexp,
+        verbose = verbose)
 
     } # if (!nrow(dlFiles))
 

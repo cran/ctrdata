@@ -27,7 +27,7 @@
 #' `queryterm` to \link{ctrLoadQueryIntoDb} and as parameter
 #' `url` to \link{ctrOpenSearchPagesInBrowser}.
 #'
-#' @importFrom clipr read_clip
+#' @importFrom readr clipboard
 #'
 #' @examples
 #'
@@ -85,11 +85,7 @@ ctrGetQueryUrl <- function(
   # check clipboard contents
   if (nchar(url) == 0L && register != "CTIS") {
     url <- try(
-      suppressWarnings(
-        clipr::read_clip(
-          allow_non_interactive = TRUE
-        )
-      ),
+      readr::clipboard(),
       silent = TRUE
     )
     if (inherits(url, "try-error")) url <- ""
@@ -160,7 +156,8 @@ ctrGetQueryUrl <- function(
   }
 
   # handle any mismatch of ctgov label with expected parameters
-  if (grepl("^CTGOV[2]?$", register)) register <- ctgovVersion(url, register)
+  if (grepl("^CTGOV[2]?$", register)) register <- ctgovVersion(
+    url, register, verbose = FALSE)
 
   # output value for return
   outdf <- function(qt, reg) {

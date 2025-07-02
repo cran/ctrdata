@@ -3,11 +3,11 @@
 # 2025-01-31 working
 # 2025-02-08 adding euctr protocol, isrctn
 
-#' Calculate type of control data collected in a study
+#' Calculate number of arms or groups with investigational medicines in a study
 #'
 #' Trial concept calculated: number of active arms with different
-#' investigational medicines, after excluding comparator, auxiliary and placebo
-#' arms / medicines.
+#' investigational medicines, after excluding non-active comparator, auxiliary
+#' and placebo arms / medicines.
 #' For ISRCTN, this is imprecise because arms are not identified in a field.
 #' Most registers provide no or only limited information on phase 1 trials,
 #' so that this number typically cannot be calculated for these trials.
@@ -30,7 +30,7 @@
 #'
 #' @examples
 #' # fields needed
-#' f.controlType()
+#' f.numTestArmsSubstances()
 #'
 #' # apply trial concept when creating data frame
 #' dbc <- nodbi::src_sqlite(
@@ -50,8 +50,9 @@ f.numTestArmsSubstances <- function(df = NULL) {
   #### fields ####
   fldsNeeded <- list(
     "euctr" = c(
+      "e822_placebo",
+      "e823_other",
       "e824_number_of_treatment_arms_in_the_trial",
-      "e81_controlled",
       "subjectDisposition.postAssignmentPeriods.postAssignmentPeriod.arms.arm"
     ),
     "ctgov" = c(
@@ -62,8 +63,8 @@ f.numTestArmsSubstances <- function(df = NULL) {
     ),
     "isrctn" = c(
       "trialDesign.secondaryStudyDesign",
-      "interventions.intervention.interventionType",
-      "interventions.intervention.drugNames"
+      "interventions.intervention.drugNames",
+      "interventions.intervention.interventionType"
     ),
     "ctis" = c(
       # CTIS1
@@ -134,10 +135,10 @@ f.numTestArmsSubstances <- function(df = NULL) {
   df %>% dplyr::mutate(
     #
     # protocol data
-    helper_protocol = dplyr::if_else(
-      .data$e81_controlled,
-      .data$e824_number_of_treatment_arms_in_the_trial - 1L,
-      .data$e824_number_of_treatment_arms_in_the_trial,
+    helper_protocol = dplyr::case_when(
+      .data$e822_placebo ~ .data$e824_number_of_treatment_arms_in_the_trial - 1L,
+      .data$e823_other ~ .data$e824_number_of_treatment_arms_in_the_trial - 1L,
+      .default = .data$e824_number_of_treatment_arms_in_the_trial
     ),
     # results data
     helper_asNamesPerTestGroup = lapply(

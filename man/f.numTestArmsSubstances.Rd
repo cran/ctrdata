@@ -2,7 +2,7 @@
 % Please edit documentation in R/f_numTestArmsSubstances.R
 \name{f.numTestArmsSubstances}
 \alias{f.numTestArmsSubstances}
-\title{Calculate type of control data collected in a study}
+\title{Calculate number of arms or groups with investigational medicines in a study}
 \usage{
 f.numTestArmsSubstances(df = NULL)
 }
@@ -16,8 +16,8 @@ data frame with columns `_id` and `.numTestArmsSubstances`, an integer
 }
 \description{
 Trial concept calculated: number of active arms with different
-investigational medicines, after excluding comparator, auxiliary and placebo
-arms / medicines.
+investigational medicines, after excluding non-active comparator, auxiliary
+and placebo arms / medicines.
 For ISRCTN, this is imprecise because arms are not identified in a field.
 Most registers provide no or only limited information on phase 1 trials,
 so that this number typically cannot be calculated for these trials.
@@ -27,7 +27,7 @@ the similarity is 0.8 or higher.
 }
 \examples{
 # fields needed
-f.controlType()
+f.numTestArmsSubstances()
 
 # apply trial concept when creating data frame
 dbc <- nodbi::src_sqlite(
