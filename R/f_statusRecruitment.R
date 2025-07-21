@@ -11,7 +11,7 @@
 #' prints fields needed in `df` for calculating this trial concept, which can
 #' be used with \link{dbGetFieldsIntoDf}.
 #'
-#' @return data frame with columns `_id` and `.statusRecruitment`, which is
+#' @returns data frame with columns `_id` and `.statusRecruitment`, which is
 #' a factor with levels `ongoing` (includes active, not yet recruiting;
 #' temporarily halted; suspended; authorised, not started and similar),
 #' `completed` (includes ended; ongoing, recruitment ended),
@@ -88,7 +88,7 @@ f.statusRecruitment <- function(df = NULL) {
   #### calculate ####
 
   # check generic, do not edit
-  fctChkFlds(names(df), fldsNeeded)
+  df <- fctChkFlds(df, fldsNeeded)
 
   # helper function
   `%>%` <- dplyr::`%>%`
@@ -217,7 +217,7 @@ f.statusRecruitment <- function(df = NULL) {
   # merge into vector (factor)
   df[[".statusRecruitment"]] <- dfMergeVariablesRelevel(
     df = df,
-    colnames = names(fldsNeeded),
+    colnames = names(fldsNeeded)[names(fldsNeeded) != ""],
     levelslist = mapped_values
   )
 

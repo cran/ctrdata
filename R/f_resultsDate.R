@@ -16,7 +16,7 @@
 #' prints fields needed in `df` for calculating this trial concept, which can
 #' be used with \link{dbGetFieldsIntoDf}.
 #'
-#' @return data frame with columns `_id` and `.resultsDate`, a date.
+#' @returns data frame with columns `_id` and `.resultsDate`, a date.
 #'
 #' @export
 #'
@@ -77,7 +77,7 @@ f.resultsDate <- function(df = NULL) {
   #### calculate ####
 
   # check generic, do not edit
-  fctChkFlds(names(df), fldsNeeded)
+  df <- fctChkFlds(df, fldsNeeded)
 
   # helper function
   `%>%` <- dplyr::`%>%`

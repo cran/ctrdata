@@ -11,7 +11,7 @@
 #' prints fields needed in `df` for calculating this trial concept, which can
 #' be used with \link{dbGetFieldsIntoDf}.
 #'
-#' @return data frame with columns `_id` and `.numSites`, an integer.
+#' @returns data frame with columns `_id` and `.numSites`, an integer.
 #'
 #' @export
 #'
@@ -79,7 +79,7 @@ f.numSites <- function(df = NULL) {
   #### calculate ####
 
   # check generic, do not edit
-  fctChkFlds(names(df), fldsNeeded)
+  df <- fctChkFlds(df, fldsNeeded)
 
   # helper function
   `%>%` <- dplyr::`%>%`
@@ -195,7 +195,7 @@ f.numSites <- function(df = NULL) {
   df[[".numSites"]] <- as.integer(
     dfMergeVariablesRelevel(
       df = df,
-      colnames = names(fldsNeeded)
+      colnames = names(fldsNeeded)[names(fldsNeeded) != ""]
     )
   )
 

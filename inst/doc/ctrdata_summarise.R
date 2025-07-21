@@ -302,12 +302,13 @@ knitr::opts_chunk$set(
 #   getNamespace("ctrdata"),
 #   all.names = TRUE,
 #   pattern = "^f[.][a-z]"))
-# #  [1] "f.controlType"                "f.isMedIntervTrial"           "f.isUniqueTrial"
-# #  [4] "f.likelyPlatformTrial"        "f.numSites"                   "f.numTestArmsSubstances"
-# #  [7] "f.primaryEndpointDescription" "f.primaryEndpointResults"     "f.resultsDate"
-# # [10] "f.sampleSize"                 "f.sponsorType"                "f.startDate"
-# # [13] "f.statusRecruitment"          "f.trialObjectives"            "f.trialPhase"
-# # [16] "f.trialPopulation"            "f.trialTitle"
+# #  [1] "f.assignmentType"             "f.controlType"                "f.externalLinks"
+# #  [4] "f.hasResults"                 "f.isMedIntervTrial"           "f.isUniqueTrial"
+# #  [7] "f.likelyPlatformTrial"        "f.numSites"                   "f.numTestArmsSubstances"
+# # [10] "f.primaryEndpointDescription" "f.primaryEndpointResults"     "f.resultsDate"
+# # [13] "f.sampleSize"                 "f.sponsorType"                "f.startDate"
+# # [16] "f.statusRecruitment"          "f.trialObjectives"            "f.trialPhase"
+# # [19] "f.trialPopulation"            "f.trialTitle"
 
 ## ----results='asis'-----------------------------------------------------------
 # '
@@ -847,39 +848,18 @@ knitr::opts_chunk$set(
 # # Count number of trials by number of study
 # # participants in bins of hundreds of participants:
 # m$aggregate(pipeline = '
-# [
-#   {
-#     "$project": {
-#       "flooredNumber": {
-#         "$multiply": [
-#           {
-#             "$floor": {
-#               "$divide": [
-#                 {
-#                   "$toInt": "$protocolSection.designModule.enrollmentInfo.count"
-#                 },
-#                 100
-#               ]
-#             }
-#           },
-#           100
-#         ]
-#       }
-#     }
-#   },
-#   {
-#     "$group": {
+# [{"$project": {
+#     "flooredNumber": {
+#       "$multiply": [
+#         { "$floor": {
+#             "$divide": [
+#                { "$toInt": "$protocolSection.designModule.enrollmentInfo.count"},
+#                 100 ] } },
+#           100] } } },
+#   { "$group": {
 #       "_id": "$flooredNumber",
-#       "count": {
-#         "$count": {}
-#       }
-#     }
-#   },
-#   {
-#     "$sort": {
-#       "_id": 1
-#     }
-#   }
+#       "count": { "$count": {} } } },
+#   { "$sort": { "_id": 1 } }
 # ]
 # ')
 # #     _id count

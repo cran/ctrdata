@@ -17,6 +17,8 @@ countriesActive <- c(
   "DE", "GR", "HU", "IE", "IT", "LV", "LT", "LU", "MT", "NL",
   "PL", "PT", "RO", "SK", "SE", "SI", "ES",       "IS", "LI",
   "NO", "3RD")
+countriesPreferred <- c(
+  "BE", "ES", "DE", "FR", "IT", "NL", "DK", "AT", "PL", "PT")
 #
 # regexpr
 # - queryterm and urls
@@ -431,7 +433,7 @@ ctgovClassicToCurrent <- function(url, verbose = TRUE) {
         sub("([?&]country=)([A-Z]+)([$&])",
             paste0("\\1", countryTable[which(
               countryCode == countryTable[, 3]
-            ), 2, drop == TRUE][1], "\\3"),
+            ), 2, drop = TRUE][1], "\\3"),
             apiParams)
   }
 
@@ -476,7 +478,7 @@ ctgovClassicToCurrent <- function(url, verbose = TRUE) {
 #' @keywords internal
 #' @noRd
 #'
-#' @return value of variable or `NULL` if variable does not exist
+#' @returns value of variable or `NULL` if variable does not exist
 #'
 ctrCache <- function(xname, xvalue = NULL, verbose = FALSE) {
 
@@ -514,16 +516,12 @@ ctrCache <- function(xname, xvalue = NULL, verbose = FALSE) {
 #' @importFrom nodbi src_sqlite src_duckdb docdb_list
 #' @importFrom utils capture.output
 #'
-#' @return Connection object as list, with collection
+#' @returns Connection object as list, with collection
 #'  element under root
 #'
 ctrDb <- function(con) {
 
   ## ensure requirements
-  if (!requireNamespace("nodbi", quietly = TRUE)) {
-    stop("Install package 'nodbi' to use this function.",
-         call. = FALSE)
-  }
   minV <- sub(
     ".*nodbi[(<>=[:space:]]+([.0-9]+?)\\).*", "\\1",
     utils::packageDescription("ctrdata", fields = "Imports")
@@ -682,7 +680,7 @@ ctrDb <- function(con) {
 #'
 #' @param fn a field name
 #'
-#' @return a typed vector, same length as dv
+#' @returns a typed vector, same length as dv
 #'
 #' @importFrom xml2 xml_text read_html
 #' @importFrom lubridate duration ymd_hms dyears dmonths ddays
@@ -864,7 +862,7 @@ addMetaData <- function(x, con) {
 #' @keywords internal
 #' @noRd
 #'
-#' @return Data frame with columns such as status_code etc
+#' @returns Data frame with columns such as status_code etc
 #'
 #' @importFrom utils URLencode
 #' @importFrom jsonlite fromJSON toJSON validate
@@ -1104,7 +1102,7 @@ ctrMultiDownload <- function(
 #' create empty temporary directory on localhost for
 #' downloading from register into temporary directory
 #'
-#' @return path to existing directory
+#' @returns path to existing directory
 #'
 #' @keywords internal
 #' @noRd
@@ -1173,7 +1171,7 @@ ctrTempDir <- function(verbose = FALSE) {
 #' @param multiplex use http/2 or not
 #' @param verbose print parameter from parent call
 #'
-#' @return number of documents
+#' @returns number of documents
 #'
 #' @keywords internal
 #' @noRd
@@ -1376,7 +1374,7 @@ initTranformers <- function() {
 #'
 #' @inheritParams ctrLoadQueryIntoDb
 #'
-#' @return List with elements n (number of imported trials),
+#' @returns List with elements n (number of imported trials),
 #' _id's of successfully imported trials and
 #' _id's of trials that failed to import
 #'
@@ -1672,7 +1670,7 @@ dbCTRUpdateQueryHistory <- function(
 
 #' dfOrTibble
 #'
-#' @return tibble or data frame, depending on loaded packages
+#' @returns tibble or data frame, depending on loaded packages
 #'
 #' @param df data frame input
 #'
@@ -1700,25 +1698,28 @@ dfOrTibble <- function(df) {
 #' fctChkFlds
 #'
 #' Calls for its side effect to stop if arguments
-#' are not conforming to expectations (flds needs
-#' to be a subset of dfFlds)
+#' are not conforming to expectations
 #'
-#' @param dfFlds names of fields of a data frame
+#' @returns df with flds columns
+#'
+#' @param df data frame
 #' @param flds fields needed for a function
 #'
 #' @keywords internal
 #' @noRd
 #'
-fctChkFlds <- function(dfFlds, flds) {
+fctChkFlds <- function(df, flds) {
 
-  flds <- unlist(flds, use.names = FALSE)
+  flds <- unique(unlist(flds, use.names = FALSE))
 
-  flds <- flds[!sapply(flds, function(i) any(i == dfFlds))]
+  nms <- names(df)
 
-  if (length(flds)) stop(
-    "Fields missing in 'df':\n", paste0(flds, "\n"),
+  fldsM <- flds[!sapply(flds, function(i) any(i == nms))]
+
+  if (length(fldsM)) stop(
+    "Fields missing in 'df':\n", paste0(fldsM, "\n"),
     call. = FALSE)
 
-  return(invisible(NULL))
+  return(df[, c("_id", flds), drop = FALSE])
 
 }

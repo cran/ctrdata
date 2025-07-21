@@ -40,7 +40,7 @@
 #'
 #' @inheritParams ctrDb
 #'
-#' @return A named vector with strings of keys (field "_id") of
+#' @returns A named vector with strings of keys (field "_id") of
 #' records in the collection that represent unique trials, where
 #' names correspond to the register of the record.
 #'
@@ -216,7 +216,7 @@ dbFindIdsUniqueTrials <- function(
 
 #' create table with mapping of _id to all other ids
 #'
-#' @return vector
+#' @returns vector
 #'
 #' @inheritParams dbFindIdsUniqueTrials
 #'
@@ -225,7 +225,10 @@ dbFindIdsUniqueTrials <- function(
 #' @keywords internal
 #' @noRd
 #'
-.dbMapIdsTrials <- function(con, verbose = FALSE, ...) {
+.dbMapIdsTrials <- function(
+    preferregister = preferregister,
+    con,
+    verbose = FALSE) {
 
   ## check database connection
   if (is.null(con$ctrDb)) con <- ctrDb(con = con)
@@ -510,7 +513,7 @@ dbFindIdsUniqueTrials <- function(
 #'
 #' @inheritParams dfFindIdsUniqueTrials
 #'
-#' @return A data frame as subset of \code{df} corresponding to the sought
+#' @returns A data frame as subset of \code{df} corresponding to the sought
 #'   records.
 #'
 #' @keywords internal

@@ -13,7 +13,7 @@
 #' prints fields needed in `df` for calculating this trial concept, which can
 #' be used with \link{dbGetFieldsIntoDf}.
 #'
-#' @return data frame with columns `_id` and new columns:
+#' @returns data frame with columns `_id` and new columns:
 #' `.primaryEndpointFirstPvalue` (discarding any inequality indicator, e.g. <=),
 #' `.primaryEndpointFirstPmethod` (normalised string, e.g. chisquared),
 #' `.primaryEndpointFirstPsize` (number included in test, across assignment groups).
@@ -101,7 +101,7 @@ f.primaryEndpointResults <- function(df = NULL) {
   #### calculate ####
 
   # check generic, do not edit
-  fctChkFlds(names(df), fldsNeeded)
+  df <- fctChkFlds(df, fldsNeeded)
 
   # helper function
   `%>%` <- dplyr::`%>%`

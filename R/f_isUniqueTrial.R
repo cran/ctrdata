@@ -10,7 +10,7 @@
 #' prints fields needed in `df` for calculating this trial concept, which can
 #' be used with \link{dbGetFieldsIntoDf}.
 #'
-#' @return data frame with columns `_id` and `.isUniqueTrial`, a logical.
+#' @returns data frame with columns `_id` and `.isUniqueTrial`, a logical.
 #'
 #' @export
 #'
@@ -49,7 +49,7 @@ f.isUniqueTrial <- function(df = NULL) {
   #### calculate ####
 
   # check generic, do not edit
-  fctChkFlds(names(df), fldsNeeded)
+  df <- fctChkFlds(df, fldsNeeded)
 
   # apply function, access object con in calling environment
   vct <- dbFindIdsUniqueTrials(con = parent.frame()$con)

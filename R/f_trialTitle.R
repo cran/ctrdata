@@ -9,7 +9,7 @@
 #' prints fields needed in `df` for calculating this trial concept, which can
 #' be used with \link{dbGetFieldsIntoDf}.
 #'
-#' @return data frame with columns `_id` and `.trialTitle`, a string.
+#' @returns data frame with columns `_id` and `.trialTitle`, a string.
 #'
 #' @export
 #'
@@ -77,7 +77,7 @@ f.trialTitle <- function(df = NULL) {
   #### calculate ####
 
   # check generic, do not edit
-  fctChkFlds(names(df), fldsNeeded)
+  df <- fctChkFlds(df, fldsNeeded)
 
   # helper function similar to unite
   pasteCols <- function(...) apply(

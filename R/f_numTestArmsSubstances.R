@@ -19,7 +19,7 @@
 #' prints fields needed in `df` for calculating this trial concept, which can
 #' be used with \link{dbGetFieldsIntoDf}.
 #'
-#' @return data frame with columns `_id` and `.numTestArmsSubstances`, an integer
+#' @returns data frame with columns `_id` and `.numTestArmsSubstances`, an integer
 #'
 #' @export
 #'
@@ -86,7 +86,7 @@ f.numTestArmsSubstances <- function(df = NULL) {
   #### calculate ####
 
   # check generic, do not edit
-  fctChkFlds(names(df), fldsNeeded)
+  df <- fctChkFlds(df, fldsNeeded)
 
   # helper definitions
   thresholdSimilar <- 0.8
@@ -318,7 +318,7 @@ f.numTestArmsSubstances <- function(df = NULL) {
   df[[".numTestArmsSubstances"]] <- as.integer(
     dfMergeVariablesRelevel(
       df = df,
-      colnames = names(fldsNeeded)
+      colnames = names(fldsNeeded)[names(fldsNeeded) != ""]
     )
   )
 

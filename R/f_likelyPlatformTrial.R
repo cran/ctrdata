@@ -31,7 +31,7 @@
 #' prints fields needed in `df` for calculating this trial concept, which can
 #' be used with \link{dbGetFieldsIntoDf}.
 #'
-#' @return data frame with columns `_id` and `.likelyPlatformTrial`, a logical,
+#' @returns data frame with columns `_id` and `.likelyPlatformTrial`, a logical,
 #' and two complementary columns, each with lists of identifiers:
 #' `.likelyRelatedTrials` (based on other identifiers provided in the trial
 #' record, including `associatedClinicalTrials` from CTIS; listing identifiers
@@ -133,7 +133,7 @@ f.likelyPlatformTrial <- function(df = NULL) {
   #### calculate ####
 
   # check generic, do not edit
-  fctChkFlds(names(df), fldsNeeded)
+  df <- fctChkFlds(df, fldsNeeded)
 
   # helper definitions
   indexThreshold <- 0.77

@@ -55,12 +55,6 @@
 #'   recruitment = "completed",
 #'   )
 #'
-#' # count trials found
-#' sapply(urls, ctrLoadQueryIntoDb, only.count = TRUE)
-#'
-#' # load queries into database collection
-#' # sapply(urls, ctrLoadQueryIntoDb, con = dbc)
-#'
 #' # find research platform and platform trials
 #' urls <- ctrGenerateQueries(
 #'   searchPhrase = paste0(
@@ -72,6 +66,15 @@
 #'
 #' # open queries in register web interface
 #' sapply(urls, ctrOpenSearchPagesInBrowser)
+#'
+#' \dontrun{
+#' # count trials found
+#' sapply(urls, ctrLoadQueryIntoDb, only.count = TRUE)
+#'
+#' # load queries into database collection
+#' dbc <- nodbi::src_sqlite(collection = "my_collection")
+#' sapply(urls, ctrLoadQueryIntoDb, con = dbc)
+#' }
 #'
 ctrGenerateQueries <- function(
     searchPhrase = NULL,
@@ -144,6 +147,7 @@ ctrGenerateQueries <- function(
     searchPhraseC <- gsub("( OR | AND )", ", ", searchPhrase)
 
     searchPhraseD <- stringi::stri_extract_all_regex(searchPhrase, "( OR | AND )")[[1]][1]
+    if (all(is.na(searchPhraseD))) searchPhraseD <- ""
 
     if (grepl(" AND ", searchPhrase) && grepl(" OR ", searchPhrase)) {
       warning(
@@ -156,15 +160,12 @@ ctrGenerateQueries <- function(
 
     # ctgov2
     urls["CTGOV2"] <- paste0(
-      urls["CTGOV2"], "titles=", searchPhraseB)
-    # "basket" OR "platform" OR "umbrella" OR "master protocol" OR "multiarm" OR "multistage" OR "subprotocol" OR "substudy" OR "multi-arm" OR "multi-stage" OR "sub-protocol" OR "sub-study"
-    # title search 2372
-    # https://clinicaltrials.gov/search?titles=%22basket%22%20OR%20%22platform%22%20OR%20%22umbrella%22%20OR%20%22master%20protocol%22%20OR%20%22multiarm%22%20OR%20%22multistage%22%20OR%20%22subprotocol%22%20OR%20%22substudy%22%20OR%20%22multi-arm%22%20OR%20%22multi-stage%22%20OR%20%22sub-protocol%22%20OR%20%22sub-study%22
+      urls["CTGOV2"], "term=", searchPhraseB)
 
     # ctgov2expert
     urls["CTGOV2expert"] <- paste0(
-      urls["CTGOV2expert"], " AND (",
-      paste0('AREA[TitleSearch]"', searchPhraseA, '"', collapse = searchPhraseD),
+      urls["CTGOV2expert"], "(",
+      paste0('"', searchPhraseA, '"', collapse = searchPhraseD),
       ") "
     )
 
@@ -175,33 +176,16 @@ ctrGenerateQueries <- function(
         '"containAll":"',
         '"containAny":"'
       ), searchPhraseC, '",')
-    # "Contain any of these terms:" 289
-    # https://euclinicaltrials.eu/ctis-public/search#searchCriteria={%22containAny%22:%22basket,%20platform,%20umbrella,%20multiarm,%20multistage,%20master%20protocol,%20subprotocol,%20substudy,%20multi-arm,%20multi-stage,%20sub-protocol,%20sub-study%22}
-    # basket, platform, umbrella, master protocol, multiarm, multistage, subprotocol, substudy, multi-arm, multi-stage, sub-protocol, sub-study
 
     # euctr
     urls["EUCTR"] <- paste0(
       urls["EUCTR"], searchPhraseB)
-    # "basket" OR "platform" OR "umbrella" OR "master protocol" OR "multiarm" OR "multistage" OR "subprotocol" OR "substudy" OR "multi-arm" OR "multi-stage" OR "sub-protocol" OR "sub-study"
-    # general text search 2808
-    # https://www.clinicaltrialsregister.eu/ctr-search/search?query=%22basket%22+OR+%22platform%22+OR+%22umbrella%22+OR+%22master+protocol%22+OR+%22multiarm%22+OR+%22multistage%22+OR+%22subprotocol%22+OR+%22substudy%22+OR+%22multi-arm%22+OR+%22multi-stage%22+OR+%22sub-protocol%22+OR+%22sub-study%22
 
-    #
+    # isrctn
     urls["ISRCTN"] <- paste0(
       urls["ISRCTN"], "q=", searchPhraseB)
-    # "basket" OR "platform" OR "umbrella" OR "master protocol" OR "multiarm" OR "multistage" OR "subprotocol" OR "substudy" OR "multi-arm" OR "multi-stage" OR "sub-protocol" OR "sub-study"
-    # text search 1426
-    # https://www.isrctn.com/search?q=%22basket%22+OR+%22platform%22+OR+%22umbrella%22+OR+%22master+protocol%22+OR+%22multiarm%22+OR+%22multistage%22+OR+%22subprotocol%22+OR+%22substudy%22+OR+%22multi-arm%22+OR+%22multi-stage%22+OR+%22sub-protocol%22+OR+%22sub-study%22&searchType=advanced
 
   }
-
-
-  #### clinical trial / interventional ####
-
-  # ISRCTN not possible
-  # EUCTR by definition
-  # CTIS by definition
-  # CTGOV interventional possible, but not limited to medicines
 
 
   #### condition ####
@@ -251,8 +235,9 @@ ctrGenerateQueries <- function(
   if (!is.null(phase)) {
 
     stopifnot(is.atomic(phase) && length(phase) == 1L)
-
-    # see also f_trialPhase.R
+    if (!grepl("phase ", phase)) stop(
+      "Parameter 'phase' should include the word ",
+      '"phase", see help("f.trialPhase")')
 
     urls["CTGOV2"] <- paste0(
       urls["CTGOV2"], "&aggFilters=phase:", c(
@@ -331,6 +316,9 @@ ctrGenerateQueries <- function(
   if (!is.null(population)) {
 
     stopifnot(is.atomic(population) && length(population) == 1L)
+    if (grepl("[^PAE+]+", population)) stop(
+      "Parameter 'population' should include only ",
+      'P, A + E; see help("f.trialPopulation")')
 
     urls["CTGOV2"] <- paste0(
       urls["CTGOV2"], "&aggFilters=ages:", c(
@@ -554,21 +542,65 @@ ctrGenerateQueries <- function(
     # not needed for CTIS, EUCTR
 
     urls["CTGOV2"] <- paste0(
-      urls["CTGOV2"], "&aggFilters=studyType:int")
+      urls["CTGOV2"],
+      "&aggFilters=studyType:int"
+    )
+    #
+    if (grepl("&intr=", urls["CTGOV2"])) {
+      urls["CTGOV2"] <- sub(
+        "(^.+)&intr=(.+)(&.+$|$)",
+        paste0(
+          "\\1&intr=(",
+          sub("(^.+)&intr=(.+)(&.+$|$)", "\\2", urls["CTGOV2"]),
+          ") AND (Drug OR Biological)\\3"
+        ),
+        urls["CTGOV2"]
+      )
+    } else {
+      urls["CTGOV2"] <- paste0(
+        urls["CTGOV2"], "&intr=Drug OR Biological"
+      )
+    }
+    #
+    if (grepl("&term=", urls["CTGOV2"])) {
+      urls["CTGOV2"] <- sub(
+        "(^.+&)term=(.+)(&.+$|$)",
+        paste0(
+          "\\1&term=(",
+          sub("(^.+)&term=(.+)(&.+$|$)", "\\2", urls["CTGOV2"]),
+          ") AND (AREA[DesignPrimaryPurpose](DIAGNOSTIC OR PREVENTION OR TREATMENT))\\3"
+        ),
+        urls["CTGOV2"]
+      )
+    } else {
+      urls["CTGOV2"] <- paste0(
+        urls["CTGOV2"], "&term=AREA[DesignPrimaryPurpose](DIAGNOSTIC OR PREVENTION OR TREATMENT)"
+      )
+    }
+
+
+    # https://clinicaltrials.gov/search?cond=cancer&start=2020-01-01_
+    # &intr=Drug%20OR%20Biological
+    # &term=AREA%5BDesignPrimaryPurpose%5D(DIAGNOSTIC%20OR%20PREVENTION%20OR%20TREATMENT)
+    # &aggFilters=phase:3,studyType:int
 
     urls["CTGOV2expert"] <- paste0(
-      # TODO could be further tightened as follows but unclear for CTGOV
+      urls["CTGOV2expert"],
+      "AND (AREA[StudyType]INTERVENTIONAL) ",
       # https://www.clinicaltrials.gov/data-api/about-api/study-data-structure#enum-PrimaryPurpose
-      # AND (AREA[DesignPrimaryPurpose](DIAGNOSTIC OR PREVENTION OR TREATMENT))
-      # AND (AREA[InterventionType](DRUG OR BIOLOGICAL))
-      urls["CTGOV2expert"], "AND (AREA[StudyType]INTERVENTIONAL) ")
+      "AND (AREA[DesignPrimaryPurpose](DIAGNOSTIC OR PREVENTION OR TREATMENT)) ",
+      # this for compatibility with the CTGOV2 search
+      # https://www.clinicaltrials.gov/data-api/about-api/search-areas#InterventionSearch
+      # https://clinicaltrials.gov/data-api/about-api/study-data-structure#enum-InterventionType
+      "AND (AREA[InterventionSearch](DRUG OR BIOLOGICAL)) "
+    )
 
     urls["ISRCTN"] <- paste0(
       urls["ISRCTN"],
       "&filters=primaryStudyDesign:Interventional",
       if (is.null(phase)) paste0(
-        # this was found to implement boolean or
-        # phases as proxy for investigational medicines
+        # this was found to implement a boolean filter;
+        # phases are proxy for investigational medicines
         "&filters=phase:Phase 0,phase:Phase I,",
         "phase:Phase II,phase:Phase III,phase:Phase IV,",
         "phase:Phase I/II,phase:Phase II/III,phase:Phase III/IV"

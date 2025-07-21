@@ -19,10 +19,10 @@ tf <- function() {
     simplify = FALSE)
 
   # test
-  expect_true(length(fcts) >= 17L)
+  expect_true(length(fcts) >= 20L)
 
   # test
-  expect_true(length(unique(unlist(fctFields))) >= 184L)
+  expect_true(length(unique(unlist(fctFields))) >= 210L)
 
   # get data
   if (!checkSqlite()) exit_file("Reason: no SQLite")
@@ -46,17 +46,19 @@ tf <- function() {
 
   # test
   expect_true(all(grepl("_id|^[.][a-z]+[A-Z]", names(dF))))
-  expect_true(ncol(dF) == 24L)
+  expect_true(ncol(dF) == 27L)
   expect_true(nrow(dF) == 31L)
 
   # factors
+  expect_length(table(dF$.assignmentType, exclude = NULL), 2L)
   expect_length(table(dF$.controlType, exclude = NULL), 6L)
+  expect_length(table(dF$.hasResults, exclude = NULL), 2L)
   expect_length(table(dF$.isMedIntervTrial, exclude = NULL), 2L)
   expect_length(table(dF$.likelyPlatformTrial, exclude = NULL), 1L)
   expect_length(table(dF$.isUniqueTrial, exclude = NULL), 2L)
   expect_length(table(dF$.statusRecruitment, exclude = NULL), 4L)
   expect_length(table(dF$.trialPopulationAgeGroup, exclude = NULL), 5L)
-  expect_length(table(dF$.sponsorType, exclude = NULL), 3L)
+  expect_length(table(dF$.sponsorType, exclude = NULL), 4L)
   expect_length(table(dF$.trialPhase, exclude = NULL), 10L)
   expect_true(length(table(dF$.trialObjectives, exclude = NULL)) >= 18L)
 
@@ -74,6 +76,7 @@ tf <- function() {
   expect_true(all(dF$.startDate > as.Date("2000-01-01"), na.rm = TRUE))
 
   # strings
+  expect_true(sum(nchar(dF$.externalLinks), na.rm = TRUE) == 2403L)
   expect_true(sum(nchar(unlist(dF$.primaryEndpointFirstPmethod)), na.rm = TRUE) == 10L)
   expect_true(sum(nchar(unlist(dF$.primaryEndpointDescription))) == 20188L)
   expect_true(sum(nchar(unlist(dF$.trialPopulationInclusion))) == 27202L)
@@ -89,7 +92,7 @@ tf <- function() {
   # local test helper function
   ltf <- function(ifn, idf, con) do.call(ifn, list(idf))
 
-  # f = fcts[7]
+  # f = fcts[5]
   for (f in fcts) {
 
     # info

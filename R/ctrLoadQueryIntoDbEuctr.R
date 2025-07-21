@@ -19,6 +19,7 @@ ctrLoadQueryIntoDbEuctr <- function(
     register,
     euctrresults,
     euctrresultshistory,
+    euctrprotocolsall,
     ctgov2history,
     ctishistory,
     documents.path,
@@ -210,7 +211,7 @@ ctrLoadQueryIntoDbEuctr <- function(
   ptrn <- paste0("[0-9]{4}-[0-9]{6}-[0-9]{2}|", ptrn)
   ptrn <- paste0("3rd|", ptrn) # 3RD trial urls need lowercase
 
-  #get trial number and protocol countries
+  # get trial number and protocol countries
   trialsList <- unlist(lapply(
     resDf$destfile, function(f) {
 
@@ -228,6 +229,17 @@ ctrLoadQueryIntoDbEuctr <- function(
       # all in one pattern extraction
       p <- stringi::stri_extract_all_regex(
         t, ptrn, omit_no_match = TRUE, simplify = F)
+
+      # conditionally keep only one protocol record
+      if (!euctrprotocolsall) {
+        p <- lapply(p, function(i) {
+          if (length(i) == 1L) return(i)
+          i <- i[i %in% countriesActive]
+          w <- countriesPreferred %in% i
+          w <- countriesPreferred[w][1]
+          if (is.na(w)) i[1] else w
+        })
+      }
 
       # mangling list which has even number of elements
       lapply(
@@ -479,7 +491,7 @@ ctrLoadQueryIntoDbEuctr <- function(
           paste0(readLines(xmlFileList[f], warn = FALSE), collapse = ""),
           # important parameters
           V8::JS("{trim: true, ignoreAttrs: false, mergeAttrs: true,
-                     explicitRoot: false, explicitArray: false, xmlns: false}")),
+                   explicitRoot: false, explicitArray: false, xmlns: false}")),
         # remove conversion remnants and conformity breaking characters
         c('"xmlns:ns0":"http://eudract.ema.europa.eu/schema/clinical_trial_result",',
           '"xmlns:xsi":"http://www.w3.org/2001/XMLSchema-instance","xsi:nil":"true"',
@@ -506,7 +518,7 @@ ctrLoadQueryIntoDbEuctr <- function(
       eudractNumber <- gsub(
         "\"", "", as.character(jqr::jq(file(f), " .eudractNumber ")))
 
-      # update database with results
+      # update record(s) with results
       res <- try({
         tmpnodbi <-
           nodbi::docdb_update(

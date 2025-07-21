@@ -11,7 +11,7 @@
 #' prints fields needed in `df` for calculating this trial concept, which can
 #' be used with \link{dbGetFieldsIntoDf}.
 #'
-#' @return data frame with columns `_id` and `.sampleSize`, an integer.
+#' @returns data frame with columns `_id` and `.sampleSize`, an integer.
 #'
 #' @export
 #'
@@ -89,7 +89,7 @@ f.sampleSize <- function(df = NULL) {
   #### calculate ####
 
   # check generic, do not edit
-  fctChkFlds(names(df), fldsNeeded)
+  df <- fctChkFlds(df, fldsNeeded)
 
   # helper function
   `%>%` <- dplyr::`%>%`

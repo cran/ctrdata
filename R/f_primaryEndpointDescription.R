@@ -14,7 +14,7 @@
 #' prints fields needed in `df` for calculating this trial concept, which can
 #' be used with \link{dbGetFieldsIntoDf}.
 #'
-#' @return data frame with columns `_id` and `.primaryEndpointDescription`,
+#' @returns data frame with columns `_id` and `.primaryEndpointDescription`,
 #' which is a list (that is, one or more items in one vector per row; the
 #' background is that some trials have several endpoints as primary).
 #'
@@ -148,7 +148,7 @@ f.primaryEndpointDescription <- function(df = NULL) {
   #### calculate ####
 
   # check generic, do not edit
-  fctChkFlds(names(df), fldsNeeded)
+  df <- fctChkFlds(df, fldsNeeded)
 
   # helper function similar to unite and also splitting
   # by contained primary endpoints and unite corresponding

@@ -1,3 +1,14 @@
+# ctrdata 1.24.0
+
+- Added parameter `euctrprotocolsall` for loading from EUCTR; if `FALSE`, this speeds up loading as only a single and no all records of a trial are loaded
+- Tightened query for medicine-interventional trials in `ctrGenerateQueries()` for CTGOV2
+- Added trial concepts `f.assignmentType()`, `f.externalLinks()`, `f.hasResults()`
+- Improved trial concept `f.controlType()` and added "mixed"to `f.sponsorType()`
+- Expanded functionality of `ctrGenerateQueries()` for CTGOV2 expert searches
+- Bug fix for subsetting data frames when calculating trial concepts
+- Removed long deprecated parameters from `ctrLoadQueryIntoDb()`, `dbGetFieldsIntoDf()`
+- Increased testing coverage to more than 94% of code lines
+
 # ctrdata 1.23.0
 
 ## Improvements

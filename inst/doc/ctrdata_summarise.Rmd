@@ -1,7 +1,7 @@
 ---
 title: "Summarise and analyse clinical trial information"
 author: "Ralf Herold"
-date: 2025-07-02
+date: 2025-07-19
 output:
   rmarkdown::html_vignette:
     toc: true
@@ -25,7 +25,7 @@ knitr::opts_chunk$set(
 
 General information on the `ctrdata` package is available here: [https://github.com/rfhb/ctrdata](https://github.com/rfhb/ctrdata).
 
-Remember to respect the registers' terms and conditions (see `ctrOpenSearchPagesInBrowser(copyright = TRUE)`). Please cite this package in any publication as follows: Ralf Herold (2025). ctrdata: Retrieve and Analyze Clinical Trials in Public Registers. R package version 1.22.3. https://cran.r-project.org/package=ctrdata
+Remember to respect the registers' terms and conditions (see `ctrOpenSearchPagesInBrowser(copyright = TRUE)`). Please cite this package in any publication as follows: Ralf Herold (2025). ctrdata: Retrieve and Analyze Clinical Trials in Public Registers. R package version 1.23.0. https://cran.r-project.org/package=ctrdata
 
 ## Preparations
 
@@ -384,12 +384,13 @@ as.character(utils::ls.str(
   getNamespace("ctrdata"),
   all.names = TRUE,
   pattern = "^f[.][a-z]"))
-#  [1] "f.controlType"                "f.isMedIntervTrial"           "f.isUniqueTrial"             
-#  [4] "f.likelyPlatformTrial"        "f.numSites"                   "f.numTestArmsSubstances"     
-#  [7] "f.primaryEndpointDescription" "f.primaryEndpointResults"     "f.resultsDate"               
-# [10] "f.sampleSize"                 "f.sponsorType"                "f.startDate"                 
-# [13] "f.statusRecruitment"          "f.trialObjectives"            "f.trialPhase"                
-# [16] "f.trialPopulation"            "f.trialTitle"
+#  [1] "f.assignmentType"             "f.controlType"                "f.externalLinks"             
+#  [4] "f.hasResults"                 "f.isMedIntervTrial"           "f.isUniqueTrial"             
+#  [7] "f.likelyPlatformTrial"        "f.numSites"                   "f.numTestArmsSubstances"     
+# [10] "f.primaryEndpointDescription" "f.primaryEndpointResults"     "f.resultsDate"               
+# [13] "f.sampleSize"                 "f.sponsorType"                "f.startDate"                 
+# [16] "f.statusRecruitment"          "f.trialObjectives"            "f.trialPhase"                
+# [19] "f.trialPopulation"            "f.trialTitle"  
 ```
 
 ## Merging fields for analysis 
@@ -1019,45 +1020,24 @@ head(out)
 
 ### Mapreduce
 
-Since Mapreduce is deprecated starting in MongoDB 5 (https://www.mongodb.com/docs/manual/core/map-reduce/), use an aggregation pipeline:  
+Since Mapreduce is deprecated since MongoDB version 5 (https://www.mongodb.com/docs/manual/core/map-reduce/), use an aggregation pipeline:  
 
 ```{r mongodb_mapreduce}
 # Count number of trials by number of study
 # participants in bins of hundreds of participants:
 m$aggregate(pipeline = '
-[
-  {
-    "$project": {
-      "flooredNumber": {
-        "$multiply": [
-          {
-            "$floor": {
-              "$divide": [
-                {
-                  "$toInt": "$protocolSection.designModule.enrollmentInfo.count"
-                },
-                100
-              ]
-            }
-          },
-          100
-        ]
-      }
-    }
-  },
-  {
-    "$group": {
+[{"$project": {
+    "flooredNumber": {
+      "$multiply": [
+        { "$floor": {
+            "$divide": [
+               { "$toInt": "$protocolSection.designModule.enrollmentInfo.count"},
+                100 ] } },
+          100] } } },
+  { "$group": { 
       "_id": "$flooredNumber",
-      "count": {
-        "$count": {}
-      }
-    }
-  },
-  {
-    "$sort": {
-      "_id": 1
-    }
-  }
+      "count": { "$count": {} } } },
+  { "$sort": { "_id": 1 } }
 ]
 ')
 #     _id count
