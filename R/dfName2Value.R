@@ -2,11 +2,13 @@
 
 #' Get value for variable of interest
 #'
-#' Get information for variable of interest  (e.g., clinical endpoints)
-#' from long data frame of protocol- or result-related trial information
+#' Get information for variable of interest (e.g., clinical endpoints)
+#' from a long data frame of protocol- or result-related trial information
 #' as returned by \link{dfTrials2Long}.
 #' Parameters `valuename`, `wherename` and `wherevalue` are
 #' matched using Perl regular expressions and ignoring case.
+#' See also \link{ctrdata-trial-concepts} for how to extract and calculate
+#' concepts of interest across registers.
 #'
 #' @param df A data frame (or tibble) with four columns (`_id`,
 #'  `identifier`, `name`, `value`) as returned by \link{dfTrials2Long}
@@ -171,7 +173,7 @@ dfName2Value <- function(df, valuename = "",
   # value column is character
   # try to convert it to numeric
   val <- suppressWarnings(
-    as.numeric(out[["value"]])
+    as.numeric(gsub(",", "", out[["value"]]))
   )
   # use if converted ok
   if (all(is.na(val) == is.na(out[["value"]]))) {

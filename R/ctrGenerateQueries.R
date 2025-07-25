@@ -17,7 +17,8 @@
 #' @param phase String, e.g. "phase 2" (note that "phase 2+3" is a specific
 #' category, not the union set of "phase 2" and "phase 3")
 #' @param population String, e.g. "P" (paediatric), "A" (adult), "P+A"
-#' (adult and paediatric), "E" (elderly), "P+A+E" participants can be recruited
+#' (adult and paediatric), "E" (elderly), "P+A+E" participants can be recruited.
+#' For ISRCTN, works only for "P", "A" or "E" but \emph{not mixed} populations.
 #' @param recruitment String, one of "ongoing", "completed", "other" (
 #' which includes "ended early" but this cannot be searched; use trial concept
 #' \link{f.statusRecruitment} to identify this status)
@@ -49,6 +50,12 @@
 #'
 #' # open queries in register web interface
 #' sapply(urls, ctrOpenSearchPagesInBrowser)
+#'
+#' # For CTIS to accept such a search URL and show results, consider installing
+#' # the Tampermonkey browser extension from https://www.tampermonkey.net/,
+#' # click on the extension icon, "Create a new script", "Utility" and then
+#' # "Import from this URL":
+#' # https://raw.githubusercontent.com/rfhb/ctrdata/master/tools/ctrdataURLcopier.js
 #'
 #' urls <- ctrGenerateQueries(
 #'   searchPhrase = "antibody AND covid",
@@ -318,7 +325,10 @@ ctrGenerateQueries <- function(
     stopifnot(is.atomic(population) && length(population) == 1L)
     if (grepl("[^PAE+]+", population)) stop(
       "Parameter 'population' should include only ",
-      'P, A + E; see help("f.trialPopulation")')
+      'P, A, E and +; see help("f.trialPopulation")')
+    if (grepl("[+]+", population)) message(
+      "Parameter 'population' containing '+' cannot be used with ",
+      "ISRCTN to indicate that either population can be recruited.")
 
     urls["CTGOV2"] <- paste0(
       urls["CTGOV2"], "&aggFilters=ages:", c(
@@ -358,24 +368,31 @@ ctrGenerateQueries <- function(
     urls["EUCTR"] <- paste0(
       urls["EUCTR"], c(
         # &age=in-utero
-        "A" = "&age=adult",
         "P" = "&age=children&age=adolescent&age=infant-and-toddler&age=newborn&age=preterm-new-born-infants&age=under-18",
-        "P+A" = "&age=children&age=adolescent&age=infant-and-toddler&age=newborn&age=preterm-new-born-infants&age=under-18&age=adult",
+        "A" = "&age=adult",
         "E" = "&age=elderly",
-        "A+E" = "&age=adult&age=elderly"
+        "P+A" = "&age=children&age=adolescent&age=infant-and-toddler&age=newborn&age=preterm-new-born-infants&age=under-18&age=adult",
+        "A+E" = "&age=adult&age=elderly",
+        "P+A+E" = "&age=children&age=adolescent&age=infant-and-toddler&age=newborn&age=preterm-new-born-infants&age=under-18&age=adult&age=elderly"
       )[population]
     )
 
     urls["ISRCTN"] <- paste0(
       urls["ISRCTN"], c(
-        # Not Specified
-        # Other
-        # Neonate
-        # Mixed
-        "A" = "&filters=ageRange:Adult",
+        # https://www.isrctn.com/page/definitions
+        # Mixed: People from two or three different age groups
+        # Note this filter is understood as recruiting in all
+        # specified age groups; this differs from how the other
+        # registers handle an analogous parameter, which is,
+        # recruiting in any of the specified populations.
+        # As a consequence, no filter is added for mixed
+        # populations specifications for ISRCTN.
         "P" = "&filters=ageRange:Child",
+        "A" = "&filters=ageRange:Adult",
         "E" = "&filters=ageRange:Senior",
-        "P+A+E" = "&filters=ageRange:All"
+        "P+A" = "", # "&filters=ageRange:Mixed",
+        "A+E" = "", # "&filters=ageRange:Mixed",
+        "P+A+E" = "" # "&filters=ageRange:All"
       )[population])
 
   }
@@ -477,7 +494,7 @@ ctrGenerateQueries <- function(
     urls["CTGOV2expert"] <- ifelse(
       grepl("StartDate", urls["CTGOV2expert"]),
       sub("(AREA\\[StartDate\\]RANGE\\[[-0-9]+,)MAX", paste0("\\1", startBefore), urls["CTGOV2expert"]),
-      paste0(urls["CTGOV2expert"], " AREA[StartDate]RANGE[MAX,",startBefore, "] "))
+      paste0(urls["CTGOV2expert"], " AND AREA[StartDate]RANGE[MIN,",startBefore, "] "))
 
     urls["CTIS"] <- paste0(
       urls["CTIS"], '"eeaStartDateTo":"', startBefore, '",')
@@ -525,7 +542,7 @@ ctrGenerateQueries <- function(
     urls["CTGOV2expert"] <- ifelse(
       grepl("CompletionDate", urls["CTGOV2expert"]),
       sub("(AREA\\[CompletionDate\\]RANGE\\[[-0-9]+,)MAX", paste0("\\1", completedBefore), urls["CTGOV2expert"]),
-      paste0(urls["CTGOV2expert"], " AREA[CompletionDate]RANGE[MAX,",completedBefore, "] "))
+      paste0(urls["CTGOV2expert"], " AND AREA[CompletionDate]RANGE[MIN,",completedBefore, "] "))
 
     urls["CTIS"] <- paste0(
       urls["CTIS"], '"eeaEndDateTo":"', completedBefore, '",')
@@ -548,10 +565,10 @@ ctrGenerateQueries <- function(
     #
     if (grepl("&intr=", urls["CTGOV2"])) {
       urls["CTGOV2"] <- sub(
-        "(^.+)&intr=(.+)(&.+$|$)",
+        "(^.+)&intr=(.+?)(&.+$|$)",
         paste0(
           "\\1&intr=(",
-          sub("(^.+)&intr=(.+)(&.+$|$)", "\\2", urls["CTGOV2"]),
+          sub("(^.+)&intr=(.+?)(&.+$|$)", "\\2", urls["CTGOV2"]),
           ") AND (Drug OR Biological)\\3"
         ),
         urls["CTGOV2"]
@@ -562,12 +579,12 @@ ctrGenerateQueries <- function(
       )
     }
     #
-    if (grepl("&term=", urls["CTGOV2"])) {
+    if (grepl("[&?]term=", urls["CTGOV2"])) {
       urls["CTGOV2"] <- sub(
-        "(^.+&)term=(.+)(&.+$|$)",
+        "(^.+[&?])term=(.+?)(&.+$|$)",
         paste0(
-          "\\1&term=(",
-          sub("(^.+)&term=(.+)(&.+$|$)", "\\2", urls["CTGOV2"]),
+          "\\1term=(",
+          sub("(^.+)[&?]term=(.+?)(&.+$|$)", "\\2", urls["CTGOV2"]),
           ") AND (AREA[DesignPrimaryPurpose](DIAGNOSTIC OR PREVENTION OR TREATMENT))\\3"
         ),
         urls["CTGOV2"]
@@ -638,7 +655,7 @@ ctrGenerateQueries <- function(
       urls["CTGOV2expert"], " AND (",
       paste0(
         'AREA[LocationCountry]"',
-        countryTable[countryIndex, 2],
+        countryTable[countryIndex, "ISO3166name"],
         collapse = '" OR '
       ), '") '
     )
@@ -647,7 +664,7 @@ ctrGenerateQueries <- function(
 
       urls["CTGOV2"] <- paste0(
         urls["CTGOV2"],
-        "&country=", countryTable[countryIndex, 2][1]
+        "&country=", countryTable[countryIndex, "ISO3166name"][1]
       )
 
     } else {
@@ -658,10 +675,10 @@ ctrGenerateQueries <- function(
 
     urls["CTIS"] <- paste0(
       urls["CTIS"], '"msc":[',
-      paste0(countryTable[countryIndex, 1], collapse = ","),
+      paste0(countryTable[countryIndex, "Num"], collapse = ","),
       '],')
 
-    tmpC <- countryTable[countryIndex, 3]
+    tmpC <- countryTable[countryIndex, "A2"]
     urls["EUCTR"] <- paste0(
       urls["EUCTR"],
       paste0(
@@ -674,7 +691,7 @@ ctrGenerateQueries <- function(
     urls["ISRCTN"] <- paste0(
       urls["ISRCTN"],
       paste0("&filters=recruitmentCountry:",
-             countryTable[countryIndex, 2], collapse = "")
+             countryTable[countryIndex, "ISO3166name"], collapse = "")
     )
 
   }

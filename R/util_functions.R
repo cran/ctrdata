@@ -432,8 +432,8 @@ ctgovClassicToCurrent <- function(url, verbose = TRUE) {
     if (countryCode != apiParams) apiParams <-
         sub("([?&]country=)([A-Z]+)([$&])",
             paste0("\\1", countryTable[which(
-              countryCode == countryTable[, 3]
-            ), 2, drop = TRUE][1], "\\3"),
+              countryCode == countryTable[, "A2"]
+            ), "ISO3166name", drop = TRUE][1], "\\3"),
             apiParams)
   }
 
@@ -737,7 +737,7 @@ typeField <- function(dv, fn) {
 
     # - check if conversion to numeric works
     if ((typeof(dv) == "character") && any(!is.na(dv))) {
-      dvn <- suppressWarnings(as.numeric(dv))
+      dvn <- suppressWarnings(as.numeric(gsub(",", "", dv)))
       if (identical(is.na(dv), is.na(dvn))) return(dvn)
     }
 

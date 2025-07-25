@@ -1,3 +1,9 @@
+# ctrdata 1.24.1
+
+- Bug fix for `ctrGenerateQueries()` (country reference list, parameter chaining)
+- Handle conversion of numbers with thousands separator
+- Fixed documentation gaps
+
 # ctrdata 1.24.0
 
 - Added parameter `euctrprotocolsall` for loading from EUCTR; if `FALSE`, this speeds up loading as only a single and no all records of a trial are loaded

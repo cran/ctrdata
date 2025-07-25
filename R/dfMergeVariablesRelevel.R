@@ -33,14 +33,29 @@
 #'
 #' df <- dbGetFieldsIntoDf(
 #'   fields = c(
+#'     "ctrname",
 #'     "protocolSection.eligibilityModule.healthyVolunteers",
 #'     "f31_healthy_volunteers",
-#'     "eligibility.healthy_volunteers"
+#'     "eligibility.healthy_volunteers",
+#'     "participants.participantType",
+#'     paste0(
+#'       "authorizedPartI.trialDetails.trialInformation.",
+#'       "populationOfTrialSubjects.clinicalTrialGroups.name"
+#'     ),
+#'     paste0(
+#'       "authorizedApplication.authorizedPartI.trialDetails.trialInformation.",
+#'       "populationOfTrialSubjects.clinicalTrialGroups.name"
+#'     )
 #'   ),
 #'   con = dbc
 #' )
 #'
+#' df$isrctnhealthy <- "Healthy volunteer" == df[, 6]
+#' df$ctis1healthy <- "Healthy volunteers" == df[ ,7]
+#' df$ctis2healthy <- "Healthy volunteers" == df[, 8]
+#'
 #' table(
+#'   df$ctrname,
 #'   dfMergeVariablesRelevel(
 #'     df = df,
 #'     colnames = 'matches("healthy")'
