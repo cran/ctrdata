@@ -3,6 +3,9 @@
 # set server
 httr::set_config(httr::timeout(seconds = 60))
 
+# remove any existing database
+nodbi::docdb_delete(dbc, dbc$collection)
+
 #### url to api translation ####
 
 queryterm <- "
@@ -87,12 +90,11 @@ on.exit(unlink(tmpDir, recursive = TRUE), add = TRUE)
 # test
 expect_message(
   suppressWarnings(
-    ctrLoadQueryIntoDb(
+    tmp <- ctrLoadQueryIntoDb(
       queryterm = "cond=Cancer&aggFilters=phase:0,status:ter,studyType:int&studyComp=2015-12-31_2020-12-31",
       register = "CTGOV",
       documents.path = tmpDir,
       documents.regexp = NULL,
-      verbose = TRUE,
       con = dbc
     )),
   "Newly saved [0-9]+ placeholder document[(]s[)] for [0-9]+ trial"
@@ -107,12 +109,11 @@ expect_true(
 # test
 expect_message(
   suppressWarnings(
-    ctrLoadQueryIntoDb(
+    tmp <- ctrLoadQueryIntoDb(
       queryterm = "cond=Cancer&aggFilters=phase:0,status:ter,studyType:int&studyComp=2015-12-31_2020-12-31",
       register = "CTGOV2",
       documents.path = tmpDir,
       documents.regexp = "sap_",
-      verbose = TRUE,
       con = dbc
     )),
   "Newly saved [0-9]+ document[(]s[)] for [0-9]+ trial"
@@ -123,34 +124,34 @@ expect_message(
 # test
 expect_message(
   suppressWarnings(
-    ctrLoadQueryIntoDb(
+    tmp <- ctrLoadQueryIntoDb(
       queryterm = "https://clinicaltrials.gov/search?cond=neuroblastoma&aggFilters=phase:3,status:com",
       ctgov2history = 3,
       con = dbc
     )),
-  "Updating trial records"
+  "processing historic versions"
 )
 
 # test
 expect_message(
   suppressWarnings(
-    ctrLoadQueryIntoDb(
+    tmp <- ctrLoadQueryIntoDb(
       queryterm = "https://clinicaltrials.gov/search?cond=neuroblastoma&aggFilters=phase:3,status:com",
       ctgov2history = "2:4",
       con = dbc
     )),
-  "Updating trial records"
+  "processing historic versions"
 )
 
 # test
 expect_message(
   suppressWarnings(
-    ctrLoadQueryIntoDb(
+    tmp <- ctrLoadQueryIntoDb(
       queryterm = "https://clinicaltrials.gov/search?cond=neuroblastoma&aggFilters=phase:3,status:com",
       ctgov2history = -1,
       con = dbc
     )),
-  "Updating trial records"
+  "processing historic versions"
 )
 
 #### ctrLoadQueryIntoDb update ####
@@ -158,7 +159,7 @@ expect_message(
 # test
 expect_message(
   suppressWarnings(
-    ctrLoadQueryIntoDb(
+    tmp <- ctrLoadQueryIntoDb(
       querytoupdate = 2L,
       con = dbc)),
   "Rerunning query")
@@ -166,18 +167,17 @@ expect_message(
 # test
 expect_message(
   suppressWarnings(
-    ctrLoadQueryIntoDb(
+    tmp <- ctrLoadQueryIntoDb(
       queryterm = "cond=Neuroblastoma&lastUpdPost=2022-01-01_2023-12-31&aggFilters=phase:1,results:with,studyType:int",
       register = "CTGOV2",
-      con = dbc,
-      verbose = TRUE
+      con = dbc
     )),
   "Imported or updated [0-9]+ trial"
 )
 
 # test
 expect_warning(
-  ctrLoadQueryIntoDb(
+  tmp <- ctrLoadQueryIntoDb(
     querytoupdate = "last",
     con = dbc
   ),
@@ -186,6 +186,7 @@ expect_warning(
 
 # test
 tmp <- dbQueryHistory(con = dbc)
+print(tmp)
 expect_equal(dim(tmp), c(10L, 4L))
 
 #### dbFindFields ####

@@ -1,5 +1,8 @@
 ## RH 2023-03-25
 
+# remove any existing database
+nodbi::docdb_delete(dbc, dbc$collection)
+
 #### ctrLoadQueryIntoDb ####
 
 # test
@@ -129,6 +132,12 @@ expect_message(
 expect_true(tmpTest$n >= 10L)
 expect_true(tmpTest$queryterm == hist[["query-term"]][1L])
 
+dF <- dbGetFieldsIntoDf(c(
+  "lastUpdated",
+  "history.history_version.version_date"), con = dbc)
+expect_inherits(dF[[2]], "Date")
+expect_inherits(dF[[3]], "Date")
+
 expect_warning(
   suppressMessages(
     tmpTest <- ctrLoadQueryIntoDb(
@@ -136,15 +145,14 @@ expect_warning(
       ctishistory = TRUE,
       only.count = FALSE,
       con = dbc)),
-  "updating")
-expect_true(tmpTest$n >= 10L)
+  "iteratively")
+expect_true(tmpTest$n >= 30L)
 expect_true(tmpTest$queryterm == hist[["query-term"]][1L])
 
 dF <- dbGetFieldsIntoDf(c(
   "lastUpdated",
   "history.history_version.version_date"), con = dbc)
 expect_inherits(dF[[2]], "Date")
-expect_inherits(dF[[3]], "Date")
 
 rm(tmpTest, dF, hist)
 
@@ -260,6 +268,15 @@ if (FALSE){
 
 #### dbGetFieldsIntoDf ####
 
+# tmpFields include fields from historic versions, for
+# which however no typing is provided at this time, thus
+# these fields are excluding from type testing below
+#
+# View(data.frame(tmpFields))
+
+expect_true(sum(grepl("^history", tmpFields)) > 800L)
+tmpFields <- tmpFields[!grepl("^history", tmpFields)]
+
 groupsNo <- (length(tmpFields) %/% 49L) + 1L
 groupsNo <- rep(seq_len(groupsNo), 49L)
 groupsNo <- groupsNo[seq_along(tmpFields)]
@@ -271,11 +288,12 @@ for (i in unique(groupsNo)) {
   expect_true(ncol(tmpData) > 0L)
 }
 
-# dates
+# continue with dates only
 tmpFields <- tmpFields[
   (grepl("[.]date$", tmpFields, ignore.case = TRUE) |
      grepl("^startDateEU$", tmpFields, ignore.case = TRUE) |
      grepl("Date$", tmpFields, ignore.case = FALSE)) &
+    # "decisionDate" cannot be typed, is a string concatenating dates
     !grepl("^decisionDate$", tmpFields, ignore.case = FALSE)
 ]
 

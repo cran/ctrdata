@@ -868,6 +868,8 @@ addMetaData <- function(x, con) {
 #' @importFrom jsonlite fromJSON toJSON validate
 #' @importFrom httr2 request req_throttle req_perform_parallel req_body_json req_user_agent
 #' @importFrom dplyr rows_update
+#' @importFrom rlang hash !!!
+#' @importFrom stats runif
 #'
 ctrMultiDownload <- function(
     urls,
@@ -876,8 +878,12 @@ ctrMultiDownload <- function(
     progress = TRUE,
     verbose = TRUE) {
 
+  # check params
   stopifnot(length(urls) == length(destfiles))
   if (!length(urls)) return(data.frame())
+
+  # make operator accessible
+  `!!!` <- rlang::`!!!`
 
   # starting values
   numI <- 1L
@@ -920,7 +926,7 @@ ctrMultiDownload <- function(
   # does not error in case any of the individual requests fail.
   # inspect the return value to find out which were successful
   # make no more than 3 attempts to complete downloading
-  while (any(toDo) && numI < 3L) {
+  while (any(toDo) && numI < 5L) {
 
     # use urlResolved if this has been filled below in CDN check
     downloadValue$url[!is.na(downloadValue$urlResolved)] <-
@@ -928,9 +934,14 @@ ctrMultiDownload <- function(
 
     # construct requests
     reqs <- mapply(
-      function(u, d) {
+      function(u, d, f) {
         # start with basic request
         r <- httr2::request(u)
+
+        # add unique header
+        hdr <- rlang::hash(runif(n = 1L))
+        names(hdr) <- paste0(sample(letters, size = 10L), collapse = "")
+        r <- httr2::req_headers(r, !!!hdr)
 
         # add user agent
         r <- httr2::req_user_agent(r, ctrdataUseragent)
@@ -953,20 +964,27 @@ ctrMultiDownload <- function(
           fill_time_s = 10L
         )
 
+        # adding file path
+        r$fp <- f
+
         # return
         return(r)
       },
       u = downloadValue$url[toDo],
       d = downloadValue$data[toDo],
+      f = downloadValue$destfile[toDo],
       SIMPLIFY = FALSE,
       USE.NAMES = FALSE
     )
+
+    # randomise to minimise 403 errors
+    reqs <- reqs[sample.int(length(reqs))]
 
     # do download
     res <- suppressWarnings(
       httr2::req_perform_parallel(
         reqs,
-        paths = downloadValue$destfile[toDo],
+        paths = sapply(reqs, "[[", "fp"),
         on_error = "continue",
         progress = progress,
         max_active = 10L # default
@@ -1063,13 +1081,26 @@ ctrMultiDownload <- function(
     # only count towards repeat attempts if
     # the set of repeated urls is unchanged
     if (identical(toDo, toDoThis) & !any(cdnCheck)) numI <- numI + 1L
-
     toDo <- toDoThis
+
+    # adding delay since status code indicates
+    # server refused request immediately again
+    rfsd <- downloadValue$status_code %in% c(403L, 429L)
+    if (isTRUE(any(rfsd))) {
+      unlink(downloadValue$destfile[rfsd])
+      wt <- as.integer(runif(n = 1L) * 50L)
+      message(
+        "- Server refused ", sum(rfsd), " requests; ",
+        "waiting ", wt, " sec before retry        \r",
+        appendLF = FALSE)
+      Sys.sleep(wt)
+    }
 
   }
 
   # remove any files from failed downloads
-  unlink(downloadValue$destfile[downloadValue$status_code %in% c(404L, 416L)])
+  unlink(downloadValue$destfile[downloadValue$status_code %in% c(
+    404L, 416L, 403L, 429L)])
 
   # finalise
   if (any(toDo)) {
@@ -1088,7 +1119,7 @@ ctrMultiDownload <- function(
   downloadValue$success <- file.exists(downloadValue$destfile)
 
   # inform user
-  if (verbose) message("Done: ", numI, " iteration(s)")
+  if (verbose) message("DEBUG: ", numI, " iteration(s)")
 
   # return
   return(downloadValue[!toDo, , drop = FALSE])
@@ -1109,49 +1140,36 @@ ctrMultiDownload <- function(
 #'
 ctrTempDir <- function(verbose = FALSE) {
 
-  # get temporary space
+  # verbose has the purpose to persist the temporary folder
+  # beyond sessions, e.g. for debugging or for keeping the
+  # originally downloaded files.
+
+  # from ctrdata 1.16.0.9000, only downloaded files are kept;
+  # calculated files are deleted after ctrLoadQueryIntoDb()
+
+  # create temporary folder, unless
+  # a folder is specified as option
   tempDir <- getOption(
     "ctrdata.tempdir",
     default = tempfile(pattern = "ctrDATA"))
 
-  # create and normalise for OS
   dir.create(tempDir, showWarnings = FALSE, recursive = TRUE)
+
   tempDir <- normalizePath(tempDir, mustWork = TRUE)
+  keepDir <- file.path(tempDir, ".keepDir")
 
-  # retain tempdir for session to accelerate,
-  # but only if session is user-interactive.
-  # from ctrdata 1.16.0.9000 onwards, all
-  # intermediate files are deleted before
-  # finalising a ctrLoadQueryIntoDb() call
-  # (that is, only downloaded files are kept).
-  if (interactive()) options(ctrdata.tempdir = tempDir)
+  options(ctrdata.tempdir = tempDir)
 
-  # register deleting tempDir when exiting session
-  assign("keeptempdir", verbose, envir = .ctrdataenv)
-  delCtrdataTempDir <- function(x) {
-    if (length(.ctrdataenv$keeptempdir) &&
-        !is.null(.ctrdataenv$keeptempdir)) {
-      if (.ctrdataenv$keeptempdir) {
-        message('ctrdata: "verbose = TRUE", not deleting ',
-                'temporary directory ', tempDir, "\r")
-      } else {
-        unlink(tempDir, recursive = TRUE)
-        message("ctrdata: deleted temporary directory\r")
-      }
-    }
-    assign("keeptempdir", NULL, envir = .ctrdataenv)
-  }
-  reg.finalizer(
-    e = .ctrdataenv,
-    f = delCtrdataTempDir,
-    onexit = TRUE
-  )
+  # empty file to indicate if to keep or not folder
+  if (verbose) file.create(keepDir) else unlink(keepDir)
+
+  # see zzz.R for reg.finalizer()
 
   # inform user
   if (verbose) message(
     "\nDEBUG: ", tempDir,
     "\nUsing any previously downloaded files of the ",
-    length(dir(path = tempDir)),
+    length(dir(path = tempDir, pattern = "^[.]")),
     " files existing in this folder.\n")
 
   # return
@@ -1384,12 +1402,14 @@ initTranformers <- function() {
 dbCTRLoadJSONFiles <- function(dir, con, verbose) {
 
   # find files
-  tempFiles <- dir(path = dir,
-                   pattern = "^.+_trials_.*.ndjson$",
-                   full.names = TRUE)
+  tempFiles <- dir(
+    path = dir,
+    pattern = "^.+_trials_.*.ndjson$",
+    full.names = TRUE)
 
   # check
-  if (!length(tempFiles)) stop("no .+_trials_.*.ndjson files found in ", dir)
+  if (!length(tempFiles)) stop(
+    "no .+_trials_.*.ndjson files found in ", dir)
 
   # initialise counters
   fc <- length(tempFiles)
@@ -1416,9 +1436,19 @@ dbCTRLoadJSONFiles <- function(dir, con, verbose) {
         appendLF = FALSE)
 
       # get all ids using jq, safet than regex
-      ids <- gsub("\"", "", as.vector(jqr::jq(file(tempFiles[tempFile]), " ._id ")))
+      ids <- gsub("\"", "", as.vector(
+        jqr::jq(file(tempFiles[tempFile]), " ._id ")))
 
-      ## existing annotations -------------------------------------------------
+      ## existing data -------------------------------------------------
+
+      # get ids
+      dbIds <- try({
+        nodbi::docdb_query(
+          src = con,
+          key = con$collection,
+          query = "{}",
+          fields = '{"_id": 1}')
+      }, silent = TRUE)
 
       # get annotations
       annoDf <- try({
@@ -1430,6 +1460,7 @@ dbCTRLoadJSONFiles <- function(dir, con, verbose) {
             paste0('"', ids, '"', collapse = ","), "]}}"),
           fields = '{"_id": 1, "annotation": 1}')
       }, silent = TRUE)
+
       if (!inherits(annoDf, "try-error") && length(annoDf[["_id"]])) {
         annoDf <- merge(
           data.frame("_id" = ids, check.names = FALSE, stringsAsFactors = FALSE),
@@ -1438,20 +1469,72 @@ dbCTRLoadJSONFiles <- function(dir, con, verbose) {
         annoDf <-
           data.frame("_id" = ids, check.names = FALSE, stringsAsFactors = FALSE)
       }
+
       if (is.null(annoDf[["annotation"]]))
         annoDf[["annotation"]] <- rep(NA, length(ids))
 
-      ## delete and import ----------------------------------------------------
+      ## import ----------------------------------------------------
 
-      # delete any existing records
-      res <- try({
-        nodbi::docdb_delete(
-          src = con,
-          key = con$collection,
-          query = paste0(
-            '{"_id": {"$in": [',
-            paste0('"', ids, '"', collapse = ","), ']}}'))
-      }, silent = TRUE)
+      # separation into delete and create, or update
+      # because update may be a frequent use case and
+      # using this may accelerate and may avoid table
+      # records that remain being marked for deletion
+
+      if (verbose) message("DBUG: ", tempFiles[tempFile])
+
+      if (inherits(dbIds, "try-error") ||
+          is.null(dbIds) ||
+          length(setdiff(ids, dbIds[["_id"]])) > 0L) {
+
+        # only if relevant records exist
+        if (!inherits(dbIds, "try-error") &&
+            !is.null(dbIds) &&
+            length(intersect(ids, dbIds[["_id"]])) > 0L) {
+
+          # delete
+          res <- try({
+            nodbi::docdb_delete(
+              src = con,
+              key = con$collection,
+              query = paste0(
+                '{"_id": {"$in": [',
+                paste0('"', intersect(ids, dbIds[["_id"]]),
+                       '"', collapse = ","), ']}}'))
+          }, silent = TRUE)
+
+          # early exit
+          if (inherits(res, "try-error") &&
+              grepl("read.?only", res)) stop(
+                "Database is read-only, cannot load trial records.\n",
+                "Change database connection in parameter 'con = ...'",
+                call. = FALSE
+              )
+        }
+
+        # create
+        res <- try({
+          suppressWarnings(
+            suppressMessages(
+              nodbi::docdb_create(
+                src = con,
+                key = con$collection,
+                value = tempFiles[tempFile]
+              )))}, silent = TRUE)
+
+      } else {
+
+        # update
+        res <- try({
+          suppressWarnings(
+            suppressMessages(
+              nodbi::docdb_update(
+                src = con,
+                key = con$collection,
+                query = "{}",
+                value = tempFiles[tempFile]
+              )))}, silent = TRUE)
+
+      }
 
       # early exit
       if (inherits(res, "try-error") &&
@@ -1461,47 +1544,46 @@ dbCTRLoadJSONFiles <- function(dir, con, verbose) {
             call. = FALSE
           )
 
-      ## import
-      res <- try({
-        suppressWarnings(
-          suppressMessages(
-            nodbi::docdb_create(
-              src = con,
-              key = con$collection,
-              value = tempFiles[tempFile]
-            )))}, silent = TRUE)
+      # handle res and generate return values
+      if (inherits(res, "try-error") ||
+          res == 0L ||
+          res != nrow(annoDf)) {
 
-      ## return values for lapply
-      if (inherits(res, "try-error") || res == 0L || res != nrow(annoDf)) {
-
-        # step into line by line mode
+        # if res failed, step into line by line mode
         fdLines <- file(tempFiles[tempFile], open = "rt", blocking = TRUE)
+
         while (TRUE) {
+
           tmpOneLine <- readLines(con = fdLines, n = 1L, warn = FALSE)
           if (length(tmpOneLine) == 0L || !nchar(tmpOneLine)) break
           id <- sub(".*\"_id\":[ ]*\"(.*?)\".*", "\\1", tmpOneLine)
           res <- suppressWarnings(suppressMessages(nodbi::docdb_create(
             src = con, key = con$collection, value = paste0("[", tmpOneLine, "]"))))
+
           nImported <- nImported + res
           if (res) idSuccess <- c(idSuccess, id)
           if (!res) idFailed <- c(idFailed, id)
           if (!res) warning("Failed to load: ", id, call. = FALSE)
           if (res) idAnnotation <- c(idAnnotation, annoDf[
             annoDf[["_id"]] == id, "annotation", drop = TRUE][1])
+
         }
         close(fdLines)
 
       } else {
+
         nImported <- nImported + res
         idSuccess <- c(idSuccess, annoDf[, "_id", drop = TRUE])
         idAnnotation <- c(idAnnotation, annoDf[, "annotation", drop = TRUE])
+
       }
 
-      # return values
-      list(success = idSuccess,
-           failed = idFailed,
-           n = nImported,
-           annotations = idAnnotation)
+      # return values for lapply
+      list(
+        success = idSuccess,
+        failed = idFailed,
+        n = nImported,
+        annotations = idAnnotation)
 
     }) # sapply tempFiles
 
@@ -1512,10 +1594,11 @@ dbCTRLoadJSONFiles <- function(dir, con, verbose) {
   annotations <- as.vector(unlist(sapply(retimp, "[[", "annotations")))
 
   # return
-  return(list(n = n,
-              success = success,
-              failed = failed,
-              annotations = annotations))
+  return(list(
+    n = n,
+    success = success,
+    failed = failed,
+    annotations = annotations))
 
 } # end dbCTRLoadJSONFiles
 
