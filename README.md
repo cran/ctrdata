@@ -29,16 +29,17 @@ It can be used with the
 - EU Clinical Trials Register (“EUCTR”,
   <https://www.clinicaltrialsregister.eu/>)
 - EU Clinical Trials Information System (“CTIS”,
-  <https://euclinicaltrials.eu/>, see [example](#workflow-ctis-example))
-- ClinicalTrials.gov (“CTGOV2”, see [example](#workflow-ctgov-example))
-- ISRCTN Registry (<https://www.isrctn.com/>)
+  <https://euclinicaltrials.eu/>, [example](#workflow-ctis-example))
+- ClinicalTrials.gov (“CTGOV2”, <https://clinicaltrials.gov/>,
+  [example](#workflow-ctgov-example))
+- ISRCTN Registry (“ISRCTN”, <https://www.isrctn.com/>)
 
 The motivation is to investigate the design and conduct of trials of
 interest, to describe their trends and availability for patients and to
 facilitate using their detailed results for research and meta-analyses.
 `ctrdata` is a package for the [R](https://www.r-project.org/) system,
 but other systems and tools can use the databases created with this
-package. This README was reviewed on 2025-08-21 for version 1.24.1.9000.
+package. This README was reviewed on 2025-11-30 for version 1.25.0.9000.
 
 ## Main features
 
@@ -74,7 +75,7 @@ package. This README was reviewed on 2025-08-21 for version 1.24.1.9000.
 Respect the registers’ terms and conditions, see
 `ctrOpenSearchPagesInBrowser(copyright = TRUE)`. Please cite the package
 in a publication as follows: “Ralf Herold (2025). *ctrdata: Retrieve and
-Analyze Clinical Trials in Public Registers.* R package version 1.23.0,
+Analyze Clinical Trials in Public Registers.* R package version 1.25.0,
 <https://cran.r-project.org/package=ctrdata>”.
 
 <!--
@@ -86,30 +87,43 @@ citation("ctrdata")
 
 ## References
 
+An introduction to the package, together with worked examples and
+technical explanations is in:
+
+- Herold R. Aggregating and analysing clinical trials data from multiple
+  public registers using R package ctrdata. Research Synthesis Methods.
+  Published online 2025:1-33
+  [doi:10.1017/rsm.2025.10061](https://doi.org/10.1017/rsm.2025.10061)
+
 Package `ctrdata` has been used for unpublished works and these
 publications:
 
 - Jong et al. (2025) Experiences with Low-Intervention Clinical
   Trials—the New Category under the European Union Clinical Trials
   Regulation. Clinical Trials
-  <https://doi.org/10.1177/17407745241309293>
+  [doi:10.1177/17407745241309293](https://doi.org/10.1177/17407745241309293)
 - Lopez-Rey et al. (2025) Use of Bayesian Approaches in Oncology
   Clinical Trials: A Cross-Sectional Analysis’. Frontiers in
-  Pharmacology <https://doi.org/10.3389/fphar.2025.1548997>
+  Pharmacology
+  [doi:10.3389/fphar.2025.1548997](https://doi.org/10.3389/fphar.2025.1548997)
 - Russek et al. (2025) Supplementing Single-Arm Trials with External
   Control Arms—Evaluation of German Real-World Data. Clinical
-  Pharmacology & Therapeutics <https://doi.org/10.1002/cpt.3684>
+  Pharmacology & Therapeutics
+  [doi:doi.org/10.1002/cpt.3684](https://doi.org/10.1002/cpt.3684)
 - Alzheimer’s disease Horizon Scanning Report (2024) [PDF file, p
   10](https://www.ema.europa.eu/en/documents/report/alzheimers-disease-eu-horizon-scanning-report_en.pdf#page=10)
 - Kundu et al. (2024) Analysis of Factors Influencing Enrollment Success
   in Hematology Malignancy Cancer Clinical Trials (2008-2023). Blood
-  Meeting Abstracts <https://doi.org/10.1182/blood-2024-207446>
+  Meeting Abstracts
+  [doi:10.1182/blood-2024-207446](https://doi.org/10.1182/blood-2024-207446)
 - Lasch et al. (2022) The Impact of COVID‐19 on the Initiation of
   Clinical Trials in Europe and the United States. Clinical Pharmacology
-  & Therapeutics <https://doi.org/10.1002/cpt.2534>
+  & Therapeutics
+  [doi:10.1002/cpt.2534](https://doi.org/10.1002/cpt.2534)
 - Sood et al. (2022) Managing the Evidence Infodemic: Automation
   Approaches Used for Developing NICE COVID-19 Living Guidelines.
-  medRxiv <https://doi.org/10.1101/2022.06.13.22276242>
+  medRxiv
+  [doi:10.1101/2022.06.13.22276242](https://doi.org/10.1101/2022.06.13.22276242)
 - Blogging on [Innovation coming to paediatric
   research](https://paediatricdata.eu/innovation-coming-to-paediatric-research/)
 - Cancer Research UK (2017) [The impact of collaboration: The value of
@@ -302,7 +316,7 @@ help("ctrdata")
 ```
 
 - Information on trial registers, their contents and how they can be
-  used with `ctrdata` (last updated 2025-07-24):
+  used with `ctrdata` (last updated 2025-11-25):
 
 ``` r
 help("ctrdata-registers")
@@ -918,37 +932,34 @@ ctrLoadQueryIntoDb(
 See also <https://app.codecov.io/gh/rfhb/ctrdata/tree/master/R>
 
 ``` r
-# 2025-08-21
+# 2025-11-30
 
 tinytest::test_all()
-# test_ctrdata_duckdb_ctgov2.R..   78 tests OK 49.9s
-# test_ctrdata_function_activesubstance.R    4 tests OK 0.9s
-# test_ctrdata_function_ctrgeneratequeries.R   10 tests OK 0.3s
+# test_ctrdata_duckdb_ctgov2.R..   79 tests OK 57.1s
+# test_ctrdata_function_activesubstance.R    4 tests OK 1.0s
+# test_ctrdata_function_ctrgeneratequeries.R   10 tests OK 0.2s
 # test_ctrdata_function_params.R   25 tests OK 1.2s
-# test_ctrdata_function_trial-concepts.R   92 tests OK 3.8s
-# test_ctrdata_function_various.R   79 tests OK 3.0s
-# test_ctrdata_mongo_local_ctis.R   91 tests OK 3.5s
-# test_ctrdata_mongo_remote_ro.R    4 tests OK 6.6s
-# test_ctrdata_postgres_ctgov2.R   50 tests OK 30.6s
-# test_ctrdata_sqlite_ctgov.R...   46 tests OK 28.9s
-# test_ctrdata_sqlite_ctgov2.R..   50 tests OK 25.7s
-# test_ctrdata_sqlite_ctis.R....   92 tests OK 1.7s
-# test_ctrdata_sqlite_euctr.R...  119 tests OK 55.1s
-# test_ctrdata_sqlite_isrctn.R..   45 tests OK 16.9s
+# test_ctrdata_function_various.R   79 tests OK 3.6s
+# test_ctrdata_mongo_local_euctr.R  117 tests OK 1.2s
+# test_ctrdata_mongo_remote_ro.R    4 tests OK 6.7s
+# test_ctrdata_sqlite_ctgov.R...   46 tests OK 29.7s
+# test_ctrdata_sqlite_ctis.R....   94 tests OK 3.6s
+# test_ctrdata_sqlite_isrctn.R..   47 tests OK 18.0s
 # test_euctr_error_sample.R.....    8 tests OK 0.2s
-# All ok, 793 results (8m 53.4s)
+# All ok, 605 results (6m 49.3s)
 
 covr::package_coverage(path = ".", type = "tests")
-# ctrdata Coverage: 94.58%
-# R/ctrRerunQuery.R: 81.42%
+# ctrdata Coverage: 94.20%
+# R/zzz.R: 55.56%
+# R/ctrRerunQuery.R: 78.64%
 # R/ctrShowOneTrial.R: 84.21%
 # R/ctrLoadQueryIntoDbEuctr.R: 87.78%
 # R/ctrGetQueryUrl.R: 89.18%
 # R/ctrFindActiveSubstanceSynonyms.R: 89.36%
-# R/util_functions.R: 90.15%
+# R/dbGetFieldsIntoDf.R: 89.47%
+# R/util_functions.R: 90.74%
 # R/f_sponsorType.R: 92.00%
-# R/ctrLoadQueryIntoDbCtgov2.R: 92.93%
-# R/dbGetFieldsIntoDf.R: 95.39%
+# R/ctrLoadQueryIntoDbCtgov2.R: 92.53%
 # R/ctrLoadQueryIntoDbIsrctn.R: 95.70%
 # R/dbFindFields.R: 95.88%
 # R/f_primaryEndpointResults.R: 96.00%
@@ -979,7 +990,6 @@ covr::package_coverage(path = ".", type = "tests")
 # R/f_trialPhase.R: 100.00%
 # R/f_trialPopulation.R: 100.00%
 # R/f_trialTitle.R: 100.00%
-# R/zzz.R: 100.00%
 ```
 
 ## Future features

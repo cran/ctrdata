@@ -1,3 +1,15 @@
+# ctrdata 1.25.1
+
+## Enhancement
+- Work around upstream issue (#59, CTIS delivering at most 10000 trials per query)
+- Add CITATION file with recent reference publication
+
+## Bug fix
+- Re-added field missing from EUCTR conversion
+- Changed API call after long deprecated by ISRCTN
+- Ordered messages from `dbFindIdsUniqueTrials()`, `f.isUniqueTrial()`
+- Adapt to extended tokens used by CTGOV2
+
 # ctrdata 1.25.0
 
 ## Possibly breaking down-stream workflows 
