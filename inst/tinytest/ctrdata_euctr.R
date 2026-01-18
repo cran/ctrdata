@@ -134,6 +134,31 @@ expect_message(
       con = dbc)),
   "Imported or updated")
 
+# test
+expect_equal(
+  suppressWarnings(
+    ctrLoadQueryIntoDb(
+      queryterm = "https://www.clinicaltrialsregister.eu/ctr-search/search?query=2014-003578-17+OR+2010-019340-40",
+      euctrprotocolsall = FALSE, con = dbc))$n,
+  1L)
+
+# test
+expect_equal(
+  suppressWarnings(
+    ctrLoadQueryIntoDb(
+      queryterm = "https://www.clinicaltrialsregister.eu/ctr-search/search?query=2014-003578-17",
+      euctrprotocolsall = TRUE, con = dbc))$n,
+  2L)
+
+# test
+expect_equal(
+  suppressWarnings(
+    ctrLoadQueryIntoDb(
+      queryterm = "https://www.clinicaltrialsregister.eu/ctr-search/search?query=2014-003578-17",
+      euctrprotocolsall = FALSE, con = dbc))$n,
+  0L)
+
+
 #### ctrLoadQueryIntoDb update ####
 
 # manipulate history to test updating
@@ -162,62 +187,32 @@ expect_message(
       querytoupdate = "last",
       con = dbc,
       verbose = TRUE)),
-  "search[?]query=2013-003488-71")
+  "search[?]query=2014-003578-17")
 
-# checking as only works for last 7 days with rss mechanism
-# query just based on date is used to avoids no trials are found
-#
-date.today <- Sys.time()
-date.from  <- format(date.today - (60 * 60 * 24 * 9), "%Y-%m-%d")
-date.to    <- format(date.today - (60 * 60 * 24 * 4), "%Y-%m-%d")
-#
-q <- paste0("https://www.clinicaltrialsregister.eu/ctr-search/search?query=cancer&phase=phase-two",
-            "&dateFrom=", date.from, "&dateTo=", date.to)
-
-# test
-expect_message(
-  suppressWarnings(
-    ctrLoadQueryIntoDb(
-      queryterm = paste0(q),
-      verbose = TRUE,
-      con = dbc)),
-  "(Imported or updated|First result page empty)")
-
-# manipulate history to test updating
+# test last 7 days with rss mechanism
+# manipulate query history to prepare
 hist <- suppressWarnings(dbQueryHistory(con = dbc))
 #
-hist[nrow(hist), "query-term"] <-
-  sub(".*(&dateFrom=.*)&dateTo=.*", "\\1", q)
+hist[5L, "query-timestamp"] <- format(
+  Sys.time() - (60 * 60 * 24 * 5), "%Y-%m-%d %H:%M:%S")
 #
-hist[nrow(hist), "query-timestamp"] <-
-  paste0(date.to, " 23:59:59")
-#
-# convert into json object
 json <- jsonlite::toJSON(list("queries" = hist))
 #
-# update database
 expect_equal(
   nodbi::docdb_update(
     src = dbc,
     key = dbc$collection,
     value = as.character(json),
     query = '{"_id": "meta-info"}'), 1L)
-
+#
 # test
 expect_message(
-  tmpTest <- suppressWarnings(
+  suppressWarnings(
     ctrLoadQueryIntoDb(
-      querytoupdate = "last",
+      querytoupdate = 5L,
       verbose = TRUE,
       con = dbc)),
-  "(Imported or updated|First result page empty)")
-
-# test
-expect_true(tmpTest$n >= 0L)
-
-# test
-expect_true(is.character(tmpTest$success) || is.null(tmpTest$success))
-rm(tmpTest, q, hist, json, date.from, date.to, date.today)
+  "rss url.+bydates")
 
 # test
 expect_error(

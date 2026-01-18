@@ -49,7 +49,7 @@ should be run to retrieve any new or update trial records since
 this query was run the last time.
 This parameter takes precedence over \code{queryterm}.
 For "EUCTR" and "CTIS", updates are available only for the last seven days;
-the query is run again if more time has passed since it was run last.}
+the query is run again fully if more time has passed since it was run last.}
 
 \item{forcetoupdate}{If \code{TRUE}, run again the query
 given in \code{querytoupdate}, irrespective of when it was
@@ -66,11 +66,12 @@ the available history of results publication in "EUCTR."
 This somewhat time-consuming. Default is \code{FALSE}.}
 
 \item{euctrprotocolsall}{If \code{TRUE}, load all available records of
-protocol-related data (that is, versions from all EU Member States and any
-third country where the trial is conducted); if \code{FALSE}, only a single
-record per trial is loaded, to accelerate loading. Default is \code{TRUE},
-but only for backwards consistency; for new collections, \code{FALSE} is
-the recommended setting, unless there are questions about differences
+protocol-related data (that is, available versions from any EU Member States
+and any third country where the trial is or was conducted); if \code{FALSE},
+to accelerate loading, load only a single EU Member State record per trial
+(or no record, if records exist only for third countries).
+Default is \code{TRUE}, for backwards consistency; for new collections,
+\code{FALSE} is recommended, unless there are questions about differences
 between Member States' protocol versions of a trial such as dates or outcomes
 of an authorisation decision or an ethics opinion, global status and end.}
 
@@ -90,7 +91,8 @@ field only before the register's relaunch on 2024-06-17.}
 move the current CTIS record into an array \code{history} with the record
 which holds one or more historic versions, before updating the rest of the
 record from CTIS. Default is \code{FALSE}, because this is a time-consuming
-operation. See "Historic versions" in \code{vignette("ctrdata_summarise")}.}
+operation. See "Historic versions..." in vignette
+\href{../doc/ctrdata_summarise.html}{ctrdata_summarise}.}
 
 \item{documents.path}{If this is a relative or absolute
 path to a directory that exists or can be created,
@@ -153,10 +155,11 @@ Retrieves information on clinical trials from registers
 and stores it in a collection in a database. Main function
 of \link{ctrdata} for accessing registers.
 A collection can store trial information from different queries
-or different registers. Query details are stored in the
+or different registers.
+When at least one trial is loaded, query details are stored in the
 collection and can be accessed using \link{dbQueryHistory}.
-A previous query can be re-run, which replaces or adds trial
-records while keeping any user annotations of trial records.
+A previous query can be re-run, which replaces existing or adds new trial
+records while keeping any user annotations of existing trial records.
 }
 \examples{
 \dontrun{

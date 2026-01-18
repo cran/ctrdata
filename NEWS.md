@@ -1,8 +1,20 @@
+# ctrdata 1.26.0
+
+## Enhancement
+- Refactored downloading data and documents to run, throttle and retry more robustly
+- Updated user info, clarify history is updated only if at least one trial is loaded
+
+## Bug fix
+- For CTIS, `dbFindIdsUniqueTrials()` returns now only the trial record with the highest resubmission number
+- For EUCTR, correct edge case downloading third-country protocol-related information 
+- Fixed links between help pages and vignettes
+- Code cleanup
+
 # ctrdata 1.25.1
 
 ## Enhancement
 - Work around upstream issue (#59, CTIS delivering at most 10000 trials per query)
-- Add CITATION file with recent reference publication
+- Added CITATION file with recent reference publication
 
 ## Bug fix
 - Re-added field missing from EUCTR conversion

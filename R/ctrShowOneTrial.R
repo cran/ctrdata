@@ -207,8 +207,10 @@ ctrShowOneTrialWidget <- function(
 #'
 #' @noRd
 #' @keywords internal
+#' @importFrom htmlwidgets shinyWidgetOutput shinyRenderWidget
 #'
 ctrShowOneTrialOutput <- function(outputId, width = "100%", height = "400px") {
+
   htmlwidgets::shinyWidgetOutput(outputId, "ctrShowOneTrialWidget", width, height, package = "ctrdata")
 }
 #'

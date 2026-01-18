@@ -64,7 +64,7 @@ expect_message(
       con = dbc)),
   "Imported .* trial")
 expect_true(tmpTest$n >= 0L)
-expect_true(tmpTest$queryterm == hist[["query-term"]][2L])
+expect_true(tmpTest$queryterm == rev(hist[["query-term"]])[1L])
 
 expect_message(
   suppressWarnings(
@@ -73,9 +73,9 @@ expect_message(
       ctishistory = TRUE,
       only.count = FALSE,
       con = dbc)),
-  "updating")
+  "updat")
 expect_true(tmpTest$n >= 0L)
-expect_true(tmpTest$queryterm == hist[["query-term"]][2L])
+expect_true(tmpTest$queryterm == rev(hist[["query-term"]])[1L])
 
 expect_message(
   suppressWarnings(
@@ -86,7 +86,7 @@ expect_message(
       con = dbc)),
   "Imported .* trial")
 expect_true(tmpTest$n >= 0L)
-expect_true(tmpTest$queryterm == hist[["query-term"]][2L])
+expect_true(tmpTest$queryterm == rev(hist[["query-term"]])[1L])
 
 expect_message(
   suppressWarnings(
@@ -95,9 +95,9 @@ expect_message(
       ctishistory = FALSE,
       only.count = FALSE,
       con = dbc)),
-  "updating")
+  "updat")
 expect_true(tmpTest$n >= 0L)
-expect_true(tmpTest$queryterm == hist[["query-term"]][2L])
+expect_true(tmpTest$queryterm == rev(hist[["query-term"]])[1L])
 
 # test full load
 hist <- hist[nrow(hist), ]
@@ -330,13 +330,57 @@ for (i in unique(groupsNo)) {
 
 #### dbFindIdsUniqueTrials ####
 
+# prepare testing
+
+if (FALSE) {
+
+  ctrLoadQueryIntoDb(
+    'https://euclinicaltrials.eu/ctis-public/search#searchCriteria={"status":[11]}',
+    con = dbc)
+
+  ids <- nodbi::docdb_query(
+    src = dbc,
+    key = dbc$collection,
+    query = '{}',
+    fields = '{"_id":1}'
+  )$`_id`
+
+  ids <- sort(ids)
+
+  base <- sub("-[0-9][0-9]$", "", ids[grepl("[1-9]$", ids)])
+
+  ids[sapply(ids, function(i) any(sub("-[0-9][0-9]$", "", i) == base))]
+
+  #  [1] "2022-501312-34-00" "2022-501312-34-01" "2022-501417-31-00"
+  #  [4] "2022-501417-31-01" "2022-501694-39-01" "2022-502177-42-01"
+  #  [7] "2022-502968-20-01" "2023-503362-24-01" "2023-503373-37-01"
+  # [10] "2023-503617-30-01" "2023-503813-31-01" "2023-504246-64-00"
+  # [13] "2023-504246-64-02" "2023-504439-42-00" "2023-504439-42-01"
+  # [16] "2023-505244-18-01" "2023-505916-40-01" "2023-506019-16-01"
+  # [19] "2023-507344-36-01" "2023-507573-17-01" "2024-510792-38-00"
+  # [22] "2024-510792-38-01" "2024-511889-36-01" "2024-512754-16-00"
+  # [25] "2024-512754-16-01" "2024-514586-20-01" "2024-514794-22-01"
+  # [28] "2024-514979-17-04" "2024-515420-37-01" "2024-516004-42-01"
+  # [31] "2024-518036-36-03" "2024-518228-63-01" "2024-519089-32-02"
+  # [34] "2025-523374-17-01"
+
+}
+
 expect_message(
   res <- suppressWarnings(
     dbFindIdsUniqueTrials(con = dbc)),
   " [0-9]+ records")
 
 # test
-expect_true(length(res) >= 240L)
+expect_true(length(res) >= 440L)
+
+# test
+expect_false(any(
+  res %in% c(
+    "2022-501312-34-00", "2022-501417-31-00", "2023-504246-64-00",
+    "2023-504439-42-00", "2024-510792-38-00", "2024-512754-16-00"
+  )
+))
 
 
 #### documents.path ####
@@ -384,5 +428,16 @@ if (FALSE) {
     count(part) %>%
     arrange(desc(n)) %>%
     print(n = 100L)
+  # # A tibble: 8 × 2
+  # part             n
+  # <chr>        <int>
+  #   1 Protocol       168
+  # 2 SbjctInfaICF   130
+  # 3 SynpssofthPr    37
+  # 4 RcrtmntArrng    21
+  # 5 LyprsnsSmmoR    16
+  # 6 SmmryofPrdcC     8
+  # 7 SmmryofRslts     6
+  # 8 ClnclStdyRpr     4
 
 }
