@@ -352,16 +352,25 @@ rm(res)
 
 #### ctrLoadQueryIntoDb documents ####
 
-tmpDir <- newTempDir()
-unlink(tmpDir, recursive = TRUE)
-on.exit(unlink(tmpDir, recursive = TRUE), add = TRUE)
+if (!requireNamespace("chromote", quietly = TRUE) ||
+    is.null(chromote::find_chrome()) ||
+    !file.exists(chromote::find_chrome())) {
 
-expect_message(
-  ctrLoadQueryIntoDb(
-    queryterm = "https://www.isrctn.com/search?q=alzheimer",
-    con = dbc,
-    documents.path = tmpDir,
-    documents.regexp = ".*"
-  ),
-  "Newly saved [0-9]+ document[(]s[)] for [0-9]+ trial"
-)
+  # if() uses tests from ctrLoadQueryIntoDbIsrctn.R
+
+} else {
+
+  tmpDir <- newTempDir()
+  unlink(tmpDir, recursive = TRUE)
+  on.exit(unlink(tmpDir, recursive = TRUE), add = TRUE)
+
+  expect_message(
+    ctrLoadQueryIntoDb(
+      queryterm = "https://www.isrctn.com/search?q=alzheimer",
+      con = dbc,
+      documents.path = tmpDir,
+      documents.regexp = ".*"
+    ),
+    "Newly saved [0-9]+ document[(]s[)] for [0-9]+ trial"
+  )
+}

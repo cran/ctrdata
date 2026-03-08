@@ -7,6 +7,10 @@
 #' the trial records. Maps the categories that are in fields which specify
 #' the state of recruitment. Simplifies the status into three categories.
 #'
+#' Note that for EUCTR, `NA` is returned for "Trial now transitioned"
+#' (into CTIS, from which the status can be obtained) and for
+#' "GB - no longer in EU/EEA" (no data source known).
+#'
 #' @param df data frame such as from \link{dbGetFieldsIntoDf}. If `NULL`,
 #' prints fields needed in `df` for calculating this trial concept, which can
 #' be used with \link{dbGetFieldsIntoDf}.
@@ -104,9 +108,8 @@ f.statusRecruitment <- function(df = NULL) {
       .data$trialInformation.isGlobalEndOfTrialReached ~ "Completed",
       .default = as.character(.data$p_end_of_trial_status)
     ),
-    out = tolower(.data$helper)
-  ) %>%
-    dplyr::pull("out") -> df$euctr
+    euctr = tolower(.data$helper)
+  ) -> df
 
 
   #### . CTGOV ####
@@ -126,9 +129,8 @@ f.statusRecruitment <- function(df = NULL) {
         .data$last_known_status,
         .data$overall_status)
     ),
-    out = tolower(.data$helper)
-  ) %>%
-    dplyr::pull("out") -> df$ctgov
+    ctgov = tolower(.data$helper)
+  ) -> df
 
 
   #### . CTGOV2 ####
@@ -147,9 +149,8 @@ f.statusRecruitment <- function(df = NULL) {
       Sys.Date() < .data$participants.recruitmentStart ~ "Planned",
       .data$participants.recruitmentEnd > .data$participants.recruitmentStart ~ "Ongoing"
     ),
-    out = tolower(.data$helper)
-  ) %>%
-    dplyr::pull("out") -> df$isrctn
+    isrctn = tolower(.data$helper)
+  ) -> df
 
 
   #### . CTIS ####
@@ -189,9 +190,8 @@ f.statusRecruitment <- function(df = NULL) {
         !is.na(.data$ctStatus) ~ as.character(.data$ctStatus),
       .default = as.character(.data$helper_ctPublicStatusCode)
     ),
-    out = tolower(.data$helper)
-  ) %>%
-    dplyr::pull("out") -> df$ctis
+    ctis = tolower(.data$helper)
+  ) -> df
 
   #### mapping ####
 

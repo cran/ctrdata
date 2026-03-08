@@ -514,7 +514,7 @@ ctrCache <- function(xname, xvalue = NULL, verbose = FALSE) {
 #' @keywords internal
 #'
 #' @importFrom nodbi src_sqlite src_duckdb docdb_list
-#' @importFrom utils capture.output
+#' @importFrom utils capture.output packageDescription packageVersion
 #'
 #' @returns Connection object as list, with collection
 #'  element under root
@@ -1745,8 +1745,8 @@ dfOrTibble <- function(df) {
 
 #' fctChkFlds
 #'
-#' Calls for its side effect to stop if arguments
-#' are not conforming to expectations
+#' Called for its side effect: stopping if
+#' arguments do not conform to expectations
 #'
 #' @returns df with flds columns
 #'

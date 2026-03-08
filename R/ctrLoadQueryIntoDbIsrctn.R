@@ -15,6 +15,7 @@
 #' @importFrom rlang hash
 #' @importFrom rvest read_html_live html_attr html_elements
 #' @importFrom dplyr rows_update
+#' @importFrom readr read_file
 #'
 ctrLoadQueryIntoDbIsrctn <- function(
     queryterm = queryterm,
@@ -32,6 +33,16 @@ ctrLoadQueryIntoDbIsrctn <- function(
     con,
     verbose,
     queryupdateterm) {
+
+  ## check params
+
+  if (!is.null(documents.path) &&
+      !requireNamespace("chromote", quietly = TRUE)) {
+    stop("downloading documents from ISRCTN requires package chromote ",
+         "to be installed and to find a useable browser, see ",
+         "https://rstudio.github.io/chromote/reference/find_chrome.html",
+         call. = FALSE)
+  }
 
   ## isrctn api ---------------------------------------------------------------
 
@@ -214,7 +225,7 @@ ctrLoadQueryIntoDbIsrctn <- function(
       .ctrdataenv$ct$call(
         "parsexml",
         # read source xml file
-        paste0(readLines(f, warn = FALSE), collapse = ""),
+        readr::read_file(f),
         # important parameters
         V8::JS("{trim: true, ignoreAttrs: true, explicitArray: false}"))
     ),
