@@ -33,10 +33,10 @@
 #'
 #' @param querytoupdate Either the word "last", or the row number of
 #' a query in the data frame returned by \link{dbQueryHistory} that
-#' should be run to retrieve any new or update trial records since
+#' should be run to retrieve any new or updated trial records since
 #' this query was run the last time.
 #' This parameter takes precedence over \code{queryterm}.
-#' For "EUCTR" and "CTIS", updates are available only for the last seven days;
+#' For "EUCTR" and "CTIS", updates are available only for the last 7 days;
 #' the query is run again fully if more time has passed since it was run last.
 #'
 #' @param forcetoupdate If \code{TRUE}, run again the query
@@ -255,7 +255,7 @@ ctrLoadQueryIntoDb <- function(
 
     # check register
     if (length(register) != 1L ||
-        !all(class(register) %in% "character") ||
+        !all(class(register) == "character") ||
         is.na(register)) {
       stop("'register' has to be a non-empty string: ",
            register,
@@ -266,7 +266,7 @@ ctrLoadQueryIntoDb <- function(
     # check queryterm
     if (register != "CTIS" &&
         (length(queryterm) != 1L ||
-         !all(class(queryterm) %in% "character") ||
+         !all(class(queryterm) == "character") ||
          is.na(queryterm) ||
          nchar(queryterm) == 0L)) {
       stop("'queryterm' has to be a non-empty string: ",
@@ -274,19 +274,6 @@ ctrLoadQueryIntoDb <- function(
            call. = FALSE
       )
     }
-
-    ## sanity checks
-    if (grepl(regQueryterm, gsub(
-      "\\[", "", gsub("\\]", "", utils::URLencode(queryterm))))) {
-      stop("Parameter 'queryterm' has unexpected characters: ",
-           queryterm, ", expected are: ",
-           gsub("^\\[\\^(.+)\\]$", "\\1", regQueryterm),
-           call. = FALSE
-      )
-    }
-
-    # remove trailing or leading whitespace, line breaks
-    queryterm <- gsub("^\\s+|\\s+$|\n|\r", "", queryterm)
 
   } # if not querytoupdate
 

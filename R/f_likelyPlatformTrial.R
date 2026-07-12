@@ -54,11 +54,13 @@
 #'
 #' # apply trial concept when creating data frame
 #' dbc <- nodbi::src_sqlite(
-#'   dbname = system.file("extdata", "demo.sqlite", package = "ctrdata"),
-#'   collection = "my_trials", flags = RSQLite::SQLITE_RO)
+#'    dbname = system.file("extdata", "demo.sqlite", package = "ctrdata"),
+#'    collection = "my_trials", flags = RSQLite::SQLITE_RO)
 #' trialsDf <- dbGetFieldsIntoDf(
-#'   calculate = "f.likelyPlatformTrial",
-#'   con = dbc)
+#'    "_id",
+#'    # uncomment next line to calculate concept
+#'    # calculate = "f.likelyPlatformTrial",
+#'    con = dbc)
 #' trialsDf
 #'
 f.likelyPlatformTrial <- function(df = NULL) {
@@ -240,7 +242,7 @@ f.likelyPlatformTrial <- function(df = NULL) {
     apply(t, 1, function(r) {
       r <- seq_along(r)[r >= indexThreshold]
       r <- r[!is.na(r)]
-      if (!length(r)) NA_integer_ else r
+      if (length(r)) r else NA_integer_
     }, simplify = FALSE)
 
   } # indexSimilarX

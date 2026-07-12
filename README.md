@@ -40,7 +40,7 @@ interest, to describe their trends and availability for patients and to
 facilitate using their detailed results for research and meta-analyses.
 `ctrdata` is a package for the [R](https://www.r-project.org/) system,
 but other systems and tools can use the databases created with this
-package. This README was reviewed on 2026-03-07 for version 1.26.0.9000.
+package. This README was reviewed on 2026-07-12 for version 1.26.2.
 
 ## Main features
 
@@ -78,12 +78,15 @@ in any publication or work as follows:
 
 <blockquote>
 
-Herold R (2025). “Aggregating and analysing clinical trials data from
+    #> Warning in citation(auto = meta): could not determine year for 'ctrdata' from
+    #> package DESCRIPTION file
+
+Herold R (2026). “Aggregating and analysing clinical trials data from
 multiple public registers using R package ctrdata.” *Research Synthesis
-Methods*, 1–33. <doi:10.1017/rsm.2025.10061>
-<https://doi.org/10.1017/rsm.2025.10061>. or <br/>Herold R (2026).
-*ctrdata: Retrieve and Analyze Clinical Trials Data from Public
-Registers*. R package version 1.26.0.9000,
+Methods*, *17*(3), 624–656. ISSN 1759-2879, 1759-2887.
+<doi:10.1017/rsm.2025.10061> <https://doi.org/10.1017/rsm.2025.10061>.
+or <br/>Herold R (????). *ctrdata: Retrieve and Analyze Clinical Trials
+Data from Public Registers*. R package version 1.26.2,
 <https://cran.r-project.org/package=ctrdata>.
 </blockquote>
 
@@ -94,7 +97,7 @@ technical explanations is in:
 
 - Herold R. Aggregating and analysing clinical trials data from multiple
   public registers using R package ctrdata. Research Synthesis Methods.
-  Published online 2025:1-33
+  2026;17(3):624-656.
   [doi:10.1017/rsm.2025.10061](https://doi.org/10.1017/rsm.2025.10061)
 
 Package `ctrdata` has been used for unpublished works and these
@@ -127,7 +130,7 @@ publications:
   <https://paediatricdata.eu/innovation-coming-to-paediatric-research/>
 - Cancer Research UK (2017) The impact of collaboration: The value of UK
   medical research to EU science and health.
-  [link](https://www.ukri.org/wp-content/uploads/2023/02/MRC-150223-Theimpactofcollaboraton-ThevalueofUK-medicalresearchtoEUscienceandhealth.pdf)
+  [link](https://acmedsci.ac.uk/file-download/72060732)
 - EMA (2017) Results of juvenile animal studies (JAS) and impact on
   anti-cancer medicine development and use in children [PDF file, p
   34](https://www.ema.europa.eu/en/documents/scientific-guideline/results-juvenile-animal-studies-jas-and-impact-anti-cancer-medicine-development-and-use-children_en.pdf#page=34)
@@ -164,7 +167,7 @@ install.packages("ctrdata")
 
 # Alternatively, install development version:
 install.packages("devtools")
-devtools::install_github("rfhb/ctrdata", build_vignettes = TRUE)
+remotes::install_github("rfhb/ctrdata", build_vignettes = TRUE)
 ```
 
 These commands also install the package’s dependencies (`jsonlite`,
@@ -282,11 +285,24 @@ vignettes).
 | Purpose | Function call |
 |----|----|
 | Create **SQLite** database connection | `dbc <- nodbi::src_sqlite(dbname = "name_of_my_database", collection = "name_of_my_collection")` |
-| Create **DuckDB** database connection | `dbc <- nodbi::src_duckdb(dbdir = "name_of_my_database", collection = "name_of_my_collection")` |
+| Create **DuckDB** database connection\* | `dbc <- nodbi::src_duckdb(dbdir = "name_of_my_database", collection = "name_of_my_collection")` |
 | Create **MongoDB** database connection | `dbc <- nodbi::src_mongo(db = "name_of_my_database", collection = "name_of_my_collection")` |
 | Create **PostgreSQL** database connection | `dbc <- nodbi::src_postgres(dbname = "name_of_my_database"); dbc[["collection"]] <- "name_of_my_collection"` |
 | Use connection with `ctrdata` functions | `ctrdata::{ctrLoadQueryIntoDb, dbQueryHistory, dbFindIdsUniqueTrials, dbFindFields, dbGetFieldsIntoDf}(con = dbc, ...)` |
 | Use connection with `nodbi` functions | e.g., `nodbi::docdb_query(src = dbc, key = dbc$collection, ...)` |
+
+- For DuckDB, the JSON extension is needed which can be permanently
+  downloaded as follows:
+
+``` r
+# user to specify their directory of choice;
+# remember to set option for each new R session
+options(duckdb.extension_directory = "~/.duckdb_extensions")
+
+# load and store in above-mentioned 
+# directory; only once to be executed
+DBI::dbExecute(duckdb::dbConnect(duckdb::duckdb()), 'INSTALL json;')
+```
 
 ## Vignettes
 
@@ -911,6 +927,29 @@ ctrLoadQueryIntoDb(
 # Updated history ("meta-info" in "collection_name")
 # $n
 # [1] 440
+#
+# explore types of documents
+ctrLoadQueryIntoDb(
+  queryterm = paste0(
+    "https://euclinicaltrials.eu/ctis-public/search#",
+    'searchCriteria={"containAny":"cancer","status":[8]}'),
+  documents.path = "./files-ctis/",
+  documents.regexp = NULL,
+  con = db
+)
+#
+# get names of document files
+docNames <- dir(
+  path = "./files-ctis/", 
+  recursive = TRUE)
+# get type of document
+docNames <- sub(".+/(.+?) - .+", "\\1", docNames)
+# 
+table(docNames)
+# ClnclStdyRpr LyprsnsSmmoR     Protocol Prtcl-Extrct RcrtmntArrng 
+#           48          538         1800            2         1634 
+# SbjctIaICF-E SbjctInfaICF SmmryofPrdcC SmmryofRslts SynpssofthPr 
+#            2         5595          495          176         1516 
 ```
 
 ## Tests and coverage

@@ -15,6 +15,8 @@
 #'
 #' Note that for "CTIS", the trial with the latest (highest) resubmission
 #' number (last two digits of `id`, clinical trial number) is identified.
+#' Trials transitioned from "EUCTR" into "CTIS" will be identified from
+#' "CTIS" unless "EUCTR" occurs before "CTIS" in parameter `preferregister`.
 #'
 #' Note that the trial concept \link{f.isUniqueTrial} (which uses this
 #' function) can be calculated at the time of creating a data frame with
@@ -24,12 +26,13 @@
 #' registers from which to generate unique _id's, default
 #' \code{c("CTGOV2", "EUCTR", "CTGOV", "ISRCTN", "CTIS")}
 #'
-#' @param prefermemberstate Code of single EU Member State for which records
-#' should returned. If not available, a record for BE or lacking this, any
-#' random Member State's record for the trial will be returned.
-#' For a list of codes of EU  Member States, please see vector
-#' \code{countriesEUCTR}. Specifying "3RD" will return the Third Country
-#' record of trials, where available.
+#' @param prefermemberstate Only relevant for "EUCTR"; a two-letter ISO 3166-1
+#' alpha-2 country code string for a single EU Member State for which records
+#' should be returned. If not available, records for BE, if neither available,
+#' any random Member States' records will be returned.
+#' For a list of codes of EU  Member States, see
+#' \code{ctrdata:::countriesEUCTR}. Specifying "3RD" will return the Third
+#' Country record of trials, where available in EUCTR.
 #'
 #' @param include3rdcountrytrials A logical value if trials should be retained
 #' that are conducted exclusively in third countries, that is, outside
@@ -336,6 +339,9 @@ dbFindIdsUniqueTrials <- function(
       xname = paste0("listofids_", con$db, "/", con$collection, "_timestamp"),
       xvalue = cacheRef, verbose = FALSE
     )
+  } else {
+    # inform user
+    message("\b\b\b (cached)...", appendLF = FALSE)
   } # if outdated
 
   # inform user
@@ -528,7 +534,7 @@ dbFindIdsUniqueTrials <- function(
 #'   the columns "_id" and "a2_eudract_number", for example created with
 #'   function dbGetFieldsIntoDf(c("_id", "a2_eudract_number")).
 #'
-#' @inheritParams dfFindIdsUniqueTrials
+#' @inheritParams dbFindIdsUniqueTrials
 #'
 #' @returns A data frame as subset of \code{df} corresponding to the sought
 #'   records.
@@ -542,7 +548,7 @@ dfFindUniqueEuctrRecord <- function(
     include3rdcountrytrials = include3rdcountrytrials) {
 
   # check parameters
-  if (!any(class(df) %in% "data.frame")) {
+  if (!any(class(df) == "data.frame")) {
     stop("Parameter df is not a data frame.", call. = FALSE)
   }
   #
@@ -612,7 +618,8 @@ dfFindUniqueEuctrRecord <- function(
 
     # preferred MS found, return all but this record, early exit.
     # fnd should be only a single string, may need to be checked
-    if (sum(fnd <- grepl(prefermemberstate, recordnames)) > 0L) {
+    fnd <- grepl(prefermemberstate, recordnames)
+    if (sum(fnd) > 0L) {
       result <- recordnames[!fnd]
       return(result)
     }
@@ -659,7 +666,7 @@ dfFindUniqueEuctrRecord <- function(
   df <- df[!(df[["_id"]] %in% result), , drop = FALSE]
 
   # also eliminate the meta-info record
-  df <- df[!(df[["_id"]] == "meta-info"), , drop = FALSE]
+  df <- df[df[["_id"]] != "meta-info", , drop = FALSE]
 
   # remove row names
   row.names(df) <- NULL
@@ -668,7 +675,7 @@ dfFindUniqueEuctrRecord <- function(
   if (length(result) > 0L) {
     message(
       "- ", length(result),
-      " EUCTR _id were not preferred EU Member State record for ",
+      " EUCTR _id's were the not preferred EU Member State records for ",
       totalEuctr, " trials"
     )
   }

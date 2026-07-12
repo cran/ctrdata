@@ -41,7 +41,7 @@ ctrRerunQuery <- function(
     querytoupdate <- nrow(rerunquery)
 
   # check parameters
-  if (!(as.integer(querytoupdate) == querytoupdate))
+  if (as.integer(querytoupdate) != querytoupdate)
     stop("'querytoupdate' needs to be an integer number", call. = FALSE)
   querytoupdate <- as.integer(querytoupdate)
 
@@ -75,12 +75,12 @@ ctrRerunQuery <- function(
   # - change to Date class and get
   #   index of latest (max) date,
   initialdayindex <- try(which.max(as.Date(initialday, format = "%Y-%m-%d")))
-  if (!inherits(initialdayindex, "try-error")) {
-    # - keep initial (reference) date of this query
-    initialday <- initialday[initialdayindex]
-  } else {
+  if (inherits(initialdayindex, "try-error")) {
     # - fallback to number (querytoupdate) as specified by user
     initialday <- rerunquery[querytoupdate, "query-timestamp", drop = TRUE]
+  } else {
+    # - keep initial (reference) date of this query
+    initialday <- initialday[initialdayindex]
   }
   message("* Query last run: ", initialday)
 
@@ -452,9 +452,9 @@ ctrRerunQuery <- function(
         # rerunning original query
         warning(
           "'querytoupdate=", querytoupdate, "' not possible because no ",
-          "effcient way was found so far to query CTIS for data only from ",
-          "recently changed trials (last checked 2025-08-21). Reverting to ",
-          "normal download. ", call. = FALSE, immediate. = TRUE)
+          "effcient way was found so far to query CTIS only for new ",
+          "or changed trials (last checked 2026-04-18). Reverting to ",
+          "normal full download. ", call. = FALSE, immediate. = TRUE)
 
         # standard case in main function ctrLoadQueryIntoDb
         message("- Rerunning query: ", queryterm,
@@ -482,8 +482,8 @@ ctrRerunQuery <- function(
           # rerunning original query
           warning(
             "'querytoupdate=", querytoupdate, "' not possible because no ",
-            "effcient way was found so far to query CTIS for data only from ",
-            "recently changed trials (last checked 2025-08-21). Need to ",
+            "effcient way was found so far to query CTIS only for new ",
+            "or changed trials (last checked 2026-04-18). Need to ",
             "download iteratively. ", call. = FALSE, immediate. = TRUE)
 
           res <- ctisApi1(
@@ -525,10 +525,8 @@ ctrRerunQuery <- function(
 
         # iterate
         res <- list()
-        # print(system.time(
-          for (trialId in idsUpdatedTrials) res <- c(
-            res, list(updateOrLoadTrial(trialId, con, ctishistory)))
-        # ))
+        for (trialId in idsUpdatedTrials) {res <- c(
+          res, list(updateOrLoadTrial(trialId, con, ctishistory)))}
 
         # info
         message(

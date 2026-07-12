@@ -95,11 +95,10 @@ ctrLoadQueryIntoDbCtgov2 <- function(
        is.na(queryValues["state"]) &&
        is.na(queryValues["city"]))) {
     stop(
-      "Parameter 'locStr' provided, but no 'country', 'state' or 'city'; ",
-      "please check in CTGOV; e.g., the name of a trial site should go ",
-      "into Facility Name in the webinterface or parameter 'locn' in the ",
-      "search URL.",
-      call. = FALSE
+      "Parameter 'locStr' provided, but no 'country', 'state', 'city', 'lat' ",
+      "etc.; check in CTGOV; note that the name of a trial site should go ",
+      "into the field 'Facility Name' in the web interface or parameter ",
+      "'locn' in the search URL.", call. = FALSE
     )
   }
 
@@ -331,7 +330,7 @@ ctrLoadQueryIntoDbCtgov2 <- function(
     }
 
     # inform user
-    if (!nrow(resDf) == 1L || !resDf$success) message(
+    if (nrow(resDf) != 1L || !resDf$success) message(
       "Download not successful for ", urlToDownload)
 
     # convert to ndjson
@@ -545,7 +544,7 @@ ctrLoadQueryIntoDbCtgov2 <- function(
         # write history study versions into array
         for (ii in seq_along(fToMerge)) {
 
-          if (!file.exists(fToMerge[ii]) || !file.size(fToMerge[ii]) > 10L) next
+          if (!file.exists(fToMerge[ii]) || file.size(fToMerge[ii]) <= 10L) next
 
           if (ii > 1L) writeLines(",", con = outCon, sep = "")
 
@@ -624,9 +623,8 @@ ctrLoadQueryIntoDbCtgov2 <- function(
     )
 
     # check if any documents
-    if (!nrow(dlFiles)) {
-      message("= No documents identified for downloading.")
-    } else {
+    if (nrow(dlFiles)) {
+
       # calculate urls
       dlFiles$url <- sprintf(
         ctgovEndpoints[3],
@@ -644,8 +642,12 @@ ctrLoadQueryIntoDbCtgov2 <- function(
         verbose = verbose)
       # )) # print system time
 
+    } else {
 
-    } # if (!nrow(dlFiles))
+      message("= No documents identified for downloading.")
+
+    } # if (nrow(dlFiles))
+
   } # !is.null(documents.path)
 
   ## delete for any re-downloads

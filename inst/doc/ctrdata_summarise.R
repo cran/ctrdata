@@ -566,7 +566,7 @@ cat(rev(format(citation("ctrdata"), style = "text")), sep = " or <br/>")
 #   rowwise() %>%
 #   mutate(
 #     value = as.numeric(value),
-#     arm_names = paste(armId, title, collapse = " / "),
+#     arm_names = paste(armId, title, collapse = " / ")
 #   ) %>%
 #   ungroup() %>%
 #   mutate(

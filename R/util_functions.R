@@ -21,8 +21,7 @@ countriesPreferred <- c(
   "BE", "ES", "DE", "FR", "IT", "NL", "DK", "AT", "PL", "PT")
 #
 # regexpr
-# - queryterm and urls
-regQueryterm <- "[^-.a-zA-Z0-9=?+&#%_:\"/, {}\\(\\)]"
+#
 # - EudraCT e.g. 2010-022945-52
 regEuctr <- "[0-9]{4}-[0-9]{6}-[0-9]{2}"
 # - CTGOV
@@ -690,29 +689,45 @@ ctrDb <- function(con) {
 #'
 typeField <- function(dv, fn) {
 
+  # early exit if already date or logical
+  if (all(sapply(dv, class) %in%
+          c("logical", "Date", "POSIXct", "POSIXt"))) return(dv)
+
   # get function name
   ft <- typeVars[[fn]]
 
   # expand to function
   if (!is.null(ft)) ft <- switch(
+    #
     typeVars[[fn]],
+    #
+    # to integer
     "ctrFactor" = "as.factor(x = x)",
     "ctrInt" = "as.integer(x = x)",
-    "ctrIntList" = 'sapply(x, function(i) {i[i == "NA"] <- NA; as.integer(i)}, USE.NAMES = FALSE)',
-    "ctrYesNo" = 'sapply(x, function(i) if (is.na(i)) NA else
-       switch(i, "Yes" = TRUE, "No" = FALSE, NA), simplify = TRUE, USE.NAMES = FALSE)',
-    "ctrFalseTrue" = 'if (is.numeric(x)) as.logical(x) else
-       sapply(x, function(i) switch(tolower(i), "true" = TRUE, "false" = FALSE, NA), USE.NAMES = FALSE)',
+    "ctrIntList" = 'sapply(x, function(i)
+       {i[i == "NA"] <- NA_integer_; as.integer(i)},
+       simplify = TRUE, USE.NAMES = FALSE)',
+    #
+    # to logical
+    "ctrYesNo" = 'sapply(tolower(x), function(i) switch(
+       i, "yes" = TRUE, "no" = FALSE, NA), simplify = TRUE, USE.NAMES = FALSE)',
+    "ctrFalseTrue" = 'sapply(tolower(x), function(i) switch(
+       i, "true" = TRUE, "false" = FALSE, NA), simplify = TRUE, USE.NAMES = FALSE)',
+    #
+    # to date
     "ctrDate" = 'as.Date(x, tryFormats =
        c("%Y-%m-%d", "%Y-%m", "%Y-%m-%d %H:%M:%S", "%Y-%m-%dT%H:%M:%S",
     "%d/%m/%Y", "%Y-%m-%dT%H:%M:%S%z"))',
     "ctrDateUs" = 'as.Date(x, tryFormats = c("%b %e, %Y", "%Y-%m-%d", "%Y-%m"))',
     "ctrDateTime" = "lubridate::ymd_hms(x)",
+    #
+    # to difftime
     "ctrDifftime" = 'as.difftime(as.numeric(lubridate::duration(
        tolower(x)), units = "days"), units = "days")',
     "ctrDifftimeDays" = "lubridate::ddays(x = as.numeric(x))",
     "ctrDifftimeMonths" = "lubridate::dmonths(x = as.numeric(x))",
     "ctrDifftimeYears" = "lubridate::dyears(x = as.numeric(x))",
+    #
     NULL
   )
 
@@ -768,26 +783,27 @@ typeField <- function(dv, fn) {
 
   }
 
-  # early exit if already date or logical
-  if (all(sapply(dv, class) %in%
-          c("logical", "Date", "POSIXct", "POSIXt"))) return(dv)
-
   # record length of input dv for NULL handling
   lenDv <- length(dv)
 
   # apply typing function, returning
   # if possible a vector over list
+  #message("\n\n", ft)
+  #tmgs <- microbenchmark::microbenchmark(
   tryCatch(
     expr = {
       dv <- lapply(dv, function(x) {
+        #
         # - text mangling
-        x <- ifelse(grepl("Information not present in EudraCT", x), NA, x)
+        x[x == "Information not present in EudraCT"] <- NA_character_
+        #
         # - give Month Year a Day to allow conversion
         if (grepl("date", fn, ignore.case = TRUE)) {
           x <- sub("^ClinicalTrials.gov processed this data on ", "", x)
           x <- sub("^([a-zA-Z]+) ([0-9]{4})$", "\\1 15, \\2", x)
           x <- sub("^([0-9]{4}-[0-9]{2})$", "\\1-15", x)
         }
+        #
         # - apply function to x
         eval(parse(text = ft))
       })
@@ -805,13 +821,15 @@ typeField <- function(dv, fn) {
       return(dv)
     }
   )
+  #, times = 1L)
+  #print(tmgs$time)
 
   # exceptional case inform user
   if (is.null(dv)) {
-    warning(paste0(
+    warning(
       fn, " could not be typed, please report here: ",
-      "https://github.com/rfhb/ctrdata/issues"))
-    dv <- rep_len(NA, lenDv)
+      "https://github.com/rfhb/ctrdata/issues")
+    dv <- rep_len(NA_character_, lenDv)
   }
 
   # make original classes (e.g., Date) reappear
@@ -930,13 +948,13 @@ ctrMultiDownload <- function(
         # add user agent
         httr2::req_user_agent(ctrdataUseragent) |>
         # keep important option 2L for euctr
-        httr2::req_options(http_version = 2) |>
+        httr2::req_options(http_version = 2L) |>
         # hard-coded throttling
         httr2::req_throttle(
           # ensures that function never makes more
           # than capacity requests in fill_time_s
-          capacity = 40L,
-          fill_time_s = 2L
+          capacity = 100L,
+          fill_time_s = 20L
         ) |>
         # include retries in request
         httr2::req_retry(
@@ -1400,9 +1418,22 @@ dbCTRLoadJSONFiles <- function(dir, con, verbose) {
         "                               \r",
         appendLF = FALSE)
 
-      # get all ids using jq, safet than regex
-      ids <- gsub("\"", "", as.vector(
-        jqr::jq(file(tempFiles[tempFile]), " ._id ")))
+      # get all ids using jq, safer than regex
+      idsAll <- try(gsub("\"", "", as.vector(
+        jqr::jq(file(tempFiles[tempFile]), " ._id "))),
+        silent = TRUE)
+      if (inherits(idsAll, "try-error")) idsAll <- sub(
+        '"_id":.*"(.+)",', "\\1",
+        stringi::stri_extract_all_regex(
+          str = readLines(file(tempFiles[tempFile])),
+          pattern = '"_id":([^,]+)",'
+        ))
+      ids <- unique(idsAll)
+      if (!identical(ids, idsAll)) warning(
+        "Multiple trial records in JSON file ",
+        tempFiles[tempFile], " for _id's ",
+        paste0(unique(idsAll[duplicated(idsAll)]), collapse = ", "),
+        call. = FALSE, immediate. = TRUE)
 
       ## existing data -------------------------------------------------
 
@@ -1514,26 +1545,70 @@ dbCTRLoadJSONFiles <- function(dir, con, verbose) {
           res == 0L ||
           res != nrow(annoDf)) {
 
-        # if res failed, step into line by line mode
-        fdLines <- file(tempFiles[tempFile], open = "rt", blocking = TRUE)
+        # inform user
+        message(
+          "Iterating over lines in ", tempFiles[tempFile],
+          " because batch import failed with ", trimws(res[[1]]))
 
+        # if batch import failed, step into line by line mode
+        fdLines <- file(tempFiles[tempFile], open = "rt", blocking = TRUE)
+        on.exit(try(close(fdLines), silent = TRUE), add = TRUE)
+
+        # get id to act on
+        dbAll <- try({
+          nodbi::docdb_query(
+            src = con,
+            key = con$collection,
+            query = "{}",
+            fields = '{"_id": 1, "record_last_import": 1}')
+        }, silent = TRUE)
+        dbIdsOk <- intersect(ids, dbAll[["_id"]])
+
+        # reset dbIds
+        if (inherits(dbIds, "try-error")) dbIds <- NULL
+
+        # iterate over remaining trials
         while (TRUE) {
 
           tmpOneLine <- readLines(con = fdLines, n = 1L, warn = FALSE)
           if (length(tmpOneLine) == 0L || !nchar(tmpOneLine)) break
-          id <- sub(".*\"_id\":[ ]*\"(.*?)\".*", "\\1", tmpOneLine)
-          res <- suppressWarnings(suppressMessages(nodbi::docdb_create(
-            src = con, key = con$collection, value = paste0("[", tmpOneLine, "]"))))
+          # message("_id: ", id, ", JSON valid: ", jsonlite::validate(tmpOneLine))
 
-          nImported <- nImported + res
-          if (res) idSuccess <- c(idSuccess, id)
-          if (!res) idFailed <- c(idFailed, id)
-          if (!res) warning("Failed to load: ", id, call. = FALSE)
-          if (res) idAnnotation <- c(idAnnotation, annoDf[
-            annoDf[["_id"]] == id, "annotation", drop = TRUE][1])
+          id <- sub(".*\"_id\":[ ]*\"(.*?)\".*", "\\1", tmpOneLine)
+          li <- sub(".*\"record_last_import\":[ ]*\"(.*?)\".*", "\\1", tmpOneLine)
+          dbLast <- try(dbAll[dbAll[["_id"]] == id, "record_last_import"], silent = TRUE)
+          if (inherits(dbLast, "try-error")) dbLast <- li
+
+          # compare to any successfully imported _id's
+          if (!any(id == dbIdsOk) || li != dbLast) {
+
+            suppressWarnings(suppressMessages(nodbi::docdb_delete(
+              src = con, key = con$collection,
+              query = paste0('{"_id": "', id, '"}'))))
+            res <- try(suppressWarnings(suppressMessages(nodbi::docdb_create(
+              src = con, key = con$collection,
+              value = paste0("[", tmpOneLine, "]")))), silent = TRUE)
+
+            if (inherits(res, "try-error")) res <- 0L
+            nImported <- nImported + res
+            if (res) idSuccess <- c(idSuccess, id)
+            if (!res) idFailed <- c(idFailed, id)
+            if (!res) warning("Failed to load: ", id, call. = FALSE, immediate. = TRUE)
+            if (res) idAnnotation <- c(idAnnotation, annoDf[
+              annoDf[["_id"]] == id, "annotation", drop = TRUE][1])
+
+          } else {
+
+            # record was previously imported
+            nImported <- nImported + 1L
+            idSuccess <- c(idSuccess, id)
+            idAnnotation <- annoDf[
+              annoDf[["_id"]] == id, "annotation", drop = TRUE]
+
+          } # !any(id == dbIdsOk) || li != dbLast
 
         }
-        close(fdLines)
+        try(close(fdLines), silent = TRUE)
 
       } else {
 
@@ -1765,7 +1840,9 @@ fctChkFlds <- function(df, flds) {
   fldsM <- flds[!sapply(flds, function(i) any(i == nms))]
 
   if (length(fldsM)) stop(
-    "Fields missing in 'df':\n", paste0(fldsM, "\n"),
+    "Fields missing in 'df':\n",
+    # one line per field
+    paste0(fldsM, "\n"),
     call. = FALSE)
 
   return(df[, c("_id", flds), drop = FALSE])

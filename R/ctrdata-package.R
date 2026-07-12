@@ -9,15 +9,19 @@
 #' use different database backends in an identical way.
 #' A database connection object is specified once and then can be used as
 #' parameter `con` in subsequent calls of `ctrdata` functions.
-#' Specifying \code{collection = "<my trial data collection's name>"}
-#' indicates the table in the database that package `ctrdata` should use.
 #'
 #' *Database* | *Connection object*
 #' -------- | ---------
 #' SQLite | \code{dbc <- \link[nodbi:src_sqlite]{nodbi::src_sqlite}(dbname = "my_db", collection = "my_coll")}
-#' DuckDB | \code{dbc <- \link[nodbi:src_duckdb]{nodbi::src_duckdb}(dbname = "my_db", collection = "my_coll")}
+#' DuckDB* | \code{dbc <- \link[nodbi:src_duckdb]{nodbi::src_duckdb}(dbname = "my_db", collection = "my_coll")}
 #' MongoDB | \code{dbc <- \link[nodbi:src_mongo]{nodbi::src_mongo}(db = "my_db", collection = "my_coll")}
 #' PostgreSQL | \code{dbc <- \link[nodbi:src_postgres]{nodbi::src_postgres}(dbname = "my_db"); dbc[["collection"]] <- "my_coll"}
+#'
+#' *For DuckDB, the JSON extension is needed which can be permanently downloaded as follows.
+#' User sets a directory of choice for each new R session:
+#' \code{options(duckdb.extension_directory = "~/.duckdb_extensions")}
+#' Load and store in this directory; needs to be executed only once after a DuckDB install:
+#' \code{DBI::dbExecute(duckdb::dbConnect(duckdb::duckdb()), 'INSTALL json;')}
 #'
 #' @section 2 - Load information from clinical trial registers:
 #'
@@ -39,9 +43,9 @@
 #'
 #' @section 4 - Operate on a trial data frame from dbGetFieldsIntoDf:
 #'
+#' \link{ctrdata-trial-concepts} (calculate pre-defined trial concepts across registers),
 #' \link{dfTrials2Long} (convert fields with nested elements into long format),
-#' \link{dfName2Value} (get values for variable(s) of interest),
-#' \link{ctrdata-trial-concepts} (calculate pre-defined trial concepts for every register).
+#' \link{dfName2Value} (get values for variable(s) of interest).
 #'
 #' @name ctrdata
 #' @author Ralf Herold \email{ralf.herold@@mailbox.org}

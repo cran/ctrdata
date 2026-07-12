@@ -385,11 +385,12 @@ here: <a href="https://github.com/rfhb/ctrdata">https://github.com/rfhb/ctrdata<
 <p>Remember to respect the registers’ terms and conditions (see
 <code>ctrOpenSearchPagesInBrowser(copyright = TRUE)</code>). In any
 publication, please cite this package as follows:</p>
-<p>Herold R (2025). “Aggregating and analysing clinical trials data from
+<p>Herold R (2026). “Aggregating and analysing clinical trials data from
 multiple public registers using R package ctrdata.” <em>Research
-Synthesis Methods</em>, 1–33. <a href="doi:10.1017/rsm.2025.10061" class="uri">doi:10.1017/rsm.2025.10061</a> <a href="https://doi.org/10.1017/rsm.2025.10061" class="uri">https://doi.org/10.1017/rsm.2025.10061</a>. or <br />Herold R
-(2026). <em>ctrdata: Retrieve and Analyze Clinical Trials Data from
-Public Registers</em>. R package version 1.26.1, <a href="https://cran.r-project.org/package=ctrdata" class="uri">https://cran.r-project.org/package=ctrdata</a>.</p>
+Synthesis Methods</em>, <em>17</em>(3), 624–656. ISSN 1759-2879,
+1759-2887. <a href="doi:10.1017/rsm.2025.10061" class="uri">doi:10.1017/rsm.2025.10061</a> <a href="https://doi.org/10.1017/rsm.2025.10061" class="uri">https://doi.org/10.1017/rsm.2025.10061</a>. or <br />Herold R
+(????). <em>ctrdata: Retrieve and Analyze Clinical Trials Data from
+Public Registers</em>. R package version 1.26.2, <a href="https://cran.r-project.org/package=ctrdata" class="uri">https://cran.r-project.org/package=ctrdata</a>.</p>
 <div id="preparations" class="section level2">
 <h2>Preparations</h2>
 <p>Here using MongoDB, which may be faster than SQLite, can handle
@@ -1074,7 +1075,7 @@ may exist in previously created databases.</p>
 <span id="cb16-114"><a href="#cb16-114" tabindex="-1"></a>  <span class="fu">rowwise</span>() <span class="sc">%&gt;%</span> </span>
 <span id="cb16-115"><a href="#cb16-115" tabindex="-1"></a>  <span class="fu">mutate</span>(</span>
 <span id="cb16-116"><a href="#cb16-116" tabindex="-1"></a>    <span class="at">value =</span> <span class="fu">as.numeric</span>(value),</span>
-<span id="cb16-117"><a href="#cb16-117" tabindex="-1"></a>    <span class="at">arm_names =</span> <span class="fu">paste</span>(armId, title, <span class="at">collapse =</span> <span class="st">&quot; / &quot;</span>),</span>
+<span id="cb16-117"><a href="#cb16-117" tabindex="-1"></a>    <span class="at">arm_names =</span> <span class="fu">paste</span>(armId, title, <span class="at">collapse =</span> <span class="st">&quot; / &quot;</span>)</span>
 <span id="cb16-118"><a href="#cb16-118" tabindex="-1"></a>  ) <span class="sc">%&gt;%</span> </span>
 <span id="cb16-119"><a href="#cb16-119" tabindex="-1"></a>  <span class="fu">ungroup</span>() <span class="sc">%&gt;%</span> </span>
 <span id="cb16-120"><a href="#cb16-120" tabindex="-1"></a>  <span class="fu">mutate</span>(</span>

@@ -52,11 +52,13 @@ f.likelyPlatformTrial()
 
 # apply trial concept when creating data frame
 dbc <- nodbi::src_sqlite(
-  dbname = system.file("extdata", "demo.sqlite", package = "ctrdata"),
-  collection = "my_trials", flags = RSQLite::SQLITE_RO)
+   dbname = system.file("extdata", "demo.sqlite", package = "ctrdata"),
+   collection = "my_trials", flags = RSQLite::SQLITE_RO)
 trialsDf <- dbGetFieldsIntoDf(
-  calculate = "f.likelyPlatformTrial",
-  con = dbc)
+   "_id",
+   # uncomment next line to calculate concept
+   # calculate = "f.likelyPlatformTrial",
+   con = dbc)
 trialsDf
 
 }
